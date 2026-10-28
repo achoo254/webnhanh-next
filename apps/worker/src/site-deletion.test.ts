@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { accounts, openPglite, siteDeletions, siteUploadsDir, type DbHandle } from '@webnhanh/db';
+import { accounts, openPglite, siteDeletions, sites, siteUploadsDir, type DbHandle } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { processNextSiteDeletion, type SiteDeletionDeps } from './site-deletion';
@@ -90,6 +90,19 @@ describe('a deleted site', () => {
     const [row] = await handle.db.select().from(siteDeletions).where(eq(siteDeletions.id, id));
     expect(row?.status).toBe('done');
     expect(await processNextSiteDeletion(only)).toBe(false);
+  });
+
+  it('leaves a freed name alone once another site published under it, but clears it under a draft', async () => {
+    await siteOnDisk('ten-moi');
+    await siteOnDisk('ten-nhap');
+    const newSite = { accountId, kind: 'template' as const, template: 'shop', draft: {}, createdAt: now, updatedAt: now };
+    await handle.db.insert(sites).values([
+      { ...newSite, id: randomUUID(), name: 'ten-moi', status: 'published' as const },
+      { ...newSite, id: randomUUID(), name: 'ten-nhap', status: 'draft' as const },
+    ]);
+    await queueDeletion(randomUUID(), ['ten-moi', 'ten-nhap']);
+    expect(await processNextSiteDeletion(deps)).toBe(true);
+    expect(await readdir(deps.sitesDir)).toEqual(['ten-moi']);
   });
 
   it('fails without touching anything when a name is not a site name', async () => {

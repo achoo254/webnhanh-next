@@ -5,7 +5,6 @@ import {
   accounts,
   adminActions,
   buildMsToday,
-  DELETED_NAME_HOLD_MS,
   developerSites,
   jobs,
   siteDeletions,
@@ -56,14 +55,14 @@ async function exists(file: string): Promise<boolean> {
 }
 
 describe('deleting a site', () => {
-  it('deletes a published site and its rows, holds the name 30 days for everyone, and queues the files for the worker', async () => {
+  it('deletes a published site and its rows, frees its names at once, and queues the files for the worker', async () => {
     const { siteId } = await publishedShop(app, owner, 'tiem-xoa');
     const imageId = randomUUID();
     const now = new Date();
     await app.handle.db.insert(siteImages).values({ id: imageId, siteId, width: 10, height: 10, widths: [10], bytes: 1, createdAt: now });
     await app.handle.db.insert(submissions).values({ id: randomUUID(), siteId, kind: 'order', data: { name: 'A', phone: '0912345678', address: 'x', productKey: 'p1', productName: 'Bánh', quantity: 1, note: '' }, createdAt: now });
     await app.handle.db.insert(jobs).values({ id: randomUUID(), siteId, accountId: owner.accountId, type: 'publish', status: 'done', createdAt: now });
-    // An old name from a rename: still held, and taken off the web too.
+    // An old name from a rename: freed too, and taken off the web.
     await app.handle.db.insert(siteNameHolds).values({ name: 'tiem-cu', siteId, heldUntil: new Date(now.getTime() + 60_000), createdAt: now });
     // An admin's earlier action on the site: the log outlives it.
     const actionId = randomUUID();
@@ -81,16 +80,11 @@ describe('deleting a site', () => {
 
     const [deletion] = await app.handle.db.select().from(siteDeletions);
     expect(deletion).toMatchObject({ siteId, accountId: owner.accountId, names: ['tiem-xoa', 'tiem-cu'], status: 'queued', buildMs: 0 });
-    const holds = await app.handle.db.select().from(siteNameHolds);
-    const held = holds.find((hold) => hold.name === 'tiem-xoa');
-    expect(held?.siteId).toBeNull();
-    expect(Math.abs((held?.heldUntil.getTime() ?? 0) - Date.now() - DELETED_NAME_HOLD_MS)).toBeLessThan(60_000);
-    expect(holds.find((hold) => hold.name === 'tiem-cu')?.siteId).toBeNull();
+    expect(await app.handle.db.select().from(siteNameHolds)).toEqual([]);
 
-    // Nobody takes the name, the owner included.
-    expect((await create('tiem-xoa', stranger)).body).toEqual({ error: 'name-taken' });
-    expect((await create('tiem-xoa')).body).toEqual({ error: 'name-taken' });
-    expect((await create('tiem-cu', stranger)).body).toEqual({ error: 'name-taken' });
+    // The owner chose to delete it: anyone may take the names right away.
+    expect((await create('tiem-xoa', stranger)).status).toBe(201);
+    expect((await create('tiem-cu')).status).toBe(201);
     expect((await app.http().get(`/api/sites/${siteId}`).set('Cookie', owner.cookie)).status).toBe(404);
   });
 

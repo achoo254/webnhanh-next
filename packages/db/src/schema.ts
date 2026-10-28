@@ -352,14 +352,11 @@ export const siteImages = pgTable(
 /** How long the old name of a renamed site stays reserved (answering 404) before anyone can take it. */
 export const NAME_HOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** How long the name of a deleted site stays reserved for everyone, its owner included. */
-export const DELETED_NAME_HOLD_MS = 30 * 24 * 60 * 60 * 1000;
-
 /**
- * Old names of renamed, published sites, and names of deleted sites. A link someone already shared must not lead to
- * another person's page for a while: the name answers 404 (its directory is removed by the next publish, or by the
- * deletion) and nobody else can take it until `held_until`. The site that let it go can take it back; the name of a
- * deleted site (`site_id` null) nobody can.
+ * Old names of renamed, published sites. A link someone already shared must not lead to another person's page for a
+ * while: the name answers 404 (its directory is removed by the next publish) and nobody else can take it until
+ * `held_until`. The site that let it go can take it back. Deleting a site frees its names at once (the owner chose
+ * to); `site_id` is nullable only so rows written before that rule keep their hold until they run out.
  */
 export const siteNameHolds = pgTable(
   'site_name_holds',

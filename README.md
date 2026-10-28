@@ -23,7 +23,7 @@ zip mã nguồn; build trong Docker giới hạn trên máy chủ (`webnhanh-bui
 build lại; lịch sử build; mỗi tài khoản 3 site lập trình viên, build lần lượt từng cái, **60 phút build mỗi ngày**
 (giờ Việt Nam, tính thời gian chạy thật của từng build, không tính lúc chờ hàng đợi; còn phút thì build mới được bắt
 đầu). Chủ website **xoá được website** (trang mẫu ở trang sửa, site lập trình viên ở trang deploy; gõ lại đúng tên):
-website ngừng chạy, đơn, phản hồi, ảnh, build bị xoá, tên được giữ 30 ngày cho mọi người. Trang `/credits` ghi nguồn phông chữ (OFL) và ảnh. **Chống lạm dụng**: ai cũng báo cáo được
+website ngừng chạy, đơn, phản hồi, ảnh, build bị xoá, tên được trả lại ngay cho mọi người. Trang `/credits` ghi nguồn phông chữ (OFL) và ảnh. **Chống lạm dụng**: ai cũng báo cáo được
 một website ở `/bao-cao?site=<tên>` (không cần đăng nhập; mọi trang mẫu có link "Báo cáo vi phạm" ở chân trang, mọi
 site kể cả site lập trình viên có `https://<tên>.hoandat.io.vn/.well-known/report` chuyển tới đó; hoặc email
 `noreply@hoandat.io.vn`), admin (tài khoản trong `ADMIN_SUBS`) được báo qua bot Chat và Web Push, và ở `/admin` gỡ site

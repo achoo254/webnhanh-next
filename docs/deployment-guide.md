@@ -281,10 +281,10 @@ ngoại chuyển từ `cascade` sang `set null` để tên của site đã xoá 
   `confirm-name`). Từ chối khi site còn job đăng hoặc build đang chờ hay đang chạy (409 `job-active`), khi site bị admin
   gỡ (403 `site-removed`) hay tài khoản bị khoá (403 `account-locked`), và khi còn báo cáo vi phạm chưa xử lý (409
   `report-open`): bằng chứng giữ nguyên tới khi admin quyết. Xoá được thì trong một transaction: xoá dòng `sites` (đơn,
-  phản hồi, ảnh, job, log build, bản phát hành, nguồn và secret webhook đi theo), giữ tên 30 ngày cho mọi người kể cả
-  chủ cũ (tên cũ do đổi tên vẫn giữ tới hạn của nó), `abuse_reports` và `admin_actions` còn nguyên (id site thành null,
+  phản hồi, ảnh, job, log build, bản phát hành, nguồn và secret webhook đi theo), trả lại tên ngay (cả tên
+  cũ còn giữ do đổi tên; chủ đã chủ động xoá nên không giữ tên, quyết định của user 28/10/2026), `abuse_reports` và `admin_actions` còn nguyên (id site thành null,
   giữ tên), thời gian build hôm nay của site vẫn tính cho tài khoản, chỗ trống trong hạn mức site có ngay. Server xoá zip
-  tải lên của site; worker gỡ site khỏi web và xoá ảnh trong vòng một vòng lặp; cache build và zip sót của site đã xoá
+  tải lên của site; worker gỡ site khỏi web và xoá ảnh trong vòng một vòng lặp (bỏ qua tên đã thuộc một site khác không còn là nháp); cache build và zip sót của site đã xoá
   được builder dọn trong lần bảo trì mỗi giờ.
 
 Triển khai: `release` (migration tự chạy). Kiểm:
