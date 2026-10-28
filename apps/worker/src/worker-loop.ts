@@ -3,6 +3,7 @@ import { processNextAdminAction, pruneTakenDown } from './admin-actions';
 import { runBuildPublish } from './build-publish';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
+import { processNextSiteDeletion } from './site-deletion';
 import { refreshNextWedding } from './wedding-refresh';
 
 export type WorkerDeps = PublishDeps & {
@@ -14,12 +15,13 @@ export type JobOutcome = 'idle' | 'done' | 'failed';
 
 /**
  * One turn of the worker: an admin's takedown, restore or review decision first (they must not wait behind
- * publishes), else fails jobs stuck in `running`, then claims the oldest queued job of its lane (template publishes,
+ * publishes), then a site its owner deleted, else fails jobs stuck in `running`, then claims the oldest queued job of its lane (template publishes,
  * and developer builds the builder handed back) and publishes it. A publish takes seconds, so a stopping worker
  * finishes the job in hand instead of putting it back.
  */
 export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
   if (await processNextAdminAction(deps)) return 'done';
+  if (await processNextSiteDeletion(deps)) return 'done';
   const stuck = await failStuckJobs(deps.db, deps.now());
   for (const id of stuck) deps.log.warn(`job ${id} was running too long: marked failed`);
   const job = await claimNextJob(deps.db, deps.now());

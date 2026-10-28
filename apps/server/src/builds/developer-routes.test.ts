@@ -1,7 +1,7 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { appendJobLog, developerSites, jobs, sites, type BuildSettings } from '@webnhanh/db';
+import { appendJobLog, developerSites, jobs, sites, startOfBuildDay, type BuildSettings } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { zipBytes } from '../../../worker/src/build/test-zip';
@@ -108,18 +108,21 @@ describe('developer sites and builds', () => {
     expect(row?.notify).toBe(true);
 
     const list = await app.http().get(`/api/sites/${site.id}/builds`).set('Cookie', owner.cookie);
-    expect(list.body).toMatchObject({ developer: { source: 'git', branch: 'main', webhook: { url: `${app.config.publicUrl}/hooks/git/${site.id}`, secret: site.secret } }, limits: { buildsPerDay: 5, usedToday: 1 } });
+    expect(list.body).toMatchObject({ developer: { source: 'git', branch: 'main', webhook: { url: `${app.config.publicUrl}/hooks/git/${site.id}`, secret: site.secret } }, limits: { buildMinutesPerDay: 60, usedMinutesToday: 0, developerSites: 3 } });
   });
 
-  it('refuses the sixth build of the day', async () => {
-    const site = await gitSite('nam-lan');
-    for (let i = 0; i < 5; i += 1) {
-      expect((await app.http().post(`/api/sites/${site.id}/builds`).set('Cookie', owner.cookie).set('Origin', ORIGIN)).status).toBe(202);
-      await app.handle.db.update(jobs).set({ status: 'failed' }).where(eq(jobs.siteId, site.id));
-    }
+  it('counts build minutes, a started minute whole, and refuses a build once the 60 minutes are used', async () => {
+    const site = await gitSite('het-phut');
+    // Builds that started at the very beginning of today (Vietnam), whatever the time the test runs.
+    const dayStart = startOfBuildDay(new Date()).getTime();
+    const ran = (seconds: number) => ({ id: randomUUID(), siteId: site.id, accountId: owner.accountId, type: 'build' as const, status: 'failed' as const, createdAt: new Date(dayStart), startedAt: new Date(dayStart), finishedAt: new Date(dayStart + seconds * 1000) });
+    await app.handle.db.insert(jobs).values(ran(30));
+    const list = await app.http().get(`/api/sites/${site.id}/builds`).set('Cookie', owner.cookie);
+    expect((list.body as { limits: unknown }).limits).toEqual({ buildMinutesPerDay: 60, usedMinutesToday: 1, developerSites: 3 });
+    await app.handle.db.insert(jobs).values(ran(59.5 * 60));
     const res = await app.http().post(`/api/sites/${site.id}/builds`).set('Cookie', owner.cookie).set('Origin', ORIGIN);
     expect(res.status).toBe(429);
-    expect(res.body).toEqual({ error: 'daily-limit', limit: 5 });
+    expect(res.body).toEqual({ error: 'daily-limit', limit: 60 });
   });
 
   it('takes a zip, checks it in place and suggests the settings; refuses an unsafe one', async () => {

@@ -9,6 +9,7 @@ import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { Loader } from '../loading';
+import { DeleteSitePanel } from '../delete-site-panel';
 
 /** `/sites/:siteId/deploy`: a developer site's current build, settings, deploy-on-push and history. */
 export function DeployPage(): ReactNode {
@@ -176,7 +177,7 @@ function Deploy(): ReactNode {
           {developer.source === 'git' ? t('deploy.source.git', { repo: developer.repoUrl ?? '', branch: developer.branch ?? '' }) : t('deploy.source.zip')}
         </p>
         <p className="hint" data-id="deploy-quota">
-          {t('deploy.quota', { used: limits.usedToday, limit: limits.buildsPerDay })}
+          {t('deploy.quota', { used: limits.usedMinutesToday, limit: limits.buildMinutesPerDay })}
         </p>
         {developer.pendingPushAt ? <p className="notice notice-info">{t('deploy.pending')}</p> : null}
       </div>
@@ -231,6 +232,8 @@ function Deploy(): ReactNode {
         {developer.webhook && developer.repoUrl ? <WebhookCard webhook={developer.webhook} branch={developer.branch ?? ''} repoUrl={developer.repoUrl} /> : null}
         <History builds={data.builds} current={currentId} onPick={(id) => navigate(`/sites/${site.id}/deploy?build=${id}`)} />
       </div>
+
+      <DeleteSitePanel siteId={site.id} siteName={site.name} />
     </section>
   );
 }

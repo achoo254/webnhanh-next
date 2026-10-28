@@ -352,22 +352,56 @@ export const siteImages = pgTable(
 /** How long the old name of a renamed site stays reserved (answering 404) before anyone can take it. */
 export const NAME_HOLD_MS = 7 * 24 * 60 * 60 * 1000;
 
+/** How long the name of a deleted site stays reserved for everyone, its owner included. */
+export const DELETED_NAME_HOLD_MS = 30 * 24 * 60 * 60 * 1000;
+
 /**
- * Old names of renamed, published sites. A link someone already shared must not lead to another person's page for a
- * while: the name answers 404 (its directory is removed by the next publish) and nobody else can take it until
- * `held_until`. The site that let it go can take it back.
+ * Old names of renamed, published sites, and names of deleted sites. A link someone already shared must not lead to
+ * another person's page for a while: the name answers 404 (its directory is removed by the next publish, or by the
+ * deletion) and nobody else can take it until `held_until`. The site that let it go can take it back; the name of a
+ * deleted site (`site_id` null) nobody can.
  */
 export const siteNameHolds = pgTable(
   'site_name_holds',
   {
     name: text('name').primaryKey(),
-    siteId: uuid('site_id')
-      .notNull()
-      .references(() => sites.id, { onDelete: 'cascade' }),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
     heldUntil: timestamp('held_until', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [index('site_name_holds_site_idx').on(t.siteId)],
+);
+
+export const SITE_DELETION_STATUSES = ['queued', 'done', 'failed'] as const;
+export type SiteDeletionStatus = (typeof SITE_DELETION_STATUSES)[number];
+
+/**
+ * Sites their owner deleted: the rows of the site are gone at once (with everything that cascades from it), and this
+ * queue tells webnhanh-worker, the only writer of SITES_DIR, to take the names (`names`: the site's name and the old
+ * names it still held) off the web and delete the site's photos. `build_ms` carries the build time the site used that
+ * day, still counted against its account's day (`buildMsToday`). No foreign key on `site_id`: the site is gone.
+ */
+export const siteDeletions = pgTable(
+  'site_deletions',
+  {
+    id: uuid('id').primaryKey(),
+    siteId: uuid('site_id').notNull(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    names: jsonb('names').$type<string[]>().notNull(),
+    buildMs: integer('build_ms').notNull().default(0),
+    status: text('status').$type<SiteDeletionStatus>().notNull(),
+    /** Stable code of a deletion the worker could not finish. */
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('site_deletions_queue_idx').on(t.createdAt).where(sql`${t.status} = 'queued'`),
+    index('site_deletions_account_idx').on(t.accountId, t.createdAt),
+    check('site_deletions_status_check', sql`${t.status} in ('queued', 'done', 'failed')`),
+  ],
 );
 
 export const SUBMISSION_KINDS = ['order', 'rsvp'] as const;

@@ -487,6 +487,9 @@ button.bento-card:focus-visible {
   box-shadow: var(--shadow-sm);
   min-width: 0;
 }
+.panel-danger {
+  border-color: color-mix(in srgb, var(--c-error) 40%, var(--c-surface));
+}
 .panel-title {
   margin: 0;
   padding: 0;

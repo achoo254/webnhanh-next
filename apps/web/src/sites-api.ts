@@ -99,6 +99,11 @@ export async function renameSite(siteId: string, name: string): Promise<{ site: 
   return parse(z.object({ site: siteSchema, job: jobSchema.nullable() }), await call(`/api/sites/${encodeURIComponent(siteId)}`, sendJson('PATCH', { name })));
 }
 
+/** Deletes a site for good; `confirm` is its name as the owner typed it. */
+export async function deleteSite(siteId: string, confirm: string): Promise<void> {
+  await call(`/api/sites/${encodeURIComponent(siteId)}`, sendJson('DELETE', { confirm }));
+}
+
 export async function publishSite(siteId: string): Promise<Job> {
   return parse(z.object({ job: jobSchema }), await call(`/api/sites/${encodeURIComponent(siteId)}/publish`, { method: 'POST' })).job;
 }

@@ -40,7 +40,7 @@ let routes: Map<string, Handler>;
 let calls: { method: string; url: string; body: unknown }[];
 
 function json(status: number, body: unknown): Response {
-  return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
+  return new Response(status === 204 ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 }
 
 function on(method: string, url: string, handler: Handler): void {
@@ -100,6 +100,43 @@ describe('home with pages', () => {
     // At the limit: no button to make another page, and why.
     expect(screen.queryByRole('link', { name: 'Tạo website mới' })).toBeNull();
     expect(screen.getByText(/đủ 2 website/)).toBeTruthy();
+  });
+});
+
+describe('deleting a page', () => {
+  it('deletes only once the name is typed exactly, then says so at home', async () => {
+    let deleted = false;
+    on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
+    on('DELETE', `/api/sites/${SITE_ID}`, () => {
+      deleted = true;
+      return { status: 204, body: null };
+    });
+    on('GET', '/api/sites', () => ({ status: 200, body: { sites: [], limits: { sites: 5, siteBytes: 1 } } }));
+    renderAt(`/sites/${SITE_ID}`);
+    const section = await screen.findByRole('region', { name: 'Xoá website' });
+    expect(within(section).getByText(/nha-bo\.hoandat\.io\.vn sẽ ngừng chạy ngay/)).toBeTruthy();
+    const button = within(section).getByRole('button', { name: 'Xoá website' }) as HTMLButtonElement;
+    const input = within(section).getByLabelText('Gõ nha-bo để xác nhận');
+    expect(button.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: 'nha-b' } });
+    expect(button.disabled).toBe(true);
+    fireEvent.change(input, { target: { value: 'nha-bo' } });
+    expect(button.disabled).toBe(false);
+    fireEvent.click(button);
+    expect(await screen.findByText('Đã xoá website nha-bo.hoandat.io.vn.')).toBeTruthy();
+    expect(deleted).toBe(true);
+    expect(calls.find((c) => c.method === 'DELETE')?.body).toEqual({ confirm: 'nha-bo' });
+  });
+
+  it('explains a refusal and stays on the page', async () => {
+    on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
+    on('DELETE', `/api/sites/${SITE_ID}`, () => ({ status: 409, body: { error: 'report-open' } }));
+    renderAt(`/sites/${SITE_ID}`);
+    const section = await screen.findByRole('region', { name: 'Xoá website' });
+    fireEvent.change(within(section).getByLabelText('Gõ nha-bo để xác nhận'), { target: { value: 'nha-bo' } });
+    fireEvent.click(within(section).getByRole('button', { name: 'Xoá website' }));
+    expect((await within(section).findByRole('alert')).textContent).toContain('báo cáo vi phạm chờ xử lý');
+    expect(screen.getByRole('region', { name: 'Xoá website' })).toBeTruthy();
   });
 });
 

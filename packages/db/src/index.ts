@@ -7,4 +7,5 @@ export * from './jobs';
 export * from './retention';
 export * from './schema';
 export * from './site-files';
+export * from './site-deletions';
 export * from './site-name';

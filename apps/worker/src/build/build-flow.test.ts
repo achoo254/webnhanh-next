@@ -1,11 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import {
   accounts,
-  BUILDS_PER_DAY,
-  buildsToday,
+  BUILD_MS_PER_DAY,
+  buildMsToday,
   developerSites,
   enqueueBuild,
   jobLogs,
@@ -27,7 +27,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { processNextJob, type WorkerDeps } from '../worker-loop';
 import type { BuildTools } from './build-job';
 import { inboxZip } from './build-job';
-import { processNextBuild, pruneStaged, type BuilderLoopDeps } from './builder-loop';
+import { processNextBuild, pruneInbox, pruneStaged, type BuilderLoopDeps } from './builder-loop';
 import type { ContainerSpec } from './run-build';
 import { writeZip } from './test-zip';
 
@@ -183,11 +183,12 @@ describe('a developer build from queue to live site', () => {
     expect(await pruneStaged(handle.db, builder.dirs.out)).toBe(1);
     expect(await readdir(builder.dirs.work)).toEqual([]);
 
-    // The same zip and settings again: skipped, not counted.
+    // The same zip and settings again: skipped, its time not counted.
+    const used = await buildMsToday(handle.db, site.accountId, new Date());
     const again = await queue(site);
     expect(await processNextBuild(builder)).toBe('skipped');
     expect((await jobRow(again)).status).toBe('skipped');
-    expect(await buildsToday(handle.db, site.accountId, new Date())).toBe(1);
+    expect(await buildMsToday(handle.db, site.accountId, new Date())).toBe(used);
   });
 
   it('installs and builds a git repo in two steps, logs it, and reuses the libraries next time', async () => {
@@ -232,8 +233,9 @@ describe('a developer build from queue to live site', () => {
     expect(await readdir(builder.dirs.out)).toEqual([]);
     const notices = await handle.db.select().from(notificationDeliveries).where(eq(notificationDeliveries.jobId, jobId));
     expect(notices.map((n) => n.channel)).toEqual(['push']);
-    // Failed builds count against the day.
-    expect(await buildsToday(handle.db, site.accountId, new Date())).toBe(1);
+    // Failed builds count against the day, for the time they ran.
+    expect(job.startedAt && job.finishedAt).toBeTruthy();
+    expect(await buildMsToday(handle.db, site.accountId, new Date())).toBe((job.finishedAt?.getTime() ?? 0) - (job.startedAt?.getTime() ?? 0));
   });
 
   it('fails a repo it cannot build statically before running anything', async () => {
@@ -270,20 +272,71 @@ describe('a developer build from queue to live site', () => {
 });
 
 describe('build limits and pushes', () => {
-  it('allows BUILDS_PER_DAY builds a day and one job at a time per account', async () => {
+  /** A build of `site` that ran from `start` to `end` (ms before `now`), without its wait in the queue. */
+  async function ranBuild(site: { siteId: string; accountId: string }, now: Date, minutes: { queued: number; start: number; end?: number; ready?: number }, extra: Partial<typeof jobs.$inferInsert> = {}): Promise<string> {
+    const at = (m: number): Date => new Date(now.getTime() - m * 60_000);
+    const id = randomUUID();
+    await handle.db.insert(jobs).values({
+      id,
+      ...site,
+      type: 'build',
+      status: minutes.end === undefined ? 'running' : 'failed',
+      createdAt: at(minutes.queued),
+      startedAt: at(minutes.start),
+      finishedAt: minutes.end === undefined ? null : at(minutes.end),
+      readyAt: minutes.ready === undefined ? null : at(minutes.ready),
+      ...extra,
+    });
+    return id;
+  }
+
+  it('counts the real run time of builds today, the wait in the queue and skipped builds left out', async () => {
+    const site = await developerSite('dem-phut', 'zip', { rootDir: '', buildCommand: null, outputDir: '' });
+    const now = new Date('2026-10-28T05:00:00Z');
+    // Waited 30 minutes, ran 4.
+    await ranBuild(site, now, { queued: 60, start: 30, end: 26 });
+    // Handed to the worker after 2 minutes; its publish wait and step are not build time.
+    await ranBuild(site, now, { queued: 25, start: 25, ready: 23, end: 10 }, { status: 'done' });
+    // Skipped (nothing changed) and a rename's rebuild: not counted.
+    await ranBuild(site, now, { queued: 9, start: 9, end: 8 }, { status: 'skipped', error: 'no-change' });
+    await ranBuild(site, now, { queued: 8, start: 8, end: 7 }, { trigger: 'rename' });
+    // Yesterday (Vietnam time): not counted.
+    await ranBuild(site, now, { queued: 13 * 60, start: 13 * 60, end: 12 * 60 });
+    expect(await buildMsToday(handle.db, site.accountId, now)).toBe(6 * 60_000);
+    // A running build counts its time so far.
+    await ranBuild(site, now, { queued: 5, start: 3 });
+    expect(await buildMsToday(handle.db, site.accountId, now)).toBe(9 * 60_000);
+  });
+
+  it('starts builds while build time is left today, one job at a time per account', async () => {
     const site = await developerSite('han-muc', 'zip', { rootDir: '', buildCommand: null, outputDir: '' });
-    const first = await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, new Date());
+    const now = new Date();
+    const first = await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, now);
     expect(first.ok).toBe(true);
-    expect(await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, new Date())).toEqual({ ok: false, reason: 'job-active' });
-    await handle.db.update(jobs).set({ status: 'failed' }).where(eq(jobs.siteId, site.siteId));
-    for (let i = 1; i < BUILDS_PER_DAY; i += 1) {
-      const queued = await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, new Date());
-      expect(queued.ok).toBe(true);
-      await handle.db.update(jobs).set({ status: 'failed' }).where(eq(jobs.siteId, site.siteId));
-    }
-    expect(await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, new Date())).toEqual({ ok: false, reason: 'daily-limit' });
-    // A rename's rebuild is not refused by the day's limit.
-    expect((await enqueueBuild(handle.db, { ...site, trigger: 'rename' }, new Date())).ok).toBe(true);
+    expect(await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, now)).toEqual({ ok: false, reason: 'job-active' });
+    await handle.db.delete(jobs).where(eq(jobs.siteId, site.siteId));
+    // 59 minutes used: one more may start (and may run past the hour).
+    await ranBuild(site, now, { queued: 59, start: 59, end: 0 });
+    const last = await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, now);
+    expect(last.ok).toBe(true);
+    await handle.db.update(jobs).set({ status: 'failed', startedAt: new Date(now.getTime() - 60_000), finishedAt: now }).where(eq(jobs.id, last.ok ? last.job.id : ''));
+    expect(await buildMsToday(handle.db, site.accountId, now)).toBe(BUILD_MS_PER_DAY);
+    expect(await enqueueBuild(handle.db, { ...site, trigger: 'manual' }, now)).toEqual({ ok: false, reason: 'daily-limit' });
+    // A rename's rebuild is not refused by the day's build time.
+    expect((await enqueueBuild(handle.db, { ...site, trigger: 'rename' }, now)).ok).toBe(true);
+  });
+
+  it('removes uploaded zips of sites that no longer exist, once they are an hour old', async () => {
+    const live = randomUUID();
+    const gone = randomUUID();
+    const fresh = randomUUID();
+    const inbox = builder.dirs.inbox;
+    for (const id of [live, gone, fresh]) await writeFile(path.join(inbox, `${id}.zip`), 'zip');
+    await writeFile(path.join(inbox, 'notes.txt'), 'x');
+    const old = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    for (const id of [live, gone]) await utimes(path.join(inbox, `${id}.zip`), old, old);
+    expect(await pruneInbox(inbox, new Set([live]), new Date())).toBe(1);
+    expect((await readdir(inbox)).sort()).toEqual([`${fresh}.zip`, `${live}.zip`, 'notes.txt'].sort());
   });
 
   it('caps the whole queue', async () => {
@@ -320,7 +373,8 @@ describe('build limits and pushes', () => {
     await notePush(handle.db, site.siteId, '4'.repeat(40), t0);
     expect(await queueDuePushes(handle.db, new Date(t0.getTime() + 31_000))).toEqual({ queued: 0, skipped: 0 });
     await handle.db.update(jobs).set({ status: 'failed' }).where(eq(jobs.id, running));
-    await handle.db.insert(jobs).values(Array.from({ length: BUILDS_PER_DAY }, () => ({ id: randomUUID(), ...site, type: 'build' as const, status: 'failed' as const, createdAt: new Date() })));
+    // The day's build time used up by builds that ran.
+    await handle.db.insert(jobs).values({ id: randomUUID(), ...site, type: 'build', status: 'failed', createdAt: t0, startedAt: new Date(t0.getTime() - BUILD_MS_PER_DAY), finishedAt: t0 });
     expect(await queueDuePushes(handle.db, new Date(t0.getTime() + 32_000))).toEqual({ queued: 0, skipped: 1 });
     const skipped = await handle.db.select().from(jobs).where(eq(jobs.status, 'skipped'));
     expect(skipped[0]).toMatchObject({ error: 'daily-limit', trigger: 'push' });

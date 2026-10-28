@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import type { Account } from '../api';
 import { siteHost } from '../brand';
 import { useI18n, type MessageKey } from '../i18n';
+import { isDeletedSiteState } from '../delete-site-panel';
 import { SignedInPage } from '../signed-in-page';
 import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
 import { SiteCardsPlaceholder } from '../loading';
@@ -78,6 +79,8 @@ function Home({ account }: { readonly account: Account }): ReactNode {
   const { t, locale } = useI18n();
   const [list, setList] = useState<SiteList | null>(null);
   const [failed, setFailed] = useState(false);
+  const { state } = useLocation();
+  const deleted = isDeletedSiteState(state) ? state.deletedSite : null;
   useEffect(() => {
     let live = true;
     listSites()
@@ -113,6 +116,11 @@ function Home({ account }: { readonly account: Account }): ReactNode {
       {account.locked ? (
         <p className="notice notice-warning" role="alert" data-id="home-locked">
           {t('home.locked')}
+        </p>
+      ) : null}
+      {deleted ? (
+        <p className="notice notice-info" role="status" data-id="home-deleted">
+          {t('home.deleted', { host: siteHost(deleted) })}
         </p>
       ) : null}
       {failed ? (

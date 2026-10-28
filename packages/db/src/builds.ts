@@ -2,8 +2,9 @@
  * Developer builds, shared by the server (manual builds, webhooks, history), webnhanh-builder (pushes waiting out
  * their 30 seconds, logs) and webnhanh-worker (the notice at the end):
  *
- * - limits: DEVELOPER_SITES_PER_ACCOUNT, BUILDS_PER_DAY per account (failed builds count, skipped ones do not),
- *   BUILD_QUEUE_MAX builds waiting on the whole server, one job per account (the jobs index);
+ * - limits: DEVELOPER_SITES_PER_ACCOUNT, BUILD_MINUTES_PER_DAY of build time per account (the real run time of each
+ *   build, failed ones included, skipped ones and a rename's rebuild not), BUILD_QUEUE_MAX builds waiting on the
+ *   whole server, one job per account (the jobs index);
  * - the log of each build, line by line;
  * - "Báo tôi khi xong": notification_deliveries rows written with the end of the job.
  */
@@ -11,14 +12,14 @@ import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, ne
 import { randomUUID } from 'node:crypto';
 import type { Db } from './client';
 import { enqueueJob, publishBlock, type Job, type PublishBlock } from './jobs';
-import { chatLinks, developerSites, JOB_LOG_MAX_LINES, jobLogs, jobs, notificationDeliveries, pushSubscriptions, sites, type BuildTrigger } from './schema';
+import { chatLinks, developerSites, JOB_LOG_MAX_LINES, jobLogs, jobs, notificationDeliveries, pushSubscriptions, siteDeletions, sites, type BuildTrigger } from './schema';
 
-import { BUILD_QUEUE_MAX, BUILDS_PER_DAY } from './build-limits';
+import { BUILD_MS_PER_DAY, BUILD_QUEUE_MAX } from './build-limits';
 
-export { BUILD_QUEUE_MAX, BUILDS_PER_DAY, DEVELOPER_SITES_PER_ACCOUNT } from './build-limits';
+export { BUILD_MINUTES_PER_DAY, BUILD_MS_PER_DAY, BUILD_QUEUE_MAX, buildMinutesUsed, DEVELOPER_SITES_PER_ACCOUNT } from './build-limits';
 /** Pushes this close together become one build. */
 export const PUSH_DEBOUNCE_MS = 30_000;
-/** The day of the daily build limit is Vietnam's (UTC+7, no daylight saving). */
+/** The day of the daily build time is Vietnam's (UTC+7, no daylight saving). */
 const DAY_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 export type DeveloperSiteRow = typeof developerSites.$inferSelect;
@@ -29,21 +30,36 @@ export function startOfBuildDay(now: Date): Date {
   return new Date(local - (local % (24 * 60 * 60 * 1000)) - DAY_OFFSET_MS);
 }
 
-/** Builds of an account that count today: everything but skipped ones and rebuilds for a rename. */
-export async function buildsToday(db: Db, accountId: string, now: Date): Promise<number> {
+/**
+ * Build time (ms) an account used today: from when webnhanh-builder started each build to when it handed the output
+ * over or failed (a timeout included), a running build counting its time so far. The wait in the queue is left out,
+ * and so are skipped builds (nothing changed) and a rename's rebuild. Builds of a site deleted today still count (`site_deletions`).
+ * `siteId` narrows it to one site's builds (what a deletion carries over).
+ */
+export async function buildMsToday(db: Db, accountId: string, now: Date, siteId?: string): Promise<number> {
+  const dayStart = startOfBuildDay(now);
+  const end = sql`coalesce(${jobs.readyAt}, ${jobs.finishedAt}, ${now.toISOString()}::timestamptz)`;
   const [row] = await db
-    .select({ n: count() })
+    .select({ ms: sql<string | null>`sum(greatest(0, extract(epoch from (${end} - ${jobs.startedAt})) * 1000))` })
     .from(jobs)
     .where(
       and(
         eq(jobs.accountId, accountId),
+        siteId === undefined ? undefined : eq(jobs.siteId, siteId),
         eq(jobs.type, 'build'),
         ne(jobs.status, 'skipped'),
         or(isNull(jobs.trigger), ne(jobs.trigger, 'rename')),
-        gte(jobs.createdAt, startOfBuildDay(now)),
+        isNotNull(jobs.startedAt),
+        gte(jobs.startedAt, dayStart),
       ),
     );
-  return row?.n ?? 0;
+  const builds = Math.round(Number(row?.ms ?? 0));
+  if (siteId !== undefined) return builds;
+  const [carried] = await db
+    .select({ ms: sql<string | null>`sum(${siteDeletions.buildMs})` })
+    .from(siteDeletions)
+    .where(and(eq(siteDeletions.accountId, accountId), gte(siteDeletions.createdAt, dayStart)));
+  return builds + Number(carried?.ms ?? 0);
 }
 
 /** Builds waiting to be built on the whole server (not those built and waiting to be published). */
@@ -57,7 +73,7 @@ export async function queuedBuildCount(db: Db): Promise<number> {
 
 export type BuildEnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' | 'daily-limit' | 'queue-full' | PublishBlock };
 
-/** Queues a build within the limits. A rename's rebuild is not counted against the day. */
+/** Queues a build while the account has build time left today. A rename's rebuild is not held to (nor counted against) it. */
 export async function enqueueBuild(
   db: Db,
   input: { siteId: string; accountId: string; trigger: BuildTrigger; commitSha?: string | null; id?: string },
@@ -65,14 +81,14 @@ export async function enqueueBuild(
 ): Promise<BuildEnqueueResult> {
   const block = await publishBlock(db, input.siteId);
   if (block) return { ok: false, reason: block };
-  if (input.trigger !== 'rename' && (await buildsToday(db, input.accountId, now)) >= BUILDS_PER_DAY) return { ok: false, reason: 'daily-limit' };
+  if (input.trigger !== 'rename' && (await buildMsToday(db, input.accountId, now)) >= BUILD_MS_PER_DAY) return { ok: false, reason: 'daily-limit' };
   if ((await queuedBuildCount(db)) >= BUILD_QUEUE_MAX) return { ok: false, reason: 'queue-full' };
   return enqueueJob(db, { ...input, type: 'build' }, now);
 }
 
 /**
- * Records a build that did not run (nothing changed, or the day's builds were used up) so the history shows it.
- * Skipped jobs never count against the limit.
+ * Records a build that did not run (nothing changed, or the day's build time was used up) so the history shows it.
+ * Skipped jobs never count against the day's build time.
  */
 export async function recordSkippedBuild(
   db: Db,
@@ -129,7 +145,7 @@ export interface DuePushOutcome {
 
 /**
  * Turns pushes whose wait is over into builds. One whose account has a job running stays until it ends; one that
- * finds the queue full stays until there is room; one past the day's limit is recorded as skipped and dropped; one of
+ * finds the queue full stays until there is room; one past the day's build time is recorded as skipped and dropped; one of
  * a locked account or a taken-down site is dropped.
  */
 export async function queueDuePushes(db: Db, now: Date): Promise<DuePushOutcome> {
@@ -236,7 +252,7 @@ export async function failJob(db: Db, jobId: string, error: string, errorLines: 
   });
 }
 
-/** Ends a running build as skipped (nothing changed since the live build): it is not counted against the day. */
+/** Ends a running build as skipped (nothing changed since the live build): its time is not counted against the day. */
 export async function skipRunningBuild(db: Db, jobId: string, now: Date): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [row] = await tx

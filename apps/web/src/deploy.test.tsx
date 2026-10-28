@@ -145,7 +145,7 @@ describe('deploying from a repo', () => {
     on('POST', `/api/sites/${SITE_ID}/builds`, () => ({ status: 202, body: detail({ queue: { position: 0, startsAt: at(5) } }, { status: 'queued', startedAt: null, steps: [] }) }));
     on('GET', `/api/sites/${SITE_ID}/builds`, () => ({
       status: 200,
-      body: { site: { id: SITE_ID, name: 'shop', published: false, status: 'draft' }, developer, builds: [build({ status: 'queued', steps: [], startedAt: null })], estimate: { ms: 75_000, basis: 'default' }, limits: { buildsPerDay: 5, usedToday: 1, developerSites: 3 } },
+      body: { site: { id: SITE_ID, name: 'shop', published: false, status: 'draft' }, developer, builds: [build({ status: 'queued', steps: [], startedAt: null })], estimate: { ms: 75_000, basis: 'default' }, limits: { buildMinutesPerDay: 60, usedMinutesToday: 12, developerSites: 3 } },
     }));
     on('GET', `/api/builds/${BUILD_ID}`, () => ({ status: 200, body: detail() }));
 
@@ -170,7 +170,7 @@ describe('deploying from a repo', () => {
     const created = calls.find((c) => c.url === '/api/developer/sites');
     expect(created?.body).toMatchObject({ name: 'shop', source: 'git', branch: 'main', settings: { outputDir: 'build' } });
     expect(await screen.findByText('Đang build 38 file…')).toBeTruthy();
-    expect(screen.getByText('Hôm nay đã dùng 1/5 lượt build.')).toBeTruthy();
+    expect(screen.getByText('Hôm nay đã dùng 12/60 phút build.')).toBeTruthy();
     expect(screen.getByText(`https://app/hooks/git/${SITE_ID}`)).toBeTruthy();
     expect(screen.queryByText('s3cret')).toBeNull();
   });

@@ -92,7 +92,7 @@ const buildsSchema = z.object({
   developer: developerSchema,
   builds: z.array(buildSchema),
   estimate: estimateSchema,
-  limits: z.object({ buildsPerDay: z.number(), usedToday: z.number(), developerSites: z.number() }),
+  limits: z.object({ buildMinutesPerDay: z.number(), usedMinutesToday: z.number(), developerSites: z.number() }),
 });
 export type SiteBuilds = z.infer<typeof buildsSchema>;
 

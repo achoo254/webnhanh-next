@@ -1,6 +1,6 @@
 /**
  * The site API of the signed-in owner: list, create, read and save the draft, rename, upload photos (and read them
- * back for the editor), publish, and follow a publish job. Every route reaches a site through `ownedSite`.
+ * back for the editor), publish, follow a publish job, and delete a site. Every route reaches a site through `ownedSite`.
  */
 import { randomUUID } from 'node:crypto';
 import os from 'node:os';
@@ -31,6 +31,7 @@ import { HttpError } from '../http-error';
 import { openOrderCounts } from '../orders/order-routes';
 import { ImageError, MAX_UPLOAD_BYTES, storeImage, type ImageTools } from './image-processing';
 import { ownedSite } from './site-access';
+import { deleteSite } from './site-deletion';
 import { createTemplateSite, renameSite, validName } from './site-store';
 import { imageView, jobView, siteView } from './site-views';
 
@@ -158,6 +159,13 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     const site = await ownedSite(db, accountOf(res.locals).id, req.params.siteId);
     const renamed = await renameSite(db, site, validName(body(req).name), new Date());
     res.json({ site: siteView(renamed.site, undefined, renamed.job ?? undefined), job: renamed.job ? jobView(renamed.job) : null });
+  });
+
+  // Template and developer sites alike; the body names the site again ({ confirm: "<name>" }).
+  router.delete('/api/sites/:siteId', signedIn, noStore, json, async (req, res) => {
+    const site = await ownedSite(db, accountOf(res.locals).id, req.params.siteId);
+    await deleteSite(db, site, body(req).confirm, new Date(), config.buildInboxDir);
+    res.status(204).end();
   });
 
   router.post(

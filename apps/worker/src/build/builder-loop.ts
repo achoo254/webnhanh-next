@@ -2,9 +2,9 @@
  * webnhanh-builder's loop: one build at a time. Each turn fails builds stuck past BUILD_STUCK_AFTER_MS, turns pushes
  * whose 30 seconds are over into builds, and starts the oldest queued build when the server has room for it (free
  * memory and disk; otherwise the build waits in the queue). About once an hour: staged outputs the worker is done with,
- * unused caches and old build logs are deleted.
+ * unused caches, uploaded zips and caches of deleted sites, and old build logs are deleted.
  */
-import { readFile, readdir, rm, statfs } from 'node:fs/promises';
+import { readFile, readdir, rm, stat, statfs } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { claimNextJob, failStuckJobs, isUuid, jobs, pruneBuildLogs, queueDuePushes, requeueJob, runningJobsOf, sites, type Db } from '@webnhanh/db';
@@ -42,7 +42,7 @@ export async function processNextBuild(deps: BuilderLoopDeps, signal?: AbortSign
   const stuck = await failStuckJobs(deps.db, deps.now(), 'build');
   for (const id of stuck) deps.log.warn(`build ${id} was running too long: marked failed`);
   const pushes = await queueDuePushes(deps.db, deps.now());
-  if (pushes.queued + pushes.skipped > 0) deps.log.info(`pushes: ${pushes.queued} build(s) queued, ${pushes.skipped} over the daily limit`);
+  if (pushes.queued + pushes.skipped > 0) deps.log.info(`pushes: ${pushes.queued} build(s) queued, ${pushes.skipped} over the day's build time`);
 
   if (deps.minFreeMemory > 0 || deps.minFreeDisk > 0) {
     const room = deps.room ? await deps.room() : { memory: await availableMemory(), disk: await freeDisk(deps.dirs.work) };
@@ -74,14 +74,33 @@ export async function pruneStaged(db: Db, outDir: string): Promise<number> {
   return stale.length;
 }
 
+/**
+ * Uploaded zips (`<site id>.zip`) of sites that no longer exist: the server removes them at deletion, this catches a
+ * miss. Only zips over an hour old: one uploaded for a site made after `liveSiteIds` was read stays.
+ */
+export async function pruneInbox(inboxDir: string, liveSiteIds: ReadonlySet<string>, now: Date): Promise<number> {
+  let removed = 0;
+  for (const name of await readdir(inboxDir).catch(() => [])) {
+    const siteId = name.endsWith('.zip') ? name.slice(0, -'.zip'.length) : '';
+    if (!isUuid(siteId) || liveSiteIds.has(siteId)) continue;
+    const file = path.join(inboxDir, name);
+    const modified = (await stat(file).catch(() => null))?.mtimeMs;
+    if (modified === undefined || now.getTime() - modified < 60 * 60 * 1000) continue;
+    await rm(file, { force: true });
+    removed += 1;
+  }
+  return removed;
+}
+
 const MAINTENANCE_EVERY_MS = 60 * 60 * 1000;
 
 async function maintenance(deps: BuilderLoopDeps): Promise<void> {
   const staged = await pruneStaged(deps.db, deps.dirs.out);
   const live = new Set((await deps.db.select({ id: sites.id }).from(sites)).map((site) => site.id));
   const caches = await pruneCaches(deps.dirs.cache, deps.now(), live);
+  const zips = await pruneInbox(deps.dirs.inbox, live, deps.now());
   const logs = await pruneBuildLogs(deps.db, deps.now());
-  deps.log.info(`maintenance: ${staged} staged output(s), ${caches} cache(s), ${logs} log line(s) removed`);
+  deps.log.info(`maintenance: ${staged} staged output(s), ${caches} cache(s), ${zips} zip(s), ${logs} log line(s) removed`);
 }
 
 export interface RunningBuilder {

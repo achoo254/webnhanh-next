@@ -11,10 +11,11 @@ import path from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
 import {
-  BUILDS_PER_DAY,
+  BUILD_MINUTES_PER_DAY,
   buildEstimate,
   buildHistory,
-  buildsToday,
+  buildMinutesUsed,
+  buildMsToday,
   DEVELOPER_SITES_PER_ACCOUNT,
   developerSites,
   enqueueBuild,
@@ -273,7 +274,7 @@ export function developerRoutes(config: ServerConfig, db: Db, fetcher: Fetcher):
     const dev = await developerOf(db, site);
     if (dev.source === 'zip' && !(await hasZip(site.id))) throw new HttpError(409, 'zip-missing');
     const queued = await enqueueBuild(db, { siteId: site.id, accountId: account.id, trigger: 'manual' }, new Date());
-    if (!queued.ok) throw new HttpError(ENQUEUE_STATUS[queued.reason], queued.reason, queued.reason === 'daily-limit' ? { limit: BUILDS_PER_DAY } : {});
+    if (!queued.ok) throw new HttpError(ENQUEUE_STATUS[queued.reason], queued.reason, queued.reason === 'daily-limit' ? { limit: BUILD_MINUTES_PER_DAY } : {});
     res.status(202).json(await buildDetail(db, queued.job));
   });
 
@@ -288,7 +289,11 @@ export function developerRoutes(config: ServerConfig, db: Db, fetcher: Fetcher):
       developer: developerView(dev, config.publicUrl, await hasZip(site.id)),
       builds: history.map(buildView),
       estimate: await buildEstimate(db, site.id, history.find((job) => job.framework)?.framework ?? null),
-      limits: { buildsPerDay: BUILDS_PER_DAY, usedToday: await buildsToday(db, account.id, now), developerSites: DEVELOPER_SITES_PER_ACCOUNT },
+      limits: {
+        buildMinutesPerDay: BUILD_MINUTES_PER_DAY,
+        usedMinutesToday: buildMinutesUsed(await buildMsToday(db, account.id, now)),
+        developerSites: DEVELOPER_SITES_PER_ACCOUNT,
+      },
     });
   });
 

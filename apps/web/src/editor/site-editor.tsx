@@ -14,6 +14,7 @@ import { TetForm } from './forms/tet-form';
 import { WeddingForm } from './forms/wedding-form';
 import { PublishPanel } from './publish-panel';
 import { previewFontUrl } from './style-picker';
+import { DeleteSitePanel } from '../delete-site-panel';
 
 /** Saves this long after the last change. */
 const SAVE_DELAY_MS = 800;
@@ -257,6 +258,8 @@ export function SiteEditor({
           onDone={onDone}
         />
       </div>
+
+      <DeleteSitePanel siteId={site.id} siteName={site.name} />
     </div>
   );
 }

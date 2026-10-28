@@ -1,4 +1,4 @@
-import { BUILDS_PER_DAY, DEVELOPER_SITES_PER_ACCOUNT } from '@webnhanh/db/build-limits';
+import { BUILD_MINUTES_PER_DAY, DEVELOPER_SITES_PER_ACCOUNT } from '@webnhanh/db/build-limits';
 import { checkSiteName } from '@webnhanh/db/site-name';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -260,7 +260,7 @@ function DeployNew(): ReactNode {
         </button>
       </div>
       {tab === 'git' ? <GitForm /> : <ZipForm />}
-      <p className="hint">{t('deploy.limit', { limit: DEVELOPER_SITES_PER_ACCOUNT, perDay: BUILDS_PER_DAY })}</p>
+      <p className="hint">{t('deploy.limit', { limit: DEVELOPER_SITES_PER_ACCOUNT, perDay: BUILD_MINUTES_PER_DAY })}</p>
     </section>
   );
 }
