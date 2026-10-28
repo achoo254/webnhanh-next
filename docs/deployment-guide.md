@@ -12,7 +12,7 @@ và web, lệnh `release`). Worker build/đăng site có ở bước sau.
 |---|---|
 | Site người dùng | `/var/www/trang/sites/<tên>/releases/<id>/`, `current -> releases/<id>` (user `trang`, nhóm `trang`, `2750`: mọi thứ tạo bên trong giữ nhóm `trang`; nginx thuộc nhóm `trang` để đọc) |
 | Trang dùng chung | `/var/www/trang/static/404.html` (từ `infra/static/`) |
-| nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `hoandat.com` (tạm, tới khi có app), mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác |
+| nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `trang.hoandat.com`, mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác |
 | Chứng chỉ gốc | `/etc/pki/nginx/server.{crt,key}` như các app khác; Cloudflare SSL "full", Universal SSL phủ `hoandat.io.vn` và `*.hoandat.io.vn` |
 | App | `/var/www/trang/app` (bản phát hành hiện tại, `root:trang`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
 | Server | systemd `trang-server` (user `trang`, `127.0.0.1:4860`, `MemoryMax=256M`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
@@ -79,7 +79,7 @@ curl -s https://trang.hoandat.com/healthz            # ok
 curl -s -o /dev/null -w '%{http_code}\n' https://trang.hoandat.com/api/me   # 401 khi chưa đăng nhập
 curl -sI https://kiem-tra.hoandat.io.vn/            # 200, không Set-Cookie (site kiểm tra, tên giữ chỗ)
 curl -sI https://khong-co-trang.hoandat.io.vn/      # 404, trang 404 chung
-curl -sI https://hoandat.io.vn/                     # 302 về hoandat.com
+curl -sI https://hoandat.io.vn/                     # 302 về trang.hoandat.com
 ```
 
 ## Lịch sử
