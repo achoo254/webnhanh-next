@@ -1,0 +1,29 @@
+{
+  "name": "@trang/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5297 --strictPort",
+    "build": "tsc --noEmit -p tsconfig.json && vite build",
+    "preview": "vite preview --port 5297 --strictPort",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@achoo254/app-shell": "github:achoo254/shared-next#v0.8.0&path:/packages/app-shell",
+    "@achoo254/brand": "github:achoo254/shared-next#v0.8.0&path:/packages/brand",
+    "@fontsource/inter": "^5.2.0",
+    "@fontsource/jetbrains-mono": "^5.2.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router": "^7.9.0"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "jsdom": "^27.0.0",
+    "vite": "^8.0.0"
+  }
+}

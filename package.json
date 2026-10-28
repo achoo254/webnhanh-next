@@ -7,14 +7,21 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "lint": "eslint . --max-warnings=0",
+    "dev": "pnpm --parallel --filter @trang/server --filter @trang/web dev",
+    "build": "pnpm -r --if-present build",
+    "lint": "eslint . --max-warnings=0 && pnpm check:brand",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present typecheck",
-    "test": "vitest run --maxWorkers=2"
+    "test": "vitest run --maxWorkers=2",
+    "check:brand": "check-brand --config brand.config.json --dir apps --dir packages --skip-dir dist --source-file '\\.(ts|tsx|js|mjs|html)$' --code-file '\\.(ts|tsx|js|mjs)$' --test-file '\\.(test|spec)\\.(ts|tsx)$' --jsx-text --skip-comment-lines --hint 'read it from apps/web/src/brand.ts'"
   },
   "devDependencies": {
+    "@achoo254/brand": "github:achoo254/shared-next#v0.8.0&path:/packages/brand",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.0.0",
     "eslint": "^10.11.0",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.70.1",
     "vitest": "^5.0.2"

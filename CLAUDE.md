@@ -3,10 +3,15 @@
 Trang Của Tôi, repo `trang-next`. Đọc `README.md`, `docs/deployment-guide.md` và plan
 `hoandat-app/plans/dattqh/261028-0944-trang-cua-toi/` trước khi làm.
 
-- Gate trước khi báo xong: `pnpm lint && pnpm typecheck && pnpm test`.
+- Gate trước khi báo xong: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (`lint` gồm `check:brand`).
 - Repo public: không ghi IP, cổng SSH, user máy chủ hay secret; env production ở iCloud `ENV production/trang-next/`.
 - Site người dùng chỉ đi qua `@trang/publish`; không ghi thẳng vào `SITES_DIR`.
 - Tên site kiểm bằng `checkSiteName`; regex `server_name` trong `infra/nginx/hoandat.io.vn.conf` phải cùng hình với
   `SITE_NAME_PATTERN`.
 - Không đặt cookie nào trên `hoandat.io.vn`: site người dùng chạy JavaScript tuỳ ý ở đó.
 - Migration là SQL sinh bằng `pnpm --filter @trang/db db:generate`, commit và review như code; không `drizzle-kit push`.
+- Không viết cứng tên sản phẩm: đọc từ `apps/web/src/brand.ts` (chữ giao diện dùng `{app}` trong `messages.ts`).
+- Trang công khai và khung app dùng `@achoo254/app-shell` (header, footer, thẻ đăng nhập, đổi giao diện và ngôn ngữ);
+  không viết tay. Nâng gói thì hash CSP của script theme trong `infra/nginx/trang.hoandat.com.conf` có thể đổi:
+  `apps/web/src/theme-bootstrap.test.ts` báo hash mới.
+- Không truyền `linkComponent` cho `SignInCard`: `/auth/login` là route của server.

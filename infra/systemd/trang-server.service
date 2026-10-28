@@ -1,0 +1,25 @@
+# /etc/systemd/system/trang-server.service — the Trang API (sign-in, sessions; site editing comes later).
+[Unit]
+Description=Trang API server
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+
+[Service]
+User=trang
+Group=trang
+# NODE_ENV=production, PORT=4860, PUBLIC_URL, DATABASE_URL, AUTH_*: never in the repo (docs/deployment-guide.md).
+EnvironmentFile=/etc/trang/production.env
+WorkingDirectory=/var/www/trang/app
+ExecStart=/opt/node22/bin/node --enable-source-maps apps/server/dist/server.mjs
+Restart=on-failure
+RestartSec=3
+MemoryMax=256M
+CPUQuota=50%
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
