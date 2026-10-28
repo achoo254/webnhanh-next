@@ -65,8 +65,12 @@ máy dev cần `CHROME_PATH` (ví dụ `/Applications/Google Chrome.app/Contents
 chỉ chạy khi có biến này. Muốn đăng nhập thật thì chép `.env.example` thành `.env` và đặt `AUTH_CLIENT_SECRET`, rồi chạy server với
 env đó (`pnpm --filter @webnhanh/server exec tsx --env-file=../../.env src/server.ts`). Test database chạy trên PGlite trong bộ nhớ, không cần Postgres.
 
-Dấu app trong `brand/icon.svg` là hình vector tạm, chưa phải icon AI; chưa có manifest PWA và icon PNG. Khi có icon AI
-thì thay hai file trong `brand/` và thêm bước sinh icon theo cách của `clip-next`.
+Icon app là ảnh AI vẽ trên PC bằng skill `inet-artgen` (`brand/app-icon-master-1024.png`, cùng phong cách icon của hệ
+sinh thái; thuộc về hoandat, giữ mọi quyền, không phải CC0). `pnpm exec tsx scripts/brand-gen.ts` (cần `cwebp`) nhúng nó
+vào `brand/icon.svg` và `brand/icon-maskable.svg`; favicon, manifest và dấu app trên header đều đọc `brand/icon.svg`.
+
+Ảnh mẫu của các biến thể (`packages/templates/library/`) vẽ bằng `pnpm exec tsx scripts/gen-template-art.ts` (xem đầu
+file); mỗi ảnh ghi seed vào file biến thể để vẽ lại đúng như cũ.
 
 ## Giấy phép
 
