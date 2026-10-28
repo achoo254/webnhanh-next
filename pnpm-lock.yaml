@@ -47,6 +47,12 @@ importers:
       '@trang/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@trang/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      '@trang/worker':
+        specifier: workspace:*
+        version: link:../worker
       drizzle-orm:
         specifier: ^0.45.3
         version: 0.45.4(@electric-sql/pglite@0.5.12)(@types/pg@8.23.1)(pg@8.23.1)
@@ -90,6 +96,12 @@ importers:
       '@fontsource/jetbrains-mono':
         specifier: ^5.2.0
         version: 5.3.0
+      '@trang/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@trang/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
       react:
         specifier: ^19.2.0
         version: 19.3.1
@@ -99,6 +111,9 @@ importers:
       react-router:
         specifier: ^7.9.0
         version: 7.18.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
     devDependencies:
       '@testing-library/react':
         specifier: ^16.3.0
@@ -118,6 +133,28 @@ importers:
       vite:
         specifier: ^8.0.0
         version: 8.3.5(@types/node@24.19.2)(esbuild@0.28.2)(tsx@4.23.15)
+
+  apps/worker:
+    dependencies:
+      '@trang/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      '@trang/publish':
+        specifier: workspace:*
+        version: link:../../packages/publish
+      '@trang/templates':
+        specifier: workspace:*
+        version: link:../../packages/templates
+      drizzle-orm:
+        specifier: ^0.45.3
+        version: 0.45.4(@electric-sql/pglite@0.5.12)(@types/pg@8.23.1)(pg@8.23.1)
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
+    devDependencies:
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
 
   packages/db:
     dependencies:
@@ -143,6 +180,12 @@ importers:
       '@trang/db':
         specifier: workspace:*
         version: link:../db
+
+  packages/templates:
+    dependencies:
+      zod:
+        specifier: ^4.6.7
+        version: 4.6.7
 
 packages:
 
