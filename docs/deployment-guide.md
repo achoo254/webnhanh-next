@@ -4,7 +4,7 @@ Web Nhanh chạy trên edge `.65` dùng chung (CentOS Stream 9, 4 CPU, 7,5 GB RA
 Cloudflare và nginx. Repo public: không ghi IP, cổng SSH hay user máy chủ vào đây; dùng `<SERVER_65_IP>`, `<SSH_PORT>`.
 
 Gồm hai phần: **phát site người dùng** (`*.hoandat.io.vn`, lệnh `hosting`) và **app** `webnhanh.hoandat.com` (server,
-worker đăng site và web, lệnh `release`).
+worker đăng site, builder build site lập trình viên và web, lệnh `release`).
 
 Trước 28/10/2026 sản phẩm tên là Trang Của Tôi ở `trang.hoandat.com`, và mọi tên nội bộ là `trang` (user và nhóm hệ
 thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, database và role, client `trang-web`, cookie
@@ -24,6 +24,9 @@ thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, dat
 | Báo đơn | `webnhanh-server` nhận đơn ở `POST /f/<tên>` và gửi báo đơn (Web Push, bot Chat) từ bảng `notification_deliveries`: mỗi dòng một máy hoặc một chat, thử lại riêng sau 30 giây, 2, 10, 30 phút, 2 rồi 6 giờ; đăng ký push hết hạn (404/410) và chat chặn bot (403) bị xoá |
 | Ảnh tải lên | `/var/www/webnhanh/uploads/<site id>/<ảnh>-<rộng>.webp` (`webnhanh:webnhanh`, `750`, nginx không phát; trình sửa đọc qua `/api/sites/<id>/images/…` có kiểm chủ) |
 | nginx app | `/etc/nginx/conf.d/webnhanh.hoandat.com.conf` (từ `infra/nginx/`): HTTP → HTTPS, phát web tĩnh, chuyển `/api`, `/auth`, `/healthz` vào server; CSP có hash của script theme. Cùng file phục vụ tên cũ `trang.hoandat.com`: 301 về cùng đường dẫn trên `webnhanh.hoandat.com` |
+| Builder | systemd `webnhanh-builder` (user và nhóm `webnhanh-builder`, uid/gid **10001** như user build trong container, thêm nhóm `docker`; không thuộc nhóm `webnhanh` nên không đọc được `production.env`, đọc app qua ACL). Mỗi lần một build: `git clone --depth 1` (chỉ github.com/gitlab.com, HTTPS) hoặc giải zip, rồi hai container `--rm` từ image `webnhanh-build:node22` (`infra/builder/Dockerfile`, Node 22 ghim digest): bước cài trên network `webnhanh-build`, bước build `--network none`; cờ giới hạn và lý do ở `apps/worker/src/build/run-build.ts`. Chỉ bắt đầu khi RAM trống ≥ 1,5 GB và ổ trống ≥ 5 GB. Output vào `/var/lib/webnhanh/builds/out/<job>` rồi trả job về hàng đợi: `webnhanh-worker` phát hành như trang mẫu |
+| Thư mục build | `/var/lib/webnhanh/builds/inbox` (zip tải lên: `webnhanh:webnhanh-builder` `2770`), `builds/out` (output chờ phát hành: `webnhanh-builder:webnhanh` `2750`), `work/` và `cache/<site id>/` (chỉ builder, `700`; cache thư viện theo từng site, tối đa 500 MB, xoá sau 30 ngày không build) |
+| Mạng build | systemd `webnhanh-build-network` (oneshot, chạy lại theo Docker và khi khởi động máy): network `webnhanh-build` (bridge `wn-build0`, mặc định `172.30.254.0/24`, đổi bằng `BUILD_SUBNET`), chuỗi `WEBNHANH-BUILD` trong `DOCKER-USER` (chặn 127/8, 10/8, 172.16/12, 192.168/16, 169.254/16, 100.64/10, IP công khai của `.65`; ngoài ra chỉ TCP 80/443) và `WEBNHANH-BUILD-IN` trong `INPUT` (container không gọi được dịch vụ nào trên chính `.65`) |
 | Database | Postgres đang chạy trên `.65`, database `webnhanh`, role `webnhanh`; `pg_hba.conf` có hai dòng `host webnhanh webnhanh 127.0.0.1/32` và `::1/128` `scram-sha-256` đặt trên dòng `ident` chung |
 | Env | `/etc/webnhanh/production.env` (640 `root:webnhanh`), nguồn ở thư mục env iCloud `ENV production/webnhanh-next/.env.production` |
 
@@ -74,21 +77,37 @@ thiếu `index.html`.
    | `CHAT_BOT_USERNAME`, `CHAT_BOT_TOKEN` | Username (kết thúc bằng `bot`) và token `<bot_id>:<secret>` của bot báo đơn |
    | `CHAT_BOT_WEBHOOK_SECRET` | Secret webhook của bot (≥ 32 ký tự). Bốn biến Chat đủ thì hiện nút "Nhận báo đơn qua Chat", thiếu cả bốn thì ẩn |
    | `CHROME_PATH` | Chrome headless cho ảnh xem trước `og:image` của trang (worker), ví dụ `/usr/bin/google-chrome` đã cài cho Clip. Bỏ trống: trang vẫn đăng, không có ảnh, log ghi "no CHROME_PATH" |
+   | `BUILD_INBOX_DIR` | `/var/lib/webnhanh/builds/inbox` (server ghi zip của site lập trình viên). Bỏ trống: tải zip tắt, deploy từ git vẫn chạy |
+   | `BUILD_OUTPUT_DIR` | `/var/lib/webnhanh/builds/out` (worker đọc output của build để phát hành). Bỏ trống: build xong sẽ lỗi ở bước Phát hành |
 
    Server và worker đọc chung file này. Thiếu `DATABASE_URL`, `AUTH_CLIENT_SECRET`, `PUBLIC_URL`, `UPLOADS_DIR` hoặc
    `FORM_SECRET` thì server dừng ngay khi khởi động; worker dừng nếu thiếu `DATABASE_URL`, `SITES_DIR`, `UPLOADS_DIR`,
    `PUBLIC_URL` hoặc `FORM_SECRET`.
    Kiểm ffmpeg trước: `/opt/ffmpeg-static/ffmpeg -hide_banner -encoders | grep libwebp`.
-5. **Bot Chat báo đơn** (tuỳ chọn, làm lúc nào cũng được): ở app Chat, Cài đặt → Developer Console → Tạo bot
+5. **Deploy cho lập trình viên** (làm sau khi app đã chạy):
+   - Cài Docker CE trên `.65` (repo chính thức cho CentOS Stream 9), `systemctl enable --now docker`, rồi chạy lại
+     `setup` (tạo `webnhanh-builder` uid/gid 10001 trong nhóm `docker` và các thư mục `/var/lib/webnhanh`).
+   - Ghi `/etc/webnhanh/builder.env` (`install -m 640 -o root -g webnhanh-builder`; systemd đọc bằng root):
+
+     | Biến | Ý nghĩa |
+     |---|---|
+     | `DATABASE_URL` | Như của server |
+     | `BUILD_INBOX_DIR`, `BUILD_OUTPUT_DIR` | Như trên |
+     | `BUILD_WORK_DIR`, `BUILD_CACHE_DIR` | `/var/lib/webnhanh/work`, `/var/lib/webnhanh/cache` (cùng ổ: cache chuyển bằng rename) |
+     | `SERVER_PUBLIC_IP` | IPv4 công khai của `.65` (`<SERVER_65_IP>`), bị chặn trong mạng build |
+     | `BUILD_IMAGE`, `BUILD_MIN_FREE_MB`, `BUILD_MIN_DISK_MB` | Tuỳ chọn: mặc định `webnhanh-build:node22`, 1536, 5120 |
+   - Thêm `BUILD_INBOX_DIR`, `BUILD_OUTPUT_DIR` vào `production.env`, rồi `release`: nó build image, dựng mạng và tường
+     lửa, khởi động `webnhanh-builder`. Kiểm theo mục "Kiểm máy build" bên dưới.
+6. **Bot Chat báo đơn** (tuỳ chọn, làm lúc nào cũng được): ở app Chat, Cài đặt → Developer Console → Tạo bot
    (username kết thúc bằng `bot`), cấp token; đặt webhook `https://webnhanh.hoandat.com/hooks/chat` với secret mới (tab
    Nhận update, hoặc `PUT $API/webhook` theo `chat-next/docs/bot-api/README.md`); ghi bốn biến `CHAT_*` vào env rồi
    khởi động lại `webnhanh-server`. Bot chỉ cần nhận `message` (mặc định); nó trả lời `/start <mã>` (liên kết chat),
    `/stop` (tắt) ngay trong response của webhook và gửi mỗi đơn mới bằng `POST $API/messages`.
-6. **IdP:** client `webnhanh-web` ở `auth-next` (Code + PKCE, `client_secret_basic`, scope `openid`, redirect
+7. **IdP:** client `webnhanh-web` ở `auth-next` (Code + PKCE, `client_secret_basic`, scope `openid`, redirect
    `https://webnhanh.hoandat.com/auth/callback`, đăng xuất về `https://webnhanh.hoandat.com/`).
-7. **DNS:** `webnhanh.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
-8. **Phát site:** `bash infra/deploy.sh hosting`.
-9. **App:** `bash infra/deploy.sh release`.
+8. **DNS:** `webnhanh.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
+9. **Phát site:** `bash infra/deploy.sh hosting`.
+10. **App:** `bash infra/deploy.sh release`.
 
 ## Phát hành app
 
@@ -98,8 +117,10 @@ thiếu `index.html`.
 `webnhanh-server` và chờ `/healthz` (không lên trong 20 giây thì tự đổi về `app.prev`), rồi bật và khởi động lại
 `webnhanh-worker`. Lần đầu có worker: chạy `setup` trước để tạo `/var/www/webnhanh/uploads` (`release` dừng nếu thiếu).
 
-nginx của app nhận thân request tới 6 MB chỉ ở route tải ảnh `/api/sites/<id>/images`; mọi chỗ khác vẫn 64 KB
-(form đặt hàng `/f/` 16 KB). `/f/` và `/hooks/chat` đi vào server như `/api/`. Giới hạn đơn theo IP dùng
+nginx của app nhận thân request tới 6 MB ở route tải ảnh `/api/sites/<id>/images`, 101 MB ở route tải zip
+`/api/sites/<id>/zip` (chuyển thẳng cho server, server đếm byte và dừng quá 100 MB), 2 MB ở webhook `/hooks/git/<id>`;
+mọi chỗ khác vẫn 64 KB (form đặt hàng `/f/` 16 KB). Luồng sự kiện build (`/api/builds/<id>/events`) là SSE: server gửi
+`X-Accel-Buffering: no` và một dòng ping mỗi 15 giây. `/f/` và `/hooks/chat` đi vào server như `/api/`. Giới hạn đơn theo IP dùng
 `$remote_addr` mà nginx chuyển trong `X-Forwarded-For` (server tin proxy loopback, `trust proxy`): nó phải là IP của
 khách, không phải IP edge của Cloudflare. `.65` không đặt real_ip toàn cục, nên hai server block 443 trong
 `webnhanh.hoandat.com.conf` tự khai `real_ip_header CF-Connecting-IP` và `set_real_ip_from` cho mọi dải IP của
@@ -109,6 +130,38 @@ Cloudflare (lấy từ https://www.cloudflare.com/ips ngày 28/10/2026). Cloudfl
 **Quay lại bản trước bằng tay:** `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
 webnhanh-worker`.
 Migration chỉ thêm, bản trước vẫn chạy được trên schema mới.
+
+## Kiểm máy build
+
+```bash
+systemctl is-active docker webnhanh-build-network webnhanh-builder      # active ×3
+id webnhanh-builder                                                     # uid=10001 gid=10001, nhóm docker
+iptables -S WEBNHANH-BUILD; iptables -S WEBNHANH-BUILD-IN               # các dòng REJECT như build-network.sh
+iptables -S DOCKER-USER | head -3; iptables -S INPUT | head -3          # jump vào hai chuỗi trên, ở đầu
+docker network inspect -f '{{index .Options "com.docker.network.bridge.name"}}' webnhanh-build   # wn-build0
+journalctl -u webnhanh-builder -n 20                                    # "webnhanh builder: image ..., needs 1536 MB ..."
+sudo -u webnhanh test -r /etc/webnhanh/production.env && sudo -u webnhanh-builder test ! -r /etc/webnhanh/production.env && echo ok
+```
+
+Thử độc từ trong mạng build (chạy bằng root, cùng cờ như builder):
+
+```bash
+run() { docker run --rm --user 10001:10001 --read-only --tmpfs /tmp:size=256m --cap-drop ALL \
+  --security-opt no-new-privileges --pids-limit 256 --memory 1g --memory-swap 1g --cpus 1 "$@"; }
+run --network webnhanh-build webnhanh-build:node22 node -e "fetch('https://registry.npmjs.org/').then(r=>console.log('npm', r.status))"   # npm 200
+for ip in 127.0.0.1 172.17.0.1 192.168.122.1 <SERVER_65_IP> 100.100.100.100 169.254.169.254; do
+  run --network webnhanh-build webnhanh-build:node22 node -e "fetch('http://$ip/',{signal:AbortSignal.timeout(4000)}).then(r=>console.log('$ip OPEN',r.status),e=>console.log('$ip blocked',e.cause?.code??e.name))"
+done                                                                   # blocked ×6
+run --network webnhanh-build webnhanh-build:node22 node -e "require('net').connect(5432,'172.30.254.1').on('connect',()=>console.log('OPEN')).on('error',e=>console.log('blocked',e.code))"   # blocked
+run --network none webnhanh-build:node22 cat /etc/shadow               # Permission denied (không phải root)
+run --network none webnhanh-build:node22 node -e "const a=[];for(;;)a.push(Buffer.alloc(1e8,1))"; echo "exit $?"   # exit 137 (hết 1 GB)
+run --network none webnhanh-build:node22 sh -c ':(){ :|:& };:'; echo "exit $?"   # bị chặn ở 256 tiến trình, máy không ảnh hưởng
+```
+
+Repo độc thật (đẩy lên GitHub công khai rồi deploy trong app): `postinstall`/script build gọi `127.0.0.1`,
+`172.17.0.1`, `192.168.122.1`, IP `.65`, đọc `/etc/shadow`, cấp 2 GB RAM, fork bomb, `sleep 400`: mỗi build phải lỗi
+(hoặc bị kill sau 5 phút) với câu giải thích tương ứng, site cũ vẫn chạy, `free -m` trong lúc build vẫn còn RAM cho các
+app khác. Ghi thời gian build lần đầu và lần có cache (Vite + React, Astro, HTML thuần, monorepo pnpm, Next export, zip).
 
 ## Đổi tên sang Web Nhanh (28/10/2026)
 
