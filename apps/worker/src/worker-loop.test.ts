@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { accounts, enqueueJob, jobs, NAME_HOLD_MS, openPglite, releases, siteImageFile, siteImages, siteNameHolds, sites, type DbHandle } from '@trang/db';
+import { accounts, enqueueJob, verifyFormToken, jobs, NAME_HOLD_MS, openPglite, releases, siteImageFile, siteImages, siteNameHolds, sites, type DbHandle } from '@trang/db';
 import { currentRelease, publishRelease } from '@trang/publish';
 import type { ShopDraft } from '@trang/templates';
 import { eq } from 'drizzle-orm';
@@ -15,6 +15,9 @@ let handle: DbHandle;
 let dir: string;
 let deps: WorkerDeps;
 const quiet = { info: () => undefined, warn: () => undefined };
+const FORM_SECRET = 'f'.repeat(40);
+/** A real Chrome for the share picture test (CHROME_PATH), else that test is skipped. */
+const CHROME = process.env.CHROME_PATH;
 
 beforeEach(async () => {
   handle = await openPglite();
@@ -26,6 +29,9 @@ beforeEach(async () => {
     workDir: path.join(dir, 'work'),
     siteMaxBytes: 1024 * 1024,
     madeWith: { name: 'App', url: 'https://app.example.com' },
+    appUrl: 'https://app.example.com',
+    formSecret: FORM_SECRET,
+    ffmpegPath: 'ffmpeg',
     now: () => new Date(),
     log: quiet,
   };
@@ -110,6 +116,43 @@ describe('publish job', () => {
     expect(await readdir(deps.workDir ?? '')).toEqual([]);
   });
 
+  it('puts the order form on the page, signed for the site, and records what it offers', async () => {
+    const site = await shopSite('don-hang', fullDraft);
+    await queuePublish(site);
+    expect(await processNextJob(deps)).toBe('done');
+    const html = await readFile(path.join(deps.sitesDir, 'don-hang', 'current', 'index.html'), 'utf8');
+    expect(html).toContain('action="https://app.example.com/f/don-hang"');
+    const token = /name="_t" value="([^"]+)"/.exec(html)?.[1];
+    expect(verifyFormToken(FORM_SECRET, site.siteId, token, new Date())).not.toBeNull();
+    expect(html).toContain('<meta property="og:url" content="https://don-hang.hoandat.io.vn/">');
+    const [stored] = await handle.db.select().from(sites).where(eq(sites.id, site.siteId));
+    expect(stored?.orderForm).toEqual({ products: [{ key: 'p1', name: 'Bánh tráng trộn' }] });
+  });
+
+  it('publishes without a share picture when Chrome is missing or fails, and says so in the log', async () => {
+    const warnings: string[] = [];
+    const site = await shopSite('khong-anh', fullDraft);
+    await queuePublish(site);
+    expect(await processNextJob({ ...deps, chromePath: path.join(dir, 'no-chrome'), log: { info: () => undefined, warn: (m) => warnings.push(m) } })).toBe('done');
+    const html = await readFile(path.join(deps.sitesDir, 'khong-anh', 'current', 'index.html'), 'utf8');
+    expect(html).not.toContain('og:image');
+    expect(html).toContain('<meta name="twitter:card" content="summary">');
+    expect(warnings.some((m) => m.includes('no share picture'))).toBe(true);
+  });
+
+  it.skipIf(!CHROME)('photographs the share picture with Chrome (CHROME_PATH)', async () => {
+    const site = await shopSite('co-anh', fullDraft);
+    await queuePublish(site);
+    expect(await processNextJob({ ...deps, chromePath: CHROME, siteMaxBytes: 10 * 1024 * 1024 })).toBe('done');
+    const live = path.join(deps.sitesDir, 'co-anh', 'current');
+    const html = await readFile(path.join(live, 'index.html'), 'utf8');
+    const file = /og:image" content="https:\/\/co-anh\.hoandat\.io\.vn\/(og-[0-9a-f]{8}\.(?:jpg|png))"/.exec(html)?.[1];
+    expect(file).toBeDefined();
+    const picture = await readFile(path.join(live, file ?? ''));
+    expect(picture.length).toBeGreaterThan(1000);
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+  });
+
   it('fails a draft that cannot be published yet, without touching the sites', async () => {
     const site = await shopSite('chua-xong', (images) => ({ ...fullDraft(images), name: ' ' }));
     const jobId = await queuePublish(site);
@@ -157,7 +200,7 @@ describe('cleanup', () => {
     await handle.db.insert(siteNameHolds).values({ name: 'het-han', siteId: site.siteId, heldUntil: new Date(Date.now() - 1000), createdAt: old });
 
     const result = await cleanup(handle.db, deps.uploadsDir, new Date());
-    expect(result).toEqual({ sessions: 0, nameHolds: 1, images: 1 });
+    expect(result).toEqual({ sessions: 0, nameHolds: 1, chatLinkCodes: 0, deliveries: 0, images: 1 });
     const left = (await handle.db.select({ id: siteImages.id }).from(siteImages).where(eq(siteImages.siteId, site.siteId))).map((r) => r.id);
     expect(left).toHaveLength(3);
     expect(left).not.toContain(unused);

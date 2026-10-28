@@ -14,11 +14,15 @@ const worker = startWorker({
   uploadsDir: config.uploadsDir,
   siteMaxBytes: config.siteMaxBytes,
   madeWith: { name: brandConfig.appName, url: config.publicUrl },
+  appUrl: config.publicUrl,
+  formSecret: config.formSecret,
+  chromePath: config.chromePath,
+  ffmpegPath: config.ffmpegPath,
   now: () => new Date(),
   pollMs: config.pollMs,
   log,
 });
-console.log(`trang worker polling every ${config.pollMs} ms; sites in ${config.sitesDir}`);
+console.log(`trang worker polling every ${config.pollMs} ms; sites in ${config.sitesDir}; share pictures ${config.chromePath ? `by ${config.chromePath}` : 'off (no CHROME_PATH)'}`);
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   // A publish takes seconds: finish the job in hand, then exit (systemd waits TimeoutStopSec).

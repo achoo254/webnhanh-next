@@ -1,16 +1,8 @@
-import { claimNextJob, failStuckJobs, markJobDone, markJobFailed, type Db } from '@trang/db';
+import { claimNextJob, failStuckJobs, markJobDone, markJobFailed } from '@trang/db';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
 
-export interface Logger {
-  info(message: string): void;
-  warn(message: string): void;
-}
-
-export interface WorkerDeps extends PublishDeps {
-  readonly db: Db;
-  readonly log: Logger;
-}
+export type WorkerDeps = PublishDeps;
 
 export type JobOutcome = 'idle' | 'done' | 'failed';
 
@@ -62,7 +54,9 @@ export function startWorker(deps: WorkerDeps & { readonly pollMs: number }): Run
         if (outcome === 'idle' && deps.now().getTime() - lastCleanup >= CLEANUP_EVERY_MS) {
           lastCleanup = deps.now().getTime();
           const result = await cleanup(deps.db, deps.uploadsDir, deps.now());
-          deps.log.info(`cleanup: ${result.sessions} session(s), ${result.nameHolds} name hold(s), ${result.images} unused photo(s)`);
+          deps.log.info(
+            `cleanup: ${result.sessions} session(s), ${result.nameHolds} name hold(s), ${result.chatLinkCodes} chat code(s), ${result.deliveries} notification(s), ${result.images} unused photo(s)`,
+          );
         }
       } catch (error) {
         deps.log.warn(`worker turn failed: ${error instanceof Error ? error.message : String(error)}`);

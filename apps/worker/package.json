@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.0",
     "@trang/db": "workspace:*",
     "@trang/publish": "workspace:*",
     "@trang/templates": "workspace:*",

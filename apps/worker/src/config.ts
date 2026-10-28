@@ -1,6 +1,8 @@
 import { DEFAULT_SITE_MAX_MB } from '@trang/db';
 import { z } from 'zod';
 
+const emptyIsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
+
 const Env = z.object({
   DATABASE_URL: z.url(),
   /** Published sites, served by nginx (infra/nginx/hoandat.io.vn.conf); written only through @trang/publish. */
@@ -9,6 +11,12 @@ const Env = z.object({
   UPLOADS_DIR: z.string().min(1),
   /** The app's address, for the "made with" link at the foot of every page. */
   PUBLIC_URL: z.url(),
+  /** Signs the order form of every page; the server checks it with the same value (32+ characters). */
+  FORM_SECRET: z.string().min(32),
+  /** Headless Chrome for the share picture of each page. Unset: pages go out without one (logged). */
+  CHROME_PATH: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
+  /** ffmpeg, to make the share picture a JPEG. */
+  FFMPEG_PATH: z.preprocess(emptyIsUnset, z.string().min(1).default('ffmpeg')),
   POLL_MS: z.coerce.number().int().min(200).max(60_000).default(1_000),
   SITE_MAX_MB: z.coerce.number().int().min(1).max(500).default(DEFAULT_SITE_MAX_MB),
 });
@@ -18,6 +26,9 @@ export interface WorkerConfig {
   readonly sitesDir: string;
   readonly uploadsDir: string;
   readonly publicUrl: string;
+  readonly formSecret: string;
+  readonly chromePath: string | undefined;
+  readonly ffmpegPath: string;
   readonly pollMs: number;
   readonly siteMaxBytes: number;
 }
@@ -32,6 +43,9 @@ export function loadWorkerConfig(env: Record<string, string | undefined> = proce
     sitesDir: e.SITES_DIR,
     uploadsDir: e.UPLOADS_DIR,
     publicUrl: e.PUBLIC_URL.replace(/\/+$/, ''),
+    formSecret: e.FORM_SECRET,
+    chromePath: e.CHROME_PATH,
+    ffmpegPath: e.FFMPEG_PATH,
     pollMs: e.POLL_MS,
     siteMaxBytes: e.SITE_MAX_MB * 1024 * 1024,
   };
