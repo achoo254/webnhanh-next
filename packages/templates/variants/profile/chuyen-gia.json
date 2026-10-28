@@ -1,0 +1,22 @@
+{
+  "template": "profile",
+  "id": "chuyen-gia",
+  "label": "Chuyên gia",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "ink",
+  "copy": {
+    "name": "Trần Quốc Bảo",
+    "headline": "Kiến trúc sư nhà ở, TP. Hồ Chí Minh",
+    "bio": "Thiết kế nhà phố và căn hộ nhỏ cho gia đình trẻ: sáng, thoáng, dễ ở. Xem dự án đã làm và đặt lịch tư vấn bên dưới."
+  },
+  "art": [
+    {
+      "slot": "avatar",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "professional portrait of a Vietnamese man architect in his thirties, neutral background, soft window light, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

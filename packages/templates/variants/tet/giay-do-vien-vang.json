@@ -1,0 +1,28 @@
+{
+  "template": "tet",
+  "id": "giay-do-vien-vang",
+  "label": "Thiệp giấy đỏ",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "lucky",
+  "copy": {
+    "title": "Cung Chúc Tân Xuân",
+    "greeting": "Chúc anh chị một năm Đinh Mùi buôn may bán đắt, khách quen thêm đông, khách mới ghé hoài, việc gì bắt tay vào cũng thuận buồm xuôi gió."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "an elegant paper-cut style scene of a goat among plum blossoms and clouds, layered red and gold paper craft, soft shadows, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a gold foil paper-cut cloud motif, traditional Asian auspicious cloud, flat, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

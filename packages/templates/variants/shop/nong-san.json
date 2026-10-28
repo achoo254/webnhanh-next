@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "nong-san",
+  "label": "Nông sản",
+  "kind": "industry",
+  "style": "tinh-te",
+  "palette": "leaf",
+  "copy": {
+    "name": "Nông Sản Nhà Vườn Đà Lạt",
+    "description": "Rau củ, trái cây và cà phê từ vườn nhà ở Đà Lạt, hái sáng giao chiều, không chất bảo quản."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "fresh vegetables and fruit in woven baskets on a farm table in the highlands, morning mist, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a woven basket of fresh strawberries, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "ref": "product-1",
+      "prompt": "a paper bag of roasted coffee beans, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

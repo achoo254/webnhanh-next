@@ -1,0 +1,22 @@
+{
+  "template": "profile",
+  "id": "tho-thu-cong",
+  "label": "Thợ thủ công",
+  "kind": "industry",
+  "style": "am-cung",
+  "palette": "leaf",
+  "copy": {
+    "name": "Mộc Gốm",
+    "headline": "Gốm nặn tay và lớp học cuối tuần ở Hội An",
+    "bio": "Mỗi chiếc chén là một lần nặn khác nhau. Mình nhận đặt bộ quà tặng và mở lớp nặn gốm cho người mới."
+  },
+  "art": [
+    {
+      "slot": "avatar",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a Vietnamese ceramic artist shaping clay on a pottery wheel, hands and face visible, rustic workshop, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

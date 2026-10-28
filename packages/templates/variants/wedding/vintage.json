@@ -1,0 +1,29 @@
+{
+  "template": "wedding",
+  "id": "vintage",
+  "label": "Vintage",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "sepia",
+  "copy": {
+    "groom": "Long",
+    "bride": "Hà",
+    "intro": "Như những bức ảnh cũ ông bà vẫn giữ, tụi mình muốn ngày này được nhớ mãi. Mời bạn đến làm chứng cho lời hẹn ấy."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "Vietnamese couple in a vintage 1960s Saigon style, old villa with green shutters, sepia tones, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "vintage engraved floral corner ornament, antique sepia ink illustration, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

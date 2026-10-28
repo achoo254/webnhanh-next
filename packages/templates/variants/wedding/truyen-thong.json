@@ -1,0 +1,29 @@
+{
+  "template": "wedding",
+  "id": "truyen-thong",
+  "label": "Truyền thống đỏ vàng",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "lucky",
+  "copy": {
+    "groom": "Quang",
+    "bride": "Ngọc",
+    "intro": "Hai gia đình trân trọng báo tin vui và kính mời bạn đến chung vui cùng tụi mình trong ngày trọng đại."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "Vietnamese couple in traditional red and gold ao dai at a wedding ceremony, lanterns and red decorations, romantic editorial wedding photography, natural light, airy, elegant composition, Vietnamese couple, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "golden traditional Vietnamese wedding ornament, double happiness style knot and peony flowers, flat vector, red and gold, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

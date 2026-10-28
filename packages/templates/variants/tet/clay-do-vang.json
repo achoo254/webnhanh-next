@@ -1,0 +1,35 @@
+{
+  "template": "tet",
+  "id": "clay-do-vang",
+  "label": "Đất sét đỏ vàng",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "lucky",
+  "copy": {
+    "title": "Chúc Mừng Năm Mới",
+    "greeting": "Năm mới Đinh Mùi gõ cửa, chúc cả nhà mình luôn mạnh khoẻ, bình an, sáng nào thức dậy cũng thấy lòng nhẹ tênh và nhà đầy tiếng cười."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a cute baby goat in a red and gold ao dai holding a red envelope, yellow apricot blossoms and red lanterns around, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, pastel cream background, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a single red paper lantern with gold tassel, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament-2",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a single branch of yellow apricot blossoms, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "template": "tet",
+  "id": "clay-hoa-dao",
+  "label": "Đất sét hoa đào",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "rose",
+  "copy": {
+    "title": "Xuân An Khang",
+    "greeting": "Xuân này chúc ông bà vui khoẻ, ba mẹ bớt lo toan, anh chị em mỗi người một niềm vui riêng mà vẫn chung một mái nhà thật ấm."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a cute baby goat family sitting under a pink peach blossom tree with a tray of five fruits and banh chung, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, pastel cream background, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a single pink peach blossom branch, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

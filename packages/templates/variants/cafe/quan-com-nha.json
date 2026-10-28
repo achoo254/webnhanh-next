@@ -1,0 +1,36 @@
+{
+  "template": "cafe",
+  "id": "quan-com-nha",
+  "label": "Quán cơm nhà",
+  "kind": "industry",
+  "style": "am-cung",
+  "palette": "sunset",
+  "copy": {
+    "name": "Cơm Nhà Bà Sáu",
+    "description": "Cơm trưa kiểu nhà nấu, mỗi ngày một thực đơn: cá kho, canh chua, rau luộc chấm kho quẹt. Có ship văn phòng."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a Vietnamese home-style lunch tray with braised fish, sour soup and boiled vegetables in a small family eatery, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "item-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "Vietnamese caramelised braised fish in a clay pot, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "item-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "ref": "item-1",
+      "prompt": "a bowl of Vietnamese sweet and sour fish soup with herbs, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

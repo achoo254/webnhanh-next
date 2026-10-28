@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "do-an-vat",
+  "label": "Đồ ăn vặt",
+  "kind": "industry",
+  "style": "ruc-ro",
+  "palette": "sunset",
+  "copy": {
+    "name": "Tiệm Ăn Vặt Cô Ba",
+    "description": "Bánh tráng trộn, khô gà lá chanh và đồ ăn vặt làm mỗi ngày. Đặt trước, giao nhanh trong quận."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "Vietnamese street snacks spread on a wooden table, rice paper salad, chicken floss, tamarind candy in glass jars, top-down, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a clear bag of Vietnamese mixed rice paper salad with quail eggs and herbs, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "ref": "product-1",
+      "prompt": "a glass jar of shredded lime-leaf chicken jerky, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

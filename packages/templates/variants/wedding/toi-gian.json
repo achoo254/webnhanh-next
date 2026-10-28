@@ -1,0 +1,29 @@
+{
+  "template": "wedding",
+  "id": "toi-gian",
+  "label": "Tối giản",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "ink",
+  "copy": {
+    "groom": "Minh",
+    "bride": "Thảo",
+    "intro": "Tụi mình sắp về chung một nhà. Rất mong có bạn ở đó trong ngày vui."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "Vietnamese couple in a minimal white wedding dress and grey suit in a bright white room, lots of negative space at the top, romantic editorial wedding photography, natural light, airy, elegant composition, Vietnamese couple, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a single thin line drawing of an olive branch, minimal black ink illustration, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./shop-fonts": "./src/shop-fonts.ts",
+    "./variants": "./src/variants.ts",
     "./samples/*": "./samples/*",
     "./package.json": "./package.json"
   },

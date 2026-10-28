@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "quan-ao",
+  "label": "Quần áo",
+  "kind": "industry",
+  "style": "ruc-ro",
+  "palette": "berry",
+  "copy": {
+    "name": "Nhà Len Studio",
+    "description": "Áo len, váy và phụ kiện may đo số lượng nhỏ. Có sẵn size S đến XL, đổi size trong 7 ngày."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "folded knitwear sweaters in soft colours stacked on a wooden bench, cosy boutique, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a cream cable-knit sweater on a hanger against a plain wall, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "ref": "product-1",
+      "prompt": "a sage green pleated midi skirt on a hanger, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

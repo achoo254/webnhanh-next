@@ -1,0 +1,29 @@
+{
+  "template": "wedding",
+  "id": "hoa-pastel",
+  "label": "Hoa pastel",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "blush",
+  "copy": {
+    "groom": "Huy",
+    "bride": "Vy",
+    "intro": "Giữa mùa hoa nở, tụi mình chọn nhau. Mời bạn đến chung vui và nâng ly cùng tụi mình nhé."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "Vietnamese couple in a field of pastel pink and white flowers at golden hour, romantic editorial wedding photography, natural light, airy, elegant composition, Vietnamese couple, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a watercolor bouquet of pastel pink roses and baby breath, soft hand painted, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

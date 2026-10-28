@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "handmade",
+  "label": "Đồ handmade",
+  "kind": "industry",
+  "style": "am-cung",
+  "palette": "rose",
+  "copy": {
+    "name": "Len Con Thỏ",
+    "description": "Thú bông móc len, móc khoá và quà tặng làm tay từng chiếc. Nhận làm theo yêu cầu."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "handmade crochet toys and yarn balls on a linen tablecloth, crochet hook, warm cosy mood, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a small crocheted bunny plush toy sitting on linen, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "ref": "product-1",
+      "prompt": "a crocheted strawberry keychain, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}
