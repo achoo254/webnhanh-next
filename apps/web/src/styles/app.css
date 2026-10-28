@@ -10,8 +10,101 @@ body {
 }
 
 .loading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
   padding-block: var(--space-7);
   color: var(--c-text-muted);
+}
+
+/* Loader: three dots in the app's gradient, bouncing one after another. */
+.loader-dots {
+  display: inline-flex;
+  gap: 6px;
+}
+.loader-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--webnhanh-gradient);
+  background-size: 300% 100%;
+  animation: loader-bounce 1s ease-in-out infinite;
+}
+.loader-dots span:nth-child(2) {
+  background-position: 50% 0;
+  animation-delay: 0.15s;
+}
+.loader-dots span:nth-child(3) {
+  background-position: 100% 0;
+  animation-delay: 0.3s;
+}
+@keyframes loader-bounce {
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  40% {
+    transform: translateY(-6px);
+    opacity: 1;
+  }
+}
+
+/* Placeholder site cards while the list loads: muted shapes with a light sweeping across. */
+.shimmer {
+  --shimmer-base: color-mix(in srgb, var(--c-text-muted) 20%, var(--c-surface));
+  display: block;
+  background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--c-surface) 60%, transparent) 50%,
+      transparent 80%
+    )
+    var(--shimmer-base);
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.4s linear infinite;
+}
+/* The cover takes a light tint of the app's violet, like the gradient of a real card without a picture. */
+.site-card-placeholder .site-card-media.shimmer {
+  background: linear-gradient(
+      100deg,
+      transparent 20%,
+      color-mix(in srgb, var(--c-surface) 45%, transparent) 50%,
+      transparent 80%
+    )
+    color-mix(in srgb, var(--c-primary-solid) 18%, var(--c-surface));
+  background-size: 200% 100%;
+}
+.shimmer-badge {
+  width: 72px;
+  height: 22px;
+  border-radius: var(--radius-full);
+}
+.shimmer-line {
+  width: 70%;
+  height: 18px;
+  border-radius: var(--radius-md);
+}
+.shimmer-pill {
+  width: 84px;
+  height: 36px;
+  border-radius: var(--radius-full);
+}
+@keyframes shimmer-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader-dots span,
+  .shimmer {
+    animation: none;
+  }
 }
 
 .notice {

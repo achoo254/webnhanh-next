@@ -5,6 +5,7 @@ import { siteHost } from '../brand';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
+import { SiteCardsPlaceholder } from '../loading';
 
 function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy' | 'warn' } {
   if (site.job && (site.job.status === 'queued' || site.job.status === 'running')) return { key: site.kind === 'developer' ? 'buildStatus.running' : 'status.publishing', tone: 'busy' };
@@ -119,9 +120,7 @@ function Home({ account }: { readonly account: Account }): ReactNode {
           {t('home.loadFailed')}
         </p>
       ) : list === null ? (
-        <p className="loading" role="status">
-          {t('loading')}
-        </p>
+        <SiteCardsPlaceholder />
       ) : list.sites.length === 0 ? (
         <div className="shell-card empty" data-id="home-empty">
           <h2 className="empty-title">{t('home.empty.title')}</h2>

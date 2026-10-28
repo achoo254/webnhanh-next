@@ -17,6 +17,7 @@ import { NotificationSettingsPanel } from '../orders/notification-settings';
 import { isMessageKey, useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { NotFoundContent } from './not-found';
+import { Loader } from '../loading';
 
 /** After an action the worker applies, the lists are read again this much later to show it applied. */
 const RELOAD_AFTER_MS = 2_000;
@@ -224,7 +225,7 @@ function Admin({ account }: { readonly account: Account }): ReactNode {
             {t('admin.reports.all')}
           </button>
         </div>
-        {reports === null ? <p className="loading">{t('loading')}</p> : null}
+        {reports === null ? <Loader /> : null}
         {reports?.length === 0 ? <p className="hint">{t('admin.reports.empty')}</p> : null}
         <ul className="admin-list">
           {reports?.map((report) => (

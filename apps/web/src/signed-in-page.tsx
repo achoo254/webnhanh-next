@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router';
 import type { Account } from './api';
 import { useAccount } from './account';
 import { useI18n } from './i18n';
+import { Loader } from './loading';
 import { LOGIN_PATH, AppPage } from './public-page';
 
 function SignOutButton(): ReactNode {
@@ -27,14 +28,11 @@ function SignOutButton(): ReactNode {
  */
 export function SignedInPage({ children }: { readonly children: (account: Account) => ReactNode }): ReactNode {
   const { account } = useAccount();
-  const { t } = useI18n();
   const { pathname } = useLocation();
   if (account === undefined) {
     return (
       <AppPage>
-        <p className="loading" role="status">
-          {t('loading')}
-        </p>
+        <Loader />
       </AppPage>
     );
   }

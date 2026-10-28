@@ -1,7 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Routes } from 'react-router';
 import { useAccount } from './account';
-import { useI18n } from './i18n';
+import { Loader } from './loading';
 import { LandingPage } from './pages/landing-page';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/legal-pages';
 import { LoginPage } from './pages/login-page';
@@ -20,12 +20,9 @@ const DeployPage = lazy(() => import('./pages/deploy-page').then((m) => ({ defau
 const AdminPage = lazy(() => import('./pages/admin-page').then((m) => ({ default: m.AdminPage })));
 
 function Loading(): ReactNode {
-  const { t } = useI18n();
   return (
     <AppPage>
-      <p className="loading" role="status">
-        {t('loading')}
-      </p>
+      <Loader />
     </AppPage>
   );
 }

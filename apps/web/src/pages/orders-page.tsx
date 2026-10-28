@@ -6,6 +6,7 @@ import { useI18n, type MessageKey } from '../i18n';
 import { NotificationSettingsPanel } from '../orders/notification-settings';
 import { listOrders, markOrder, type Order, type OrderList, type OrderView } from '../orders-api';
 import { SignedInPage } from '../signed-in-page';
+import { Loader } from '../loading';
 
 /**
  * `/sites/:siteId/orders`: what visitors sent from a page (a shop's orders, a wedding's replies, worded for each), and
@@ -176,9 +177,7 @@ function Orders(): ReactNode {
         ))}
       </div>
       {list === null && !error ? (
-        <p className="loading" role="status">
-          {t('loading')}
-        </p>
+        <Loader />
       ) : null}
       {list && list.orders.length === 0 ? <p className="hint">{t(view === 'open' ? words.emptyOpen : words.emptyAll)}</p> : null}
       {list && list.orders.length > 0 ? (

@@ -6,6 +6,7 @@ import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { getSite, type SiteDetail } from '../sites-api';
+import { Loader } from '../loading';
 
 /** `/sites/:siteId`: loads the site and its draft, then the editor. */
 export function EditorPage(): ReactNode {
@@ -50,9 +51,7 @@ function LoadEditor(): ReactNode {
   }
   if (!detail || !value) {
     return (
-      <p className="loading" role="status">
-        {t('loading')}
-      </p>
+      <Loader />
     );
   }
   return <SiteEditor key={detail.site.id} initialSite={detail.site} initialValue={value} initialImages={detail.images} />;

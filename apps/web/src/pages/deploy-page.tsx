@@ -8,6 +8,7 @@ import { duration, isActive, useBuild } from '../deploy/use-build';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
+import { Loader } from '../loading';
 
 /** `/sites/:siteId/deploy`: a developer site's current build, settings, deploy-on-push and history. */
 export function DeployPage(): ReactNode {
@@ -140,9 +141,7 @@ function Deploy(): ReactNode {
   }
   if (!data) {
     return (
-      <p className="loading" role="status">
-        {t('loading')}
-      </p>
+      <Loader />
     );
   }
 
