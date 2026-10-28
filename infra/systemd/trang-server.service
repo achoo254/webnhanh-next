@@ -1,4 +1,4 @@
-# /etc/systemd/system/trang-server.service — the Trang API (sign-in, sessions; site editing comes later).
+# /etc/systemd/system/trang-server.service — the Trang API (sign-in, sessions, site editing, photo uploads).
 [Unit]
 Description=Trang API server
 After=network-online.target postgresql.service
@@ -7,19 +7,23 @@ Wants=network-online.target postgresql.service
 [Service]
 User=trang
 Group=trang
-# NODE_ENV=production, PORT=4860, PUBLIC_URL, DATABASE_URL, AUTH_*: never in the repo (docs/deployment-guide.md).
+# NODE_ENV=production, PORT=4860, PUBLIC_URL, DATABASE_URL, AUTH_*, UPLOADS_DIR, FFMPEG_PATH, FFPROBE_PATH: never in
+# the repo (docs/deployment-guide.md).
 EnvironmentFile=/etc/trang/production.env
 WorkingDirectory=/var/www/trang/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/server/dist/server.mjs
 Restart=on-failure
 RestartSec=3
-MemoryMax=256M
+# ffmpeg cleaning an upload runs inside this limit too (one photo at a time, at most 24 MP).
+MemoryMax=512M
 CPUQuota=50%
 UMask=0027
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+# Uploaded photos; published sites are written by trang-worker only.
+ReadWritePaths=/var/www/trang/uploads
 
 [Install]
 WantedBy=multi-user.target

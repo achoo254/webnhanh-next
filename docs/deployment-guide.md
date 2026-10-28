@@ -3,8 +3,8 @@
 Trang Của Tôi chạy trên edge `.65` dùng chung (CentOS Stream 9, 4 CPU, 7,5 GB RAM, có production của app khác) sau
 Cloudflare và nginx. Repo public: không ghi IP, cổng SSH hay user máy chủ vào đây; dùng `<SERVER_65_IP>`, `<SSH_PORT>`.
 
-Gồm hai phần: **phát site người dùng** (`*.hoandat.io.vn`, lệnh `hosting`) và **app** `trang.hoandat.com` (server
-và web, lệnh `release`). Worker build/đăng site có ở bước sau.
+Gồm hai phần: **phát site người dùng** (`*.hoandat.io.vn`, lệnh `hosting`) và **app** `trang.hoandat.com` (server,
+worker đăng site và web, lệnh `release`).
 
 ## Thành phần trên máy chủ
 
@@ -15,7 +15,9 @@ và web, lệnh `release`). Worker build/đăng site có ở bước sau.
 | nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `trang.hoandat.com`, mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác |
 | Chứng chỉ gốc | `/etc/pki/nginx/server.{crt,key}` như các app khác; Cloudflare SSL "full", Universal SSL phủ `hoandat.io.vn` và `*.hoandat.io.vn` |
 | App | `/var/www/trang/app` (bản phát hành hiện tại, `root:trang`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
-| Server | systemd `trang-server` (user `trang`, `127.0.0.1:4860`, `MemoryMax=256M`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
+| Server | systemd `trang-server` (user `trang`, `127.0.0.1:4860`, `MemoryMax=512M` vì ffmpeg làm sạch ảnh chạy trong giới hạn này, ghi được `uploads/`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
+| Worker | systemd `trang-worker` (user `trang`, `MemoryMax=192M`, chỉ nói chuyện với loopback, ghi được `sites/` và `uploads/`): đăng site từ hàng đợi `jobs`, mỗi giờ dọn phiên hết hạn, tên giữ chỗ hết hạn, ảnh không còn dùng quá 1 ngày |
+| Ảnh tải lên | `/var/www/trang/uploads/<site id>/<ảnh>-<rộng>.webp` (`trang:trang`, `750`, nginx không phát; trình sửa đọc qua `/api/sites/<id>/images/…` có kiểm chủ) |
 | nginx app | `/etc/nginx/conf.d/trang.hoandat.com.conf` (từ `infra/nginx/`): HTTP → HTTPS, phát web tĩnh, chuyển `/api`, `/auth`, `/healthz` vào server; CSP có hash của script theme |
 | Database | Postgres đang chạy trên `.65`, database `trang`, role `trang`; `pg_hba.conf` có hai dòng `host trang trang 127.0.0.1/32` và `::1/128` `scram-sha-256` đặt trên dòng `ident` chung |
 | Env | `/etc/trang/production.env` (640 `root:trang`), nguồn ở thư mục env iCloud `ENV production/trang-next/.env.production` |
@@ -54,8 +56,16 @@ thiếu `index.html`.
    | `AUTH_ISSUER` | `https://auth.hoandat.com` |
    | `AUTH_CLIENT_ID` | `trang-web` (mặc định) |
    | `AUTH_CLIENT_SECRET` | Secret của client `trang-web` ở `auth-next`, ≥ 32 ký tự |
+   | `UPLOADS_DIR` | `/var/www/trang/uploads` (server ghi, worker đọc) |
+   | `SITES_DIR` | `/var/www/trang/sites` (chỉ worker ghi) |
+   | `FFMPEG_PATH`, `FFPROBE_PATH` | ffmpeg có libwebp để làm sạch ảnh, ví dụ bản tĩnh `/opt/ffmpeg-static/` đã cài cho Clip. Bỏ trống: ffmpeg trong PATH; nếu bản đó không có libwebp, server ghi cảnh báo khi khởi động và tải ảnh sẽ lỗi |
+   | `SITES_PER_ACCOUNT` | Số trang từ mẫu mỗi tài khoản, mặc định 5 |
+   | `SITE_MAX_MB` | Dung lượng một trang (ảnh khi sửa, và mỗi bản phát hành), mặc định 20 |
+   | `POLL_MS` | Worker xem hàng đợi mỗi bao nhiêu ms, mặc định 1000 |
 
-   Thiếu `DATABASE_URL`, `AUTH_CLIENT_SECRET` hoặc `PUBLIC_URL` thì server dừng ngay khi khởi động.
+   Server và worker đọc chung file này. Thiếu `DATABASE_URL`, `AUTH_CLIENT_SECRET`, `PUBLIC_URL` hoặc `UPLOADS_DIR` thì
+   server dừng ngay khi khởi động; worker dừng nếu thiếu `DATABASE_URL`, `SITES_DIR`, `UPLOADS_DIR` hoặc `PUBLIC_URL`.
+   Kiểm ffmpeg trước: `/opt/ffmpeg-static/ffmpeg -hide_banner -encoders | grep libwebp`.
 5. **IdP:** client `trang-web` ở `auth-next` (Code + PKCE, `client_secret_basic`, scope `openid`, redirect
    `https://trang.hoandat.com/auth/callback`, đăng xuất về `https://trang.hoandat.com/`).
 6. **DNS:** `trang.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
@@ -65,11 +75,15 @@ thiếu `index.html`.
 ## Phát hành app
 
 `bash infra/deploy.sh release` chạy gate (`lint`, `typecheck`, `test`, `build`) ở máy dev, đẩy bản build lên
-`/var/www/trang/incoming`, `pnpm install --prod` cho server, đổi `incoming` thành `app` (bản cũ thành `app.prev`), cài
-unit systemd và nginx nếu đổi (`nginx -t` trước, hỏng thì trả file cũ, không reload), khởi động lại `trang-server` và
-chờ `/healthz`. `/healthz` không lên trong 20 giây thì tự đổi về `app.prev`.
+`/var/www/trang/incoming`, `pnpm install --prod` cho server và worker, đổi `incoming` thành `app` (bản cũ thành
+`app.prev`), cài unit systemd và nginx nếu đổi (`nginx -t` trước, hỏng thì trả file cũ, không reload), khởi động lại
+`trang-server` và chờ `/healthz` (không lên trong 20 giây thì tự đổi về `app.prev`), rồi bật và khởi động lại
+`trang-worker`. Lần đầu có worker: chạy `setup` trước để tạo `/var/www/trang/uploads` (`release` dừng nếu thiếu).
 
-**Quay lại bản trước bằng tay:** `cd /var/www/trang && rm -rf app && mv app.prev app && systemctl restart trang-server`.
+nginx của app nhận thân request tới 6 MB chỉ ở route tải ảnh `/api/sites/<id>/images`; mọi chỗ khác vẫn 64 KB.
+
+**Quay lại bản trước bằng tay:** `cd /var/www/trang && rm -rf app && mv app.prev app && systemctl restart trang-server
+trang-worker`.
 Migration chỉ thêm, bản trước vẫn chạy được trên schema mới.
 
 ## Kiểm sau khi đổi
@@ -80,7 +94,12 @@ curl -s -o /dev/null -w '%{http_code}\n' https://trang.hoandat.com/api/me   # 40
 curl -sI https://kiem-tra.hoandat.io.vn/            # 200, không Set-Cookie (site kiểm tra, tên giữ chỗ)
 curl -sI https://khong-co-trang.hoandat.io.vn/      # 404, trang 404 chung
 curl -sI https://hoandat.io.vn/                     # 302 về trang.hoandat.com
+systemctl is-active trang-worker                    # active
+journalctl -u trang-server -n 20 | grep -i webp     # không có dòng "cannot write WebP"
 ```
+
+Đổi tên một trang đã đăng: tên cũ được giữ 7 ngày (`site_name_holds`), lần đăng dưới tên mới gỡ thư mục tên cũ nên tên
+cũ trả 404 chung; trang chưa từng đăng thì đổi tên không giữ chỗ.
 
 ## Lịch sử
 

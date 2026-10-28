@@ -5,7 +5,14 @@ Trang Của Tôi, repo `trang-next`. Đọc `README.md`, `docs/deployment-guide.
 
 - Gate trước khi báo xong: `pnpm lint && pnpm typecheck && pnpm test && pnpm build` (`lint` gồm `check:brand`).
 - Repo public: không ghi IP, cổng SSH, user máy chủ hay secret; env production ở iCloud `ENV production/trang-next/`.
-- Site người dùng chỉ đi qua `@trang/publish`; không ghi thẳng vào `SITES_DIR`.
+- Site người dùng chỉ đi qua `@trang/publish` (worker); không ghi thẳng vào `SITES_DIR`. Server không ghi `SITES_DIR`.
+- Route nào chạm một site đều lấy site qua `ownedSite` (`apps/server/src/sites/site-access.ts`): site của tài khoản
+  khác trả 404 như site không tồn tại.
+- Mọi chữ người dùng gõ vào trang đều qua `escapeHtml` trong `@trang/templates`; link liên hệ chỉ được dựng bởi
+  `zaloLink`/`phoneLink`/`facebookLink`. Xem trước trong app dùng đúng `renderShop` trong `iframe` `sandbox` không có
+  `allow-scripts`.
+- Ảnh tải lên không bao giờ lưu nguyên bản: kiểm magic bytes, ffmpeg làm sạch ra WebP không metadata
+  (`apps/server/src/sites/image-processing.ts`).
 - Tên site kiểm bằng `checkSiteName`; regex `server_name` trong `infra/nginx/hoandat.io.vn.conf` phải cùng hình với
   `SITE_NAME_PATTERN`.
 - Không đặt cookie nào trên `hoandat.io.vn`: site người dùng chạy JavaScript tuỳ ý ở đó.

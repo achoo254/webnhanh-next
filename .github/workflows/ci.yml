@@ -26,6 +26,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+      # ffmpeg with libwebp, as on the server: the photo upload tests turn real photos into WebP.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
