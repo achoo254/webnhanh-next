@@ -1,0 +1,34 @@
+# /etc/systemd/system/trang-worker.service — publishes queued sites one at a time: renders the template, copies the
+# photos, makes the release live through @trang/publish. Also deletes expired sessions, name holds and unused photos.
+[Unit]
+Description=Trang publish worker
+After=network-online.target postgresql.service trang-server.service
+Wants=network-online.target postgresql.service
+
+[Service]
+User=trang
+Group=trang
+# DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, SITE_MAX_MB (the shared env file; docs/deployment-guide.md).
+EnvironmentFile=/etc/trang/production.env
+WorkingDirectory=/var/www/trang/app
+ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/main.mjs
+Restart=on-failure
+RestartSec=5
+# A publish is a file copy: small memory, low priority beside the other apps of the server.
+MemoryMax=192M
+CPUQuota=50%
+Nice=10
+# Stop: the worker finishes the publish in hand (seconds), then exits.
+TimeoutStopSec=30
+UMask=0027
+# Loopback only: Postgres on 127.0.0.1 is all the worker talks to.
+IPAddressDeny=any
+IPAddressAllow=localhost
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/www/trang/sites /var/www/trang/uploads
+
+[Install]
+WantedBy=multi-user.target

@@ -6,7 +6,7 @@ export default defineConfig({
       {
         test: {
           name: 'node',
-          include: ['packages/*/src/**/*.test.ts', 'apps/server/src/**/*.test.ts'],
+          include: ['packages/*/src/**/*.test.ts', 'apps/server/src/**/*.test.ts', 'apps/worker/src/**/*.test.ts'],
           environment: 'node',
           testTimeout: 30_000,
         },
