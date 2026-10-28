@@ -3,8 +3,10 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
 import { App } from './app';
-import type { Build, BuildDetail } from './builds-api';
+import type { Build, BuildDetail, BuildSettings } from './builds-api';
 import { BuildProgressView } from './deploy/build-progress';
+import { SettingsPanel } from './deploy/settings-form';
+import { ApiError } from './api';
 import { I18nProvider } from './i18n';
 
 const SITE_ID = '11111111-1111-4111-8111-111111111111';
@@ -221,5 +223,65 @@ describe('deploying from a repo', () => {
     fireEvent.change(await screen.findByLabelText('Link repo công khai'), { target: { value: 'https://github.com/acme/secret' } });
     fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra repo' }));
     expect((await screen.findByRole('alert')).textContent).toContain('riêng tư');
+  });
+});
+
+describe('the build settings of a site', () => {
+  const recognized: BuildSettings = { rootDir: '', buildCommand: 'npm run build', outputDir: 'dist' };
+
+  function settings(onSave: (value: BuildSettings) => Promise<BuildSettings>): void {
+    render(
+      <I18nProvider>
+        <SettingsPanel initial={recognized} defaults={recognized} onSave={onSave} />
+      </I18nProvider>,
+    );
+  }
+
+  it('tells recognized values from changed ones, saves only a change, and can undo it', async () => {
+    const onSave = vi.fn(async (value: BuildSettings): Promise<BuildSettings> => ({ ...value, outputDir: value.outputDir.trim() }));
+    settings(onSave);
+    const save = screen.getByRole('button', { name: 'Lưu cách build' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    expect(screen.getAllByText('Tự nhận')).toHaveLength(3);
+
+    fireEvent.change(screen.getByLabelText('Thư mục output'), { target: { value: 'build' } });
+    expect(screen.getByText('Đã sửa')).toBeTruthy();
+    expect(screen.getByText('Giá trị tự nhận: dist')).toBeTruthy();
+    expect(screen.getByText('Có thay đổi chưa lưu.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tác' }));
+    expect((screen.getByLabelText('Thư mục output') as HTMLInputElement).value).toBe('dist');
+    expect(save.disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText('Thư mục output'), { target: { value: 'build' } });
+    fireEvent.click(save);
+    expect(await screen.findByText('Đã lưu. Áp dụng từ lần build sau.')).toBeTruthy();
+    expect(onSave).toHaveBeenCalledWith({ ...recognized, outputDir: 'build' });
+    expect(save.disabled).toBe(true);
+  });
+
+  it('shows a mistake at its field and does not send it', async () => {
+    const onSave = vi.fn(async (value: BuildSettings): Promise<BuildSettings> => value);
+    settings(onSave);
+    const output = screen.getByLabelText('Thư mục output');
+    fireEvent.change(output, { target: { value: '../secret' } });
+    // Not while typing: once the field is left.
+    expect(output.getAttribute('aria-invalid')).toBeNull();
+    fireEvent.blur(output);
+    expect(output.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(/Đường dẫn tương đối trong project/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cách build' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('sửa các ô báo lỗi');
+    expect(onSave).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(output);
+  });
+
+  it("puts the server's refusal at the field it names", async () => {
+    settings(async () => {
+      throw new ApiError(400, 'build-settings', ['build-command']);
+    });
+    fireEvent.change(screen.getByLabelText('Lệnh build'), { target: { value: 'npm run build:prod' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu cách build' }));
+    await waitFor(() => expect(screen.getByLabelText('Lệnh build').getAttribute('aria-invalid')).toBe('true'));
+    expect(screen.getByText('Lệnh build chỉ một dòng, tối đa 300 ký tự.')).toBeTruthy();
   });
 });

@@ -331,6 +331,20 @@ label.pill:has(+ input:focus-visible) {
   color: var(--c-info-text);
   background: color-mix(in srgb, var(--c-info) 16%, var(--c-surface));
 }
+.badge-error {
+  color: var(--c-error);
+  background: color-mix(in srgb, var(--c-error) 14%, var(--c-surface));
+}
+.badge-dot::before {
+  content: "";
+  display: inline-block;
+  width: 0.5em;
+  height: 0.5em;
+  margin-inline-end: 0.45em;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  vertical-align: 0.1em;
+}
 .badge-warn,
 .badge-sample {
   color: var(--c-warning-text);
@@ -1247,6 +1261,11 @@ button.bento-card:focus-visible {
   font-family: var(--font-mono);
   font-size: 16px;
 }
+/* An example or an "empty means…" note must not read as a typed value: plain type, not code. */
+.input-mono::placeholder {
+  font-family: var(--font-sans);
+  font-size: 15px;
+}
 .field-row {
   display: grid;
   gap: var(--space-3);
@@ -1285,12 +1304,24 @@ button.bento-card:focus-visible {
 .deploy {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  gap: var(--space-5);
   padding-block: var(--space-5) var(--space-7);
 }
 .deploy-head {
   display: grid;
+  gap: var(--space-2);
+}
+.deploy-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.deploy-title {
+  display: grid;
   gap: var(--space-1);
+  min-width: 0;
 }
 .deploy-head .page-title {
   overflow-wrap: anywhere;
@@ -1299,21 +1330,301 @@ button.bento-card:focus-visible {
   margin: 0;
   overflow-wrap: anywhere;
 }
-.deploy-actions {
+/* One gap between every block, across and down. Phones: the two columns melt into one list in the order of the flow. */
+.deploy-layout {
+  --deploy-gap: var(--space-4);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--deploy-gap);
+  align-items: start;
+}
+.deploy-main,
+.deploy-side {
+  display: contents;
+}
+.deploy-build {
+  order: 1;
+}
+.deploy-main > .build {
+  order: 2;
+}
+.deploy-side > * {
+  order: 3;
+}
+.deploy-main > [data-id="deploy-history"] {
+  order: 4;
+}
+@media (min-width: 960px) {
+  .deploy-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  }
+  .deploy-main,
+  .deploy-side {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--deploy-gap);
+    align-content: start;
+    min-width: 0;
+  }
+  /* The right column stays in view beside a long build or history. */
+  .deploy-side {
+    position: sticky;
+    top: calc(var(--header-h, 64px) + var(--space-4));
+  }
+  .deploy-main {
+    container-type: inline-size;
+  }
+}
+
+/* The build card: where the site stands, how it is built, the Build button. */
+.panel-head,
+.deploy-step-head,
+.field-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.deploy-build {
+  gap: 0;
+}
+.deploy-build > .panel-title {
+  margin-bottom: var(--space-3);
+}
+.deploy-step {
+  display: grid;
+  gap: var(--space-2);
+  padding-block: var(--space-3);
+  border-top: 1px solid var(--c-border-subtle);
+}
+.deploy-step-label {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.deploy-run {
+  padding-bottom: 0;
+}
+.deploy-run-bar {
+  display: grid;
+  gap: var(--space-3);
+  align-items: center;
+}
+@media (min-width: 600px) {
+  .deploy-run-bar {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .deploy-run-bar .pill-cta {
+    width: auto;
+    min-width: 220px;
+    padding-inline: var(--space-6);
+  }
+}
+.deploy-quota {
+  display: grid;
+  gap: var(--space-1);
+}
+.deploy-quota-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--c-bar-track);
+  overflow: hidden;
+}
+.deploy-quota-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--c-primary-solid);
+}
+.deploy-quota.is-full .hint {
+  color: var(--c-warning-text);
+  font-weight: 700;
+}
+.deploy-quota.is-full .deploy-quota-bar span {
+  background: var(--c-warning);
+}
+/* The latest build: a strip in the colour of its outcome, the word on the badge so colour is never the only sign. */
+.deploy-last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border-inline-start: 4px solid var(--c-border);
+  background: var(--c-surface-subtle);
+}
+.deploy-last .build-history-meta {
+  flex: 1 1 12rem;
+}
+.deploy-last-live {
+  border-inline-start-color: var(--c-success);
+  background: color-mix(in srgb, var(--c-success) 8%, var(--c-surface));
+}
+.deploy-last-error {
+  border-inline-start-color: var(--c-error);
+  background: color-mix(in srgb, var(--c-error) 8%, var(--c-surface));
+}
+.deploy-last-busy {
+  border-inline-start-color: var(--c-info);
+  background: color-mix(in srgb, var(--c-info) 8%, var(--c-surface));
+}
+.text-button {
+  min-height: 32px;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--c-primary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.text-button:hover {
+  text-decoration: underline;
+}
+.text-button:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus-primary);
+}
+.text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Build settings: grouped fields, recognized or changed, then the save row. */
+.settings-group {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.settings-group + .settings-group {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--c-border-subtle);
+}
+/* Floated, the legend leaves the fieldset's border and sits in the grid like the fields below it. */
+.settings-legend {
+  float: left;
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-1);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.field-head .field-label {
+  flex: 1;
+}
+.setting-tag {
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--c-text-muted);
+  background: var(--c-bar-track);
+}
+.setting-tag-custom {
+  color: var(--c-info-text);
+  background: color-mix(in srgb, var(--c-info) 16%, var(--c-surface));
+}
+.setting-default {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-2);
+  margin: 0;
+  font-size: 13px;
+  color: var(--c-text-muted);
+  overflow-wrap: anywhere;
+}
+.settings-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--c-border-subtle);
+}
+.settings-status {
+  flex: 1 1 10rem;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.settings-status-dirty {
+  color: var(--c-warning-text);
+  font-weight: 700;
+}
+.settings-status-saved {
+  color: var(--c-success-text);
+  font-weight: 700;
+}
+.settings-status-saved::before {
+  content: "✓ ";
+}
+.settings-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
 }
-.deploy-cards {
+
+/* Zip source: a drop zone that is also the file picker. */
+.dropzone {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-4);
+  justify-items: center;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-4);
+  border: 2px dashed var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface-subtle);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-standard), background-color var(--dur-fast) var(--ease-standard);
 }
-@media (min-width: 960px) {
-  .deploy-cards {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    align-items: start;
-  }
+.dropzone:hover,
+.dropzone.is-over {
+  border-color: var(--c-primary-solid);
+  background: color-mix(in srgb, var(--c-primary) 8%, var(--c-surface));
+}
+.dropzone:has(input:focus-visible) {
+  border-color: var(--c-primary-solid);
+  box-shadow: var(--shadow-focus-primary);
+}
+.dropzone.is-off {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.dropzone-title {
+  font-weight: 800;
+  color: var(--c-text);
+}
+.dropzone-hint {
+  font-size: 14px;
+  color: var(--c-text-muted);
+}
+.upload-bar {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--c-bar-track);
+  overflow: hidden;
+}
+.upload-bar span {
+  display: block;
+  height: 100%;
+  background: var(--webnhanh-gradient);
+  transition: width var(--dur-fast) var(--ease-standard);
 }
 
 .build,
@@ -1332,6 +1643,12 @@ button.bento-card:focus-visible {
   .build-grid:has(.build-aside) {
     grid-template-columns: minmax(0, 1fr) 320px;
     align-items: start;
+  }
+}
+/* Inside the deploy page's main column: side by side only when that column has room. */
+@container (max-width: 759px) {
+  .build-grid:has(.build-aside) {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .build-eta {
@@ -1410,9 +1727,13 @@ button.bento-card:focus-visible {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--c-warning) 40%, var(--c-surface));
+  border: 1px solid color-mix(in srgb, var(--c-error) 40%, var(--c-surface));
+  border-inline-start-width: 4px;
   border-radius: var(--radius-xl);
-  background: color-mix(in srgb, var(--c-warning) 8%, var(--c-surface));
+  background: color-mix(in srgb, var(--c-error) 7%, var(--c-surface));
+}
+.build-failed > .panel-title {
+  color: var(--c-error);
 }
 .build-failed p {
   margin: 0;
@@ -1498,15 +1819,29 @@ button.bento-card:focus-visible {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: var(--space-2);
 }
 .build-history-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2);
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);
+}
+.build-history-row + .build-history-row {
+  border-top: 1px solid var(--c-border-subtle);
+}
+.build-history-row .badge {
+  min-width: 6.5rem;
+}
+/* Narrow rows: the time drops under the badge, beside the button, instead of a tall thin column. */
+.build-history-row .build-history-meta {
+  flex: 1 1 12rem;
+}
+.build-history-viewing {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-primary);
 }
 .build-history-row.is-current {
   background: color-mix(in srgb, var(--c-primary) 10%, var(--c-surface));

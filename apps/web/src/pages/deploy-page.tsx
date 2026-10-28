@@ -1,103 +1,31 @@
-import { useCallback, useEffect, useId, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { siteHost } from '../brand';
-import { buildLogUrl, saveBuildSettings, siteBuilds, startBuild, uploadZip, MAX_ZIP_BYTES, type Build, type SiteBuilds } from '../builds-api';
+import { buildLogUrl, saveBuildSettings, siteBuilds, startBuild, type BuildSettings, type SiteBuilds } from '../builds-api';
+import { History, LatestBuild } from '../deploy/build-history';
 import { BuildProgressView } from '../deploy/build-progress';
-import { DetectionSummary, SettingsPanel, WaitingTips, WebhookCard } from '../deploy/deploy-cards';
-import { duration, isActive, useBuild } from '../deploy/use-build';
+import { DetectionSummary, WaitingTips, WebhookCard } from '../deploy/deploy-cards';
+import { SettingsPanel } from '../deploy/settings-form';
+import { isActive, useBuild } from '../deploy/use-build';
+import { ZipUpload } from '../deploy/zip-upload';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { Loader } from '../loading';
 import { DeleteSitePanel } from '../delete-site-panel';
 
-/** `/sites/:siteId/deploy`: a developer site's current build, settings, deploy-on-push and history. */
+/**
+ * `/sites/:siteId/deploy`: a developer site's build as one flow (where it stands, how it is built, the Build button,
+ * then the result), its history, and beside it the source, the build settings and deploy-on-push. Wide screens show
+ * the two columns; phones read the same blocks in the order of the flow.
+ */
 export function DeployPage(): ReactNode {
   return <SignedInPage>{() => <Deploy />}</SignedInPage>;
 }
 
-const STATUS_TONE: Readonly<Record<Build['status'], 'live' | 'draft' | 'busy' | 'warn'>> = {
-  queued: 'busy',
-  running: 'busy',
-  done: 'live',
-  failed: 'warn',
-  skipped: 'draft',
-};
-
-function History({ builds, current, onPick }: { readonly builds: readonly Build[]; readonly current: string | null; readonly onPick: (id: string) => void }): ReactNode {
-  const { t, locale } = useI18n();
-  const when = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
-  return (
-    <section className="panel" aria-labelledby="history-heading" data-id="deploy-history">
-      <h2 id="history-heading" className="panel-title">
-        {t('deploy.history.title')}
-      </h2>
-      {builds.length === 0 ? <p className="hint">{t('deploy.history.empty')}</p> : null}
-      <ul className="build-history">
-        {builds.map((build) => {
-          const took = build.startedAt && build.finishedAt ? Date.parse(build.finishedAt) - Date.parse(build.startedAt) : null;
-          const trigger = build.trigger === 'push' ? 'trigger.push' : build.trigger === 'rename' ? 'trigger.rename' : 'trigger.manual';
-          return (
-            <li key={build.id} className={build.id === current ? 'build-history-row is-current' : 'build-history-row'} data-id={`history-${build.id}`}>
-              <span className={`badge badge-${STATUS_TONE[build.status]}`}>{t(`buildStatus.${build.status}`)}</span>
-              <span className="build-history-meta">
-                {when.format(new Date(build.createdAt))} · {t(trigger)}
-                {build.commitSha ? <code> {build.commitSha.slice(0, 7)}</code> : null}
-                {took !== null ? ` · ${duration(t, took)}` : null}
-              </span>
-              <button type="button" className="pill pill-ghost pill-small" onClick={() => onPick(build.id)}>
-                {t('deploy.history.view')}
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
-}
-
-function ZipUpload({ siteId, onUploaded }: { readonly siteId: string; readonly onUploaded: () => void }): ReactNode {
-  const { t } = useI18n();
-  const inputId = useId();
-  const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<MessageKey | null>(null);
-  const upload = async (file: File): Promise<void> => {
-    if (file.size > MAX_ZIP_BYTES) {
-      setError('deploy.zip.tooBig');
-      return;
-    }
-    setError(null);
-    setProgress(0);
-    try {
-      await uploadZip(siteId, file, setProgress);
-      onUploaded();
-    } catch (failure) {
-      setError(errorMessage(failure));
-    } finally {
-      setProgress(null);
-    }
-  };
-  return (
-    <div className="field" data-id="deploy-zip-upload">
-      <label className="field-label" htmlFor={inputId}>
-        {t('deploy.zip.replace')}
-      </label>
-      <input
-        id={inputId}
-        className="input"
-        type="file"
-        accept=".zip,application/zip"
-        disabled={progress !== null}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          if (file) void upload(file);
-        }}
-      />
-      <p className={error ? 'field-error' : 'hint'} role={error ? 'alert' : undefined}>
-        {progress !== null ? t('deploy.zip.uploading', { n: Math.round(progress * 100) }) : error ? t(error) : t('deploy.zip.help')}
-      </p>
-    </div>
-  );
+/** Puts the cursor in the first build setting (the panel scrolls into view with it). */
+function focusSettings(): void {
+  document.getElementById('deploy-settings')?.querySelector<HTMLInputElement>('input')?.focus();
 }
 
 function Deploy(): ReactNode {
@@ -141,9 +69,7 @@ function Deploy(): ReactNode {
     );
   }
   if (!data) {
-    return (
-      <Loader />
-    );
+    return <Loader />;
   }
 
   const { developer, site, limits } = data;
@@ -151,6 +77,12 @@ function Deploy(): ReactNode {
   const lastReport = data.builds.find((b) => b.status === 'done' && b.report)?.report ?? null;
   const firstBuild = !data.builds.some((b) => b.status === 'done');
   const canBuild = developer.source === 'git' || developer.hasZip;
+  const quota = { used: limits.usedMinutesToday, limit: limits.buildMinutesPerDay };
+  // What the check recognized, as the values each setting goes back to.
+  const recognized: BuildSettings | null = developer.detection ? { rootDir: '', buildCommand: developer.detection.buildCommand, outputDir: developer.detection.outputDir } : null;
+  const openBuild = (id: string): void => {
+    void navigate(`/sites/${site.id}/deploy?build=${id}`);
+  };
 
   const build = async (): Promise<void> => {
     setStarting(true);
@@ -166,71 +98,105 @@ function Deploy(): ReactNode {
     }
   };
 
+  let buildLabel: MessageKey = site.published ? 'deploy.rebuild' : 'deploy.build';
+  if (active || starting) buildLabel = 'deploy.building';
+
   return (
     <section className="deploy" data-id="deploy">
-      <Link className="back-link" to="/" data-id="deploy-page-back">
-        {t('editor.back')}
-      </Link>
-      <div className="deploy-head">
-        <h1 className="page-title">{siteHost(site.name)}</h1>
-        <p className="hint">
-          {developer.source === 'git' ? t('deploy.source.git', { repo: developer.repoUrl ?? '', branch: developer.branch ?? '' }) : t('deploy.source.zip')}
-        </p>
-        <p className="hint" data-id="deploy-quota">
-          {t('deploy.quota', { used: limits.usedMinutesToday, limit: limits.buildMinutesPerDay })}
-        </p>
-        {developer.pendingPushAt ? <p className="notice notice-info">{t('deploy.pending')}</p> : null}
-      </div>
+      <header className="deploy-head">
+        <Link className="back-link" to="/" data-id="deploy-page-back">
+          {t('editor.back')}
+        </Link>
+        <div className="deploy-title-row">
+          <div className="deploy-title">
+            <h1 className="page-title">{siteHost(site.name)}</h1>
+            <p className="hint">{developer.source === 'git' ? t('deploy.source.git', { repo: developer.repoUrl ?? '', branch: developer.branch ?? '' }) : t('deploy.source.zip')}</p>
+          </div>
+          {site.published ? (
+            <a className="pill pill-ghost pill-small" href={`https://${siteHost(site.name)}/`} target="_blank" rel="noopener noreferrer" data-id="deploy-open-site">
+              {t('home.view')}
+            </a>
+          ) : null}
+        </div>
+      </header>
 
-      {followed.detail ? (
-        <BuildProgressView
-          key={followed.detail.build.id}
-          detail={followed.detail}
-          lines={followed.lines}
-          now={followed.now}
-          logUrl={buildLogUrl(followed.detail.build.id)}
-          onChange={followed.update}
-          aside={isActive(followed.detail) ? <WaitingTips report={lastReport} detection={developer.detection} firstBuild={firstBuild} /> : null}
-        />
-      ) : developer.detection ? (
-        <section className="panel">
-          <DetectionSummary detection={developer.detection} settings={developer.settings} />
-        </section>
-      ) : null}
+      <div className="deploy-layout">
+        <div className="deploy-main">
+          <section className="panel deploy-build" aria-labelledby="deploy-build-heading" data-id="deploy-build-panel">
+            <h2 id="deploy-build-heading" className="panel-title">
+              {t('deploy.panel.title')}
+            </h2>
 
-      {startError ? (
-        <p className="notice notice-warning" role="alert">
-          {t(startError)}
-        </p>
-      ) : null}
-      {!canBuild ? <p className="notice notice-info">{t('deploy.error.zipMissing')}</p> : null}
-      <div className="deploy-actions">
-        <button type="button" className="pill pill-cta" onClick={() => void build()} disabled={active || starting || !canBuild} aria-busy={starting} data-id="deploy-build">
-          {site.published ? t('deploy.rebuild') : t('deploy.build')}
-        </button>
-        {site.published ? (
-          <a className="pill pill-ghost" href={`https://${siteHost(site.name)}/`} target="_blank" rel="noopener noreferrer">
-            {t('home.view')}
-          </a>
-        ) : null}
-      </div>
+            <div className="deploy-step" data-id="deploy-state">
+              <h3 className="deploy-step-label">{t('deploy.state.label')}</h3>
+              <LatestBuild build={latest} onView={latest && latest.id !== currentId ? () => openBuild(latest.id) : null} />
+              {developer.pendingPushAt ? <p className="notice notice-info">{t('deploy.pending')}</p> : null}
+            </div>
 
-      <div className="deploy-cards">
-        {developer.source === 'zip' && !active ? (
-          <section className="panel">
-            <ZipUpload siteId={site.id} onUploaded={load} />
+            <div className="deploy-step" data-id="deploy-config">
+              <div className="deploy-step-head">
+                <h3 className="deploy-step-label">{t('deploy.config.label')}</h3>
+                <button type="button" className="text-button" onClick={focusSettings} data-id="deploy-config-edit">
+                  {t('deploy.config.edit')}
+                </button>
+              </div>
+              {developer.detection ? <DetectionSummary detection={developer.detection} settings={developer.settings} /> : <p className="hint">{t('deploy.config.unknown')}</p>}
+            </div>
+
+            <div className="deploy-step deploy-run">
+              {startError ? (
+                <p className="notice notice-warning" role="alert">
+                  {t(startError)}
+                </p>
+              ) : null}
+              {!canBuild ? <p className="notice notice-info">{t('deploy.error.zipMissing')}</p> : null}
+              <div className="deploy-run-bar">
+                <button type="button" className="pill pill-cta" onClick={() => void build()} disabled={active || starting || !canBuild} aria-busy={starting || active} data-id="deploy-build">
+                  {t(buildLabel)}
+                </button>
+                <div className={quota.used >= quota.limit ? 'deploy-quota is-full' : 'deploy-quota'}>
+                  <p className="hint" data-id="deploy-quota">
+                    {t('deploy.quota', quota)}
+                  </p>
+                  <span className="deploy-quota-bar" aria-hidden="true">
+                    <span style={{ width: `${Math.min(100, (quota.used / Math.max(1, quota.limit)) * 100)}%` }} />
+                  </span>
+                </div>
+              </div>
+              {active ? <p className="hint">{t('deploy.busy')}</p> : null}
+            </div>
           </section>
-        ) : null}
-        <SettingsPanel
-          key={JSON.stringify(developer.settings)}
-          initial={developer.settings}
-          onSave={async (settings) => {
-            const saved = await saveBuildSettings(site.id, settings);
-            setData({ ...data, developer: saved });
-          }}
-        />
-        {developer.webhook && developer.repoUrl ? <WebhookCard webhook={developer.webhook} branch={developer.branch ?? ''} repoUrl={developer.repoUrl} /> : null}
-        <History builds={data.builds} current={currentId} onPick={(id) => navigate(`/sites/${site.id}/deploy?build=${id}`)} />
+
+          {followed.detail ? (
+            <BuildProgressView
+              key={followed.detail.build.id}
+              detail={followed.detail}
+              lines={followed.lines}
+              now={followed.now}
+              logUrl={buildLogUrl(followed.detail.build.id)}
+              onChange={followed.update}
+              aside={isActive(followed.detail) ? <WaitingTips report={lastReport} detection={developer.detection} firstBuild={firstBuild} /> : null}
+            />
+          ) : null}
+
+          <History builds={data.builds} current={currentId} onPick={openBuild} />
+        </div>
+
+        <div className="deploy-side">
+          {developer.source === 'zip' ? <ZipUpload siteId={site.id} hasZip={developer.hasZip} disabled={active} onUploaded={load} /> : null}
+          <SettingsPanel
+            // A new check (a new zip) brings new recognized values: start the form again from them.
+            key={JSON.stringify(developer.detection)}
+            initial={developer.settings}
+            defaults={recognized}
+            onSave={async (settings) => {
+              const saved = await saveBuildSettings(site.id, settings);
+              setData({ ...data, developer: saved });
+              return saved.settings;
+            }}
+          />
+          {developer.webhook && developer.repoUrl ? <WebhookCard webhook={developer.webhook} branch={developer.branch ?? ''} repoUrl={developer.repoUrl} /> : null}
+        </div>
       </div>
 
       <DeleteSitePanel siteId={site.id} siteName={site.name} />
