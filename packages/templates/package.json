@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./shop-fonts": "./src/shop-fonts.ts",
     "./samples/*": "./samples/*",
     "./package.json": "./package.json"
   },

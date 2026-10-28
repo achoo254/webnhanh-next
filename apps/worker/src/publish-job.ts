@@ -33,11 +33,13 @@ import {
   shopDraftSchema,
   shopImageIds,
   shopPublishIssues,
+  styleFontFiles,
   type ImageAsset,
   type ShareImage,
   type ShopDraft,
 } from '@webnhanh/templates';
 import { and, eq, inArray, ne } from 'drizzle-orm';
+import { fontFilePath, pageFontUrl } from './font-files';
 import { captureShareImage, cardFontUrl } from './share-image';
 
 /** The named steps of a publish, in order. The web app shows each under its own label. */
@@ -106,7 +108,7 @@ class StepClock {
   }
 }
 
-/** At most one file per width of each of 31 photos, plus the page. */
+/** At most one file per width of each of 31 photos, plus the page, its share picture and its font files. */
 const MAX_FILES = 200;
 
 /**
@@ -141,8 +143,12 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
       madeWith: deps.madeWith,
       orderForm: { action: `${deps.appUrl}/f/${site.name}`, token: signFormToken(deps.formSecret, site.id, deps.now()) },
       page: { url: pageUrl, image: shareImage ? { ...shareImage, url: `${pageUrl}${shareImage.file}` } : undefined },
+      fontUrl: pageFontUrl,
     });
     await writeFile(path.join(work, 'index.html'), html);
+    // The style's fonts ship inside the release, beside the page: the page asks no one else for them.
+    await mkdir(path.join(work, 'fonts'));
+    for (const font of styleFontFiles(draft.style)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
 
     await clock.begin('images');
     for (const image of images) {

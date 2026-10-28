@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { accounts, enqueueJob, verifyFormToken, jobs, NAME_HOLD_MS, openPglite, releases, siteImageFile, siteImages, siteNameHolds, sites, type DbHandle } from '@webnhanh/db';
 import { currentRelease, publishRelease } from '@webnhanh/publish';
-import type { ShopDraft } from '@webnhanh/templates';
+import { DEFAULT_STYLE, styleFontFiles, type ShopDraft } from '@webnhanh/templates';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, UNUSED_IMAGE_AGE_MS } from './cleanup';
@@ -55,7 +55,10 @@ async function photo(siteId: string, widths: number[], createdAt = new Date()): 
   return id;
 }
 
-async function shopSite(name: string, draft: (images: { cover: string; product: string }) => ShopDraft): Promise<{ siteId: string; accountId: string }> {
+/** A draft as stored: drafts saved before styles existed have no `style`. */
+type StoredDraft = ShopDraft | Omit<ShopDraft, 'style'>;
+
+async function shopSite(name: string, draft: (images: { cover: string; product: string }) => StoredDraft): Promise<{ siteId: string; accountId: string }> {
   const now = new Date();
   const [account] = await handle.db.insert(accounts).values({ sub: randomUUID(), createdAt: now }).returning();
   if (!account) throw new Error('no account');
@@ -77,6 +80,7 @@ const fullDraft = ({ cover, product }: { cover: string; product: string }): Shop
   products: [{ key: 'p1', name: 'Bánh tráng trộn', image: product, description: '', price: '25k' }],
   contacts: { zalo: '0912345678', phone: '', facebook: '' },
   palette: 'leaf',
+  style: 'am-cung',
 });
 
 async function queuePublish(site: { siteId: string; accountId: string }): Promise<string> {
@@ -106,13 +110,18 @@ describe('publish job', () => {
     expect(stored?.currentReleaseId).toBe(job.releaseId);
     expect(await currentRelease(deps.sitesDir, 'nha-bo')).toBe(job.releaseId);
     const [release] = await handle.db.select().from(releases).where(eq(releases.siteId, site.siteId));
-    expect(release).toMatchObject({ source: 'template', fileCount: 4 });
+    // The page, three photo files and the style's six font files.
+    expect(release).toMatchObject({ source: 'template', fileCount: 10 });
 
     const live = path.join(deps.sitesDir, 'nha-bo', 'current');
     const html = await readFile(path.join(live, 'index.html'), 'utf8');
     expect(html).toContain('<h1>Tiệm &lt;Bơ&gt;</h1>');
     expect(html).toContain('Làm bằng App');
     expect((await readdir(path.join(live, 'img'))).length).toBe(3);
+    expect((await readdir(path.join(live, 'fonts'))).sort()).toEqual(styleFontFiles('am-cung').map((f) => f.file).sort());
+    expect(html).toContain('<body class="s-am-cung');
+    expect(html).toContain('url(fonts/baloo-2-latin-700-normal.woff2)');
+    expect(html).toContain('font-src &#39;self&#39;');
     // Nothing is left in the work directory.
     expect(await readdir(deps.workDir ?? '')).toEqual([]);
   });
@@ -128,6 +137,18 @@ describe('publish job', () => {
     expect(html).toContain('<meta property="og:url" content="https://don-hang.hoandat.io.vn/">');
     const [stored] = await handle.db.select().from(sites).where(eq(sites.id, site.siteId));
     expect(stored?.orderForm).toEqual({ products: [{ key: 'p1', name: 'Bánh tráng trộn' }] });
+  });
+
+  it('publishes a draft saved before styles existed in the default style', async () => {
+    const site = await shopSite('kieu-cu', (images) => {
+      const { style: _style, ...legacy } = fullDraft(images);
+      return legacy;
+    });
+    await queuePublish(site);
+    expect(await processNextJob(deps)).toBe('done');
+    const live = path.join(deps.sitesDir, 'kieu-cu', 'current');
+    expect(await readFile(path.join(live, 'index.html'), 'utf8')).toContain(`<body class="s-${DEFAULT_STYLE}`);
+    expect((await readdir(path.join(live, 'fonts'))).length).toBe(styleFontFiles(DEFAULT_STYLE).length);
   });
 
   it('publishes without a share picture when Chrome is missing or fails, and says so in the log', async () => {

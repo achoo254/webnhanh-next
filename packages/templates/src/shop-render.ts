@@ -1,13 +1,15 @@
 /**
- * The shop page as one static HTML file: no script, no font or request to anyone else, CSS inline (one request
- * for the page, then only its photos), photos as WebP with `srcset` and their real size (no layout shift), only the
- * cover loaded eagerly. The same function renders the editor's preview and the published page; only the photo URLs
- * differ.
+ * The shop page as one static HTML file: CSS inline, no request to anyone else (one request for the page, then its
+ * own photos and, when given, its own font files), photos as WebP with `srcset` and their real size (no layout
+ * shift), only the cover loaded eagerly. Its only script is the order form's. The same function renders the editor's
+ * preview and the published page; only the photo and font URLs differ.
  */
 import { facebookLink, phoneLink, zaloLink, type ContactLink } from './contact-links';
 import { assertAssetUrl, escapeHtml } from './html';
-import { ORDER_CSS, ORDER_SCRIPT_HASH, orderFormHtml, type OrderFormOptions, type OrderProductOption } from './order-form';
+import { ORDER_CSS, ORDER_SCRIPT_HASH, ORDER_SECTION_ID, orderFormHtml, type OrderFormOptions, type OrderProductOption } from './order-form';
+import { styleFontFiles, type FontFile } from './shop-fonts';
 import type { PaletteId, ShopDraft } from './shop-schema';
+import { baseCss, SHOP_STYLES } from './shop-styles';
 
 export interface ImageVariant {
   readonly url: string;
@@ -42,6 +44,11 @@ export interface RenderOptions {
   readonly orderForm?: OrderFormOptions;
   /** The page's own address (`og:url`) and its share picture, once it is published. */
   readonly page?: { readonly url: string; readonly image?: ShareImage };
+  /**
+   * Where the style's font files are (`styleFontFiles`), by file name: `fonts/<file>` beside a published page. Without
+   * it the page uses the visitor's system fonts.
+   */
+  readonly fontUrl?: (file: string) => string;
 }
 
 /** The products visitors can order: those with a name, in the page's order. */
@@ -50,11 +57,12 @@ export function orderProducts(draft: ShopDraft): OrderProductOption[] {
 }
 
 /**
- * The page's Content-Security-Policy: its own photos, its inline style, the order script by its fixed hash, and
- * sending only to the form's origin. Never anything else, whatever the owner typed.
+ * The page's Content-Security-Policy: its own photos and fonts, its inline style, the order script by its fixed
+ * hash, and sending only to the form's origin. Never anything else, whatever the owner typed.
  */
-function contentSecurityPolicy(formOrigin: string | null): string {
+function contentSecurityPolicy(formOrigin: string | null, fonts: boolean): string {
   const parts = ["default-src 'none'", "img-src 'self'", "style-src 'unsafe-inline'", "base-uri 'none'"];
+  if (fonts) parts.push("font-src 'self'");
   if (formOrigin) parts.push(`script-src '${ORDER_SCRIPT_HASH}'`, `connect-src ${formOrigin}`, `form-action ${formOrigin}`);
   else parts.push("form-action 'none'");
   return parts.join('; ');
@@ -68,46 +76,28 @@ interface Palette {
   readonly accent: string;
   readonly soft: string;
   readonly ink: string;
+  /** A light second colour for stickers, tags and tape; `ink` on it reads at 4.5:1 or more. */
+  readonly pop: string;
 }
 
-/** White text on every accent has a contrast of at least 4.5:1; `ink` on `soft` far more. */
+/** White text on every accent has a contrast of at least 4.5:1; `ink` on `soft` and on `pop` far more. */
 export const PALETTES: Readonly<Record<PaletteId, Palette>> = {
-  berry: { accent: '#6d4ae0', soft: '#f6f3ff', ink: '#1e1636' },
-  rose: { accent: '#c2307a', soft: '#fff2f8', ink: '#3a1028' },
-  sunset: { accent: '#c2410c', soft: '#fff4ec', ink: '#3b1d0c' },
-  leaf: { accent: '#15803d', soft: '#f0faf3', ink: '#0f2e1a' },
-  ocean: { accent: '#1d4ed8', soft: '#eff5ff', ink: '#0f1f45' },
-  ink: { accent: '#1f1b2e', soft: '#f5f5f7', ink: '#1f1b2e' },
+  berry: { accent: '#6d4ae0', soft: '#f6f3ff', ink: '#1e1636', pop: '#ffd84d' },
+  rose: { accent: '#c2307a', soft: '#fff2f8', ink: '#3a1028', pop: '#ffd84d' },
+  sunset: { accent: '#c2410c', soft: '#fff4ec', ink: '#3b1d0c', pop: '#9ee6d0' },
+  leaf: { accent: '#15803d', soft: '#f0faf3', ink: '#0f2e1a', pop: '#ffd84d' },
+  ocean: { accent: '#1d4ed8', soft: '#eff5ff', ink: '#0f1f45', pop: '#ffc2a8' },
+  ink: { accent: '#1f1b2e', soft: '#f5f5f7', ink: '#1f1b2e', pop: '#ffd84d' },
 };
 
-function css(palette: Palette): string {
-  return `:root{--accent:${palette.accent};--soft:${palette.soft};--ink:${palette.ink};--muted:color-mix(in srgb,var(--ink) 70%,#fff)}
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--soft);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-img{display:block;max-width:100%;height:auto}
-a{color:inherit}
-.hero{position:relative;background:var(--accent);color:#fff}
-.hero img{width:100%;height:clamp(240px,62vw,460px);object-fit:cover}
-.hero-text{padding:20px 18px 22px}
-.has-cover .hero-text{position:absolute;inset:auto 0 0 0;padding-top:72px;background:linear-gradient(transparent,rgba(0,0,0,.72))}
-h1{margin:0;font-size:clamp(28px,8vw,44px);line-height:1.08;font-weight:900;letter-spacing:-.02em;overflow-wrap:anywhere}
-.lede{margin:8px 0 0;max-width:40em;white-space:pre-line;opacity:.95}
-main{max-width:960px;margin:0 auto;padding:18px 14px 32px}
-h2{margin:8px 4px 12px;font-size:20px;font-weight:800}
-.products{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-.product{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
-.product img{width:100%;aspect-ratio:1;object-fit:cover}
-.product-text{padding:10px 12px 14px}
-h3{margin:0;font-size:16px;font-weight:800;overflow-wrap:anywhere}
-.desc{margin:4px 0 0;font-size:14px;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}
-.price{margin:6px 0 0;font-weight:800;color:var(--accent)}
-.contact{margin-top:28px}
-.contact ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.contact a{display:flex;align-items:center;justify-content:center;min-height:52px;padding:12px 18px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;text-decoration:none;text-align:center;overflow-wrap:anywhere}
-.contact a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-footer{padding:18px 14px 28px;text-align:center;font-size:13px;color:var(--muted)}
-@media (min-width:720px){.products{grid-template-columns:repeat(3,1fr)}.contact ul{grid-template-columns:repeat(3,1fr)}.hero-text{padding-inline:max(18px,calc(50% - 480px + 18px))}}`;
+/** `@font-face` rules for `files`, each served from `fontUrl(file)` (checked like any asset URL). */
+export function fontFaceCss(files: readonly FontFile[], fontUrl: (file: string) => string): string {
+  return files
+    .map(
+      (font) =>
+        `@font-face{font-family:"${font.family}";font-style:normal;font-weight:${font.weight};font-display:swap;src:url(${assertAssetUrl(fontUrl(font.file))}) format("woff2");unicode-range:${font.range}}`,
+    )
+    .join('\n');
 }
 
 function img(asset: ImageAsset, alt: string, sizes: string, eager: boolean): string {
@@ -149,17 +139,41 @@ function shareTags(title: string, description: string, page: RenderOptions['page
   return tags.join('\n');
 }
 
-function contactItem(link: ContactLink | null, verb: string): string {
+const icon = (paths: string): string => `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths}</svg>`;
+const ICONS = {
+  bag: icon('<path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8a3 3 0 0 1 6 0"/>'),
+  chat: icon('<path d="M4 5h16v11H10l-5 4v-4H4z"/>'),
+  phone: icon('<path d="M6.5 3h3l1.7 4.4-2.2 1.4a11 11 0 0 0 6.2 6.2l1.4-2.2L21 14.5v3A2.5 2.5 0 0 1 18.5 20 15.5 15.5 0 0 1 4 5.5 2.5 2.5 0 0 1 6.5 3z"/>'),
+  link: icon('<path d="M10 14a4 4 0 0 0 5.7 0l3-3A4 4 0 0 0 13 5.3l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
+} as const;
+
+/** A way to act from the header and the phone's bottom bar. `href` is built by the renderer or a contact link. */
+interface Action {
+  readonly href: string;
+  readonly label: string;
+  readonly icon: string;
+}
+
+function actionLink(action: Action, className: string): string {
+  return `<a class="${className}" href="${escapeHtml(action.href)}">${action.icon}${action.label}</a>`;
+}
+
+function contactItem(link: ContactLink | null, verb: string, svg: string): string {
   if (!link) return '';
-  return `<li><a href="${escapeHtml(link.href)}">${verb} ${escapeHtml(link.label)}</a></li>`;
+  return `<li><a href="${escapeHtml(link.href)}">${svg}<span class="c-verb">${verb}</span> <span class="c-value">${escapeHtml(link.label)}</span></a></li>`;
 }
 
 /** The page for `draft`. Photos missing from `assets` are left out; so are empty texts and invalid contacts. */
 export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAsset>, options: RenderOptions = {}): RenderedPage {
   const palette = PALETTES[draft.palette];
+  const style = SHOP_STYLES[draft.style];
   const name = draft.name.trim();
   const description = draft.description.trim();
   const cover = draft.cover ? assets.get(draft.cover) : undefined;
+
+  const orderSection = options.orderForm ? orderFormHtml(orderProducts(draft), options.orderForm) : '';
+  const formOrigin = orderSection && options.orderForm ? webUrlOrigin(options.orderForm.action) : null;
+  const orderHref = `#${ORDER_SECTION_ID}`;
 
   const products = draft.products
     .map((product) => {
@@ -168,60 +182,91 @@ export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAs
       const desc = product.description.trim();
       const price = product.price.trim();
       if (!title && !photo && !desc && !price) return '';
+      // Only named products are in the form, so only they can be picked.
+      const pick =
+        orderSection && title
+          ? `<a class="pick" href="${orderHref}" data-p="${escapeHtml(product.key)}">Chọn mua<span class="vh"> ${escapeHtml(title)}</span></a>`
+          : '';
+      const foot = price || pick ? `<div class="product-foot">${price ? `<p class="price">${escapeHtml(price)}</p>` : ''}${pick}</div>` : '';
       return [
-        '<li class="product">',
-        photo ? img(photo, title, '(min-width:720px) 300px, 50vw', false) : '',
+        `<li class="product${photo ? '' : ' no-photo'}">`,
+        photo ? `<div class="product-photo">${img(photo, title, style.productSizes, false)}</div>` : '',
         '<div class="product-text">',
         title ? `<h3>${escapeHtml(title)}</h3>` : '',
         desc ? `<p class="desc">${escapeHtml(desc)}</p>` : '',
-        price ? `<p class="price">${escapeHtml(price)}</p>` : '',
+        foot,
         '</div></li>',
       ].join('');
     })
     .filter(Boolean);
 
+  const zalo = zaloLink(draft.contacts.zalo);
+  const phone = phoneLink(draft.contacts.phone);
   const contacts = [
-    contactItem(zaloLink(draft.contacts.zalo), 'Nhắn Zalo'),
-    contactItem(phoneLink(draft.contacts.phone), 'Gọi'),
-    contactItem(facebookLink(draft.contacts.facebook), 'Facebook'),
+    contactItem(zalo, 'Nhắn Zalo', ICONS.chat),
+    contactItem(phone, 'Gọi', ICONS.phone),
+    contactItem(facebookLink(draft.contacts.facebook), 'Facebook', ICONS.link),
   ].filter(Boolean);
+
+  // The two things a visitor most likely came to do: order here, or reach the shop.
+  const actions = [
+    orderSection ? { href: orderHref, label: 'Đặt hàng', icon: ICONS.bag } : null,
+    zalo ? { href: zalo.href, label: 'Nhắn Zalo', icon: ICONS.chat } : null,
+    phone ? { href: phone.href, label: 'Gọi ngay', icon: ICONS.phone } : null,
+  ]
+    .filter((action): action is Action => action !== null)
+    .slice(0, 2);
+  const heroActions =
+    actions.length > 0
+      ? `<div class="actions">${actions.map((action, index) => actionLink(action, `btn ${index === 0 ? 'btn-primary' : 'btn-secondary'}`)).join('')}</div>`
+      : '';
+  const dock = actions.length > 0 ? `<nav class="dock" aria-label="Đặt nhanh">${actions.map((action) => actionLink(action, '')).join('')}</nav>` : '';
+
+  const fontFiles = options.fontUrl ? styleFontFiles(draft.style) : [];
+  const fontUrl = options.fontUrl;
+  const fontCss = fontUrl ? fontFaceCss(fontFiles, fontUrl) : '';
+  const preload = fontUrl && fontFiles[0] ? `<link rel="preload" href="${escapeHtml(assertAssetUrl(fontUrl(fontFiles[0].file)))}" as="font" type="font/woff2" crossorigin>` : '';
 
   const title = escapeHtml(name || 'Cửa hàng');
   const meta = description ? `<meta name="description" content="${escapeHtml(description.slice(0, 200))}">` : '';
   const madeWith = options.madeWith
-    ? `<footer><a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a></footer>`
+    ? `<footer class="made"><a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a></footer>`
     : '';
-
-  const orderSection = options.orderForm ? orderFormHtml(orderProducts(draft), options.orderForm) : '';
-  const formOrigin = orderSection && options.orderForm ? webUrlOrigin(options.orderForm.action) : null;
+  const band = style.nameBand && name ? `<div class="band-wrap" aria-hidden="true"><p class="band">${`${escapeHtml(name)} ✦ `.repeat(8)}</p></div>` : '';
   const shareMeta = shareTags(title, description, options.page);
+  const stylesheet = [fontCss, baseCss(draft.style, palette), orderSection ? ORDER_CSS : '', style.css].filter(Boolean).join('\n');
 
   const html = [
     '<!doctype html>',
     '<html lang="vi">',
     '<head>',
     '<meta charset="utf-8">',
-    `<meta http-equiv="Content-Security-Policy" content="${escapeHtml(contentSecurityPolicy(formOrigin))}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${escapeHtml(contentSecurityPolicy(formOrigin, fontFiles.length > 0))}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<title>${title}</title>`,
     meta,
     shareMeta,
     `<meta name="theme-color" content="${palette.accent}">`,
-    `<style>${css(palette)}${orderSection ? `\n${ORDER_CSS}` : ''}</style>`,
+    preload,
+    `<style>${stylesheet}</style>`,
     '</head>',
-    '<body>',
+    `<body class="s-${draft.style}${dock ? ' has-dock' : ''}">`,
     `<header class="hero${cover ? ' has-cover' : ''}">`,
-    cover ? img(cover, '', '100vw', true) : '',
     '<div class="hero-text">',
     name ? `<h1>${escapeHtml(name)}</h1>` : '',
     description ? `<p class="lede">${escapeHtml(description)}</p>` : '',
-    '</div></header>',
+    heroActions,
+    '</div>',
+    cover ? `<div class="hero-photo">${img(cover, '', style.coverSizes, true)}${style.coverOrnament}</div>` : '',
+    '</header>',
+    band,
     '<main>',
-    products.length > 0 ? `<section aria-labelledby="sp"><h2 id="sp">Sản phẩm</h2><ul class="products">${products.join('')}</ul></section>` : '',
+    products.length > 0 ? `<section class="menu" aria-labelledby="sp"><h2 id="sp">Sản phẩm</h2><ul class="products">${products.join('')}</ul></section>` : '',
     orderSection,
     contacts.length > 0 ? `<section class="contact" aria-labelledby="lh"><h2 id="lh">Liên hệ</h2><ul>${contacts.join('')}</ul></section>` : '',
     '</main>',
     madeWith,
+    dock,
     '</body>',
     '</html>',
     '',

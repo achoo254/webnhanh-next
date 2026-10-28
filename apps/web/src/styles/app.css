@@ -639,6 +639,137 @@ button.bento-card:focus-visible {
   font-weight: 700;
 }
 
+/* Style picker: three cards, each a small drawing of the look in the page's colours (--t-*, set inline). */
+.style-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.style-option {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  cursor: pointer;
+}
+.style-option input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.style-option:has(input:checked) {
+  border-color: var(--c-text);
+  box-shadow: 0 0 0 1.5px var(--c-text);
+}
+.style-option:has(input:focus-visible) {
+  box-shadow: var(--shadow-focus-primary);
+}
+.style-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+.style-hint {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--c-text-muted);
+}
+.style-thumb {
+  position: relative;
+  display: block;
+  height: 76px;
+  overflow: hidden;
+  border-radius: calc(var(--radius-lg) - 4px);
+  background: var(--t-soft);
+  color: var(--t-ink);
+}
+.style-thumb > span {
+  position: absolute;
+}
+.thumb-aa {
+  font-size: 26px;
+  line-height: 1;
+}
+/* Bold: an accent block with an ink outline and hard shadow, a sticker dot. */
+.style-thumb[data-style='ruc-ro'] .thumb-art {
+  inset: 8px 8px 14px 8px;
+  border: 2px solid var(--t-ink);
+  border-radius: 8px;
+  background: var(--t-accent);
+  box-shadow: 3px 3px 0 var(--t-ink);
+}
+.style-thumb[data-style='ruc-ro'] .thumb-aa {
+  left: 16px;
+  bottom: 22px;
+  color: #fff;
+}
+.style-thumb[data-style='ruc-ro'] .thumb-lines {
+  top: 3px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--t-ink);
+  border-radius: 50%;
+  background: var(--t-pop);
+}
+/* Refined: paper white, a serif name under a short accent rule, hairlines like a menu. */
+.style-thumb[data-style='tinh-te'] {
+  background: color-mix(in srgb, var(--t-soft) 40%, #fff);
+}
+.style-thumb[data-style='tinh-te'] .thumb-art {
+  top: 12px;
+  left: 12px;
+  width: 18px;
+  height: 2px;
+  background: var(--t-accent);
+}
+.style-thumb[data-style='tinh-te'] .thumb-aa {
+  top: 20px;
+  left: 12px;
+  font-size: 30px;
+}
+.style-thumb[data-style='tinh-te'] .thumb-lines {
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  height: 9px;
+  border-top: 1px solid color-mix(in srgb, var(--t-ink) 30%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--t-ink) 30%, transparent);
+}
+/* Cosy: dotted paper, a tilted photo print with tape, a rounded name. */
+.style-thumb[data-style='am-cung'] {
+  background-image: radial-gradient(color-mix(in srgb, var(--t-ink) 14%, transparent) 1px, transparent 1.5px);
+  background-size: 9px 9px;
+}
+.style-thumb[data-style='am-cung'] .thumb-art {
+  top: 12px;
+  left: 10px;
+  width: 38px;
+  height: 44px;
+  padding: 3px 3px 10px;
+  border-radius: 3px;
+  background: #fff linear-gradient(var(--t-accent), var(--t-accent)) 3px 3px / calc(100% - 6px) calc(100% - 13px) no-repeat;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--t-ink) 20%, transparent);
+  transform: rotate(-6deg);
+}
+.style-thumb[data-style='am-cung'] .thumb-lines {
+  top: 8px;
+  left: 20px;
+  width: 20px;
+  height: 7px;
+  background: color-mix(in srgb, var(--t-pop) 85%, transparent);
+  transform: rotate(4deg);
+}
+.style-thumb[data-style='am-cung'] .thumb-aa {
+  right: 10px;
+  bottom: 14px;
+}
+
 /* Publish: stays in reach at the bottom of a phone screen. A field scrolled into view (focus, find) stops above it. */
 :root:has(.editor-publish) {
   scroll-padding-bottom: 200px;

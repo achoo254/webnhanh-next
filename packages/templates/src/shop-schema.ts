@@ -26,6 +26,14 @@ export const LIMITS = {
 export const PALETTE_IDS = ['berry', 'rose', 'sunset', 'leaf', 'ocean', 'ink'] as const;
 export type PaletteId = (typeof PALETTE_IDS)[number];
 
+/**
+ * The page's look, each its own layout, type and decoration (any palette goes with any style). Drafts saved before
+ * styles existed have none and read as DEFAULT_STYLE.
+ */
+export const STYLE_IDS = ['ruc-ro', 'tinh-te', 'am-cung'] as const;
+export type StyleId = (typeof STYLE_IDS)[number];
+export const DEFAULT_STYLE: StyleId = 'ruc-ro';
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const line = (max: number) => z.string().max(max).refine((v) => isPlainText(v, false), 'control-characters');
@@ -59,6 +67,7 @@ export const shopDraftSchema = z
       })
       .strict(),
     palette: z.enum(PALETTE_IDS),
+    style: z.enum(STYLE_IDS).default(DEFAULT_STYLE),
   })
   .strict()
   .refine((draft) => new Set(draft.products.map((p) => p.key)).size === draft.products.length, 'duplicate-product-key');
@@ -113,6 +122,7 @@ export function newShopDraft(samples: { cover: string; products: readonly string
     products: samples.products.map((image, index) => ({ key: `p${index + 1}`, name: '', image, description: '', price: '' })),
     contacts: { zalo: '', phone: '', facebook: '' },
     palette: 'berry',
+    style: DEFAULT_STYLE,
   };
 }
 

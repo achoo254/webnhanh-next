@@ -20,7 +20,8 @@ function site(overrides: Record<string, unknown> = {}) {
   return { id: SITE_ID, name: 'nha-bo', template: 'shop', status: 'draft', published: false, createdAt: NOW, updatedAt: NOW, cover: images[0], job: null, newOrders: 0, ...overrides };
 }
 
-function emptyDraft(): ShopDraft {
+/** A new site's draft as stored before pages had a style: the editor reads it in the default style. */
+function emptyDraft(): Omit<ShopDraft, 'style'> {
   return {
     name: '',
     description: '',
@@ -173,6 +174,29 @@ describe('editor', () => {
     expect(frame().getAttribute('srcdoc')).toContain('#c2410c');
   });
 
+  it('reads a draft without a style in the default one, and switches the preview to the style picked', async () => {
+    let saved: unknown = null;
+    on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
+    on('PUT', `/api/sites/${SITE_ID}/draft`, (init) => {
+      saved = JSON.parse(String(init?.body));
+      return { status: 200, body: { updatedAt: NOW } };
+    });
+    renderAt(`/sites/${SITE_ID}`);
+    const bold = (await screen.findByRole('radio', { name: /Rực rỡ/ })) as HTMLInputElement;
+    expect(bold.checked).toBe(true);
+    expect(frame().getAttribute('srcdoc')).toContain('<body class="s-ruc-ro');
+    // The preview loads the style's fonts from the app itself, and shows the order form once a product has a name.
+    expect(frame().getAttribute('srcdoc')).toContain('url(/assets/preview-fonts/bricolage-grotesque-latin-800-normal.woff2)');
+    expect(frame().getAttribute('srcdoc')).not.toContain('id="dat-hang"');
+    fireEvent.change(screen.getByLabelText('Tên sản phẩm'), { target: { value: 'Món một' } });
+    expect(frame().getAttribute('srcdoc')).toContain('id="dat-hang"');
+
+    fireEvent.click(screen.getByRole('radio', { name: /Tinh tế/ }));
+    expect(frame().getAttribute('srcdoc')).toContain('<body class="s-tinh-te');
+    expect(frame().getAttribute('srcdoc')).toContain('url(/assets/preview-fonts/newsreader-latin-500-normal.woff2)');
+    await waitFor(() => expect(saved).toMatchObject({ draft: { style: 'tinh-te' } }), { timeout: 3000 });
+  });
+
   it('marks wrong contacts at once and what is missing when Publish is pressed', async () => {
     on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
     renderAt(`/sites/${SITE_ID}`);
@@ -185,7 +209,7 @@ describe('editor', () => {
   });
 
   it('publishes: saves, shows each step with its time, then the live link', async () => {
-    const ready: ShopDraft = { ...emptyDraft(), name: 'Tiệm Bơ', products: [{ key: 'p1', name: 'Món một', image: P1, description: '', price: '' }] };
+    const ready: ShopDraft = { ...emptyDraft(), style: 'ruc-ro', name: 'Tiệm Bơ', products: [{ key: 'p1', name: 'Món một', image: P1, description: '', price: '' }] };
     const job = { id: '55555555-5555-4555-8555-555555555555', siteId: SITE_ID, type: 'publish', error: null, createdAt: NOW, finishedAt: null };
     const at = (s: number) => new Date(Date.parse(NOW) + s * 1000).toISOString();
     let polls = 0;

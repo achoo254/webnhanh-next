@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER_SCRIPT_HASH } from './order-form';
 import { imageAsset, renderShop, type ImageAsset } from './shop-render';
-import type { ShopDraft } from './shop-schema';
+import { styleFontFiles } from './shop-fonts';
+import { STYLE_IDS, type ShopDraft } from './shop-schema';
+import { SHOP_STYLES } from './shop-styles';
 
 const COVER = '11111111-1111-4111-8111-111111111111';
 const P1 = '22222222-2222-4222-8222-222222222222';
@@ -19,6 +21,7 @@ function draft(overrides: Partial<ShopDraft> = {}): ShopDraft {
     products: [{ key: 'p1', name: 'Bánh tráng trộn', image: P1, description: 'Cay vừa', price: '25.000đ' }],
     contacts: { zalo: '0912345678', phone: '0912345678', facebook: 'tiembanhtrang' },
     palette: 'sunset',
+    style: 'ruc-ro',
     ...overrides,
   };
 }
@@ -132,5 +135,68 @@ describe('renderShop order form and sharing', () => {
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
     expect(renderShop(draft(), assets).html).toContain('<meta name="twitter:card" content="summary">');
     expect(() => renderShop(draft(), assets, { page: { url: 'javascript:alert(1)' } })).toThrow();
+  });
+});
+
+describe('renderShop styles', () => {
+  const form = { action: 'https://app.example.com/f/nha-bo', token: '1.abc' };
+
+  it.each(STYLE_IDS)('renders the %s style with its own stylesheet and, given font URLs, its own fonts only', (style) => {
+    const { html } = renderShop(draft({ style }), assets, { orderForm: form, fontUrl: (file) => `fonts/${file}` });
+    expect(html).toContain(`<body class="s-${style} has-dock">`);
+    expect(html).toContain(SHOP_STYLES[style].css.slice(0, 40));
+    for (const other of STYLE_IDS.filter((s) => s !== style)) expect(html).not.toContain(`.s-${other}`);
+    const fonts = styleFontFiles(style);
+    for (const font of fonts) expect(html).toContain(`url(fonts/${font.file}) format("woff2")`);
+    expect(html.match(/@font-face/g)).toHaveLength(fonts.length);
+    expect(html).toContain('font-display:swap');
+    // One preload: the display face's Latin file.
+    expect(html.match(/rel="preload"/g)).toHaveLength(1);
+    expect(html).toContain(`<link rel="preload" href="fonts/${fonts[0]?.file}" as="font" type="font/woff2" crossorigin>`);
+    expect(html).toContain('font-src &#39;self&#39;');
+  });
+
+  it('loads no font and allows none without font URLs', () => {
+    const { html } = renderShop(draft(), assets);
+    expect(html).not.toContain('@font-face');
+    expect(html).not.toContain('font-src');
+  });
+
+  it('refuses a font URL that could leave the site', () => {
+    expect(() => renderShop(draft(), assets, { fontUrl: (file) => `//evil.com/${file}` })).toThrow('refused asset url');
+  });
+
+  it('leads with ordering and the shop’s Zalo, in the header and the phone bar, and lets each product be picked', () => {
+    const { html } = renderShop(draft(), assets, { orderForm: form });
+    expect(html).toContain('<div class="actions"><a class="btn btn-primary" href="#dat-hang">');
+    expect(html).toContain('Đặt hàng</a><a class="btn btn-secondary" href="https://zalo.me/0912345678">');
+    expect(html).toContain('<nav class="dock" aria-label="Đặt nhanh">');
+    expect(html).toContain('<a class="pick" href="#dat-hang" data-p="p1">Chọn mua<span class="vh"> Bánh tráng trộn</span></a>');
+    expect(html).toContain('<section class="order" id="dat-hang"');
+  });
+
+  it('calls the shop when there is no form, and has no bar or pick links without anything to act on', () => {
+    const withPhone = renderShop(draft({ contacts: { zalo: '', phone: '0912345678', facebook: '' } }), assets).html;
+    expect(withPhone).toContain('<a class="btn btn-primary" href="tel:+84912345678">');
+    expect(withPhone).toContain('Gọi ngay</a>');
+    expect(withPhone).not.toContain('class="pick"');
+    const nothing = renderShop(draft({ contacts: { zalo: '', phone: '', facebook: '' } }), assets).html;
+    expect(nothing).not.toContain('class="actions"');
+    expect(nothing).not.toContain('<nav');
+    expect(nothing).toContain('<body class="s-ruc-ro">');
+  });
+
+  it('escapes what the owner typed in the name band, pick links, contacts and bar', () => {
+    const evil = `"><script>alert(1)</script>'&`;
+    const { html } = renderShop(
+      draft({ name: evil, products: [{ key: 'p1', name: evil, image: P1, description: '', price: evil }], contacts: { zalo: '0912345678', phone: '', facebook: '' } }),
+      assets,
+      { orderForm: form },
+    );
+    const escaped = '&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;&#39;&amp;';
+    expect(html.match(/<script>/g)).toHaveLength(1);
+    expect(html).toContain(`<p class="band">${escaped} ✦ `);
+    expect(html).toContain(`Chọn mua<span class="vh"> ${escaped}</span>`);
+    expect(html).toContain('<span class="c-value">0912 345 678</span>');
   });
 });

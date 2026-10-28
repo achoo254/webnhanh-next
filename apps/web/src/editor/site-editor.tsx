@@ -9,6 +9,7 @@ import { AddressPanel } from './address-panel';
 import { ImageField } from './image-field';
 import { ProductList } from './product-list';
 import { PublishPanel } from './publish-panel';
+import { previewFontUrl, StylePicker } from './style-picker';
 import { TextField } from './text-field';
 
 /** Saves this long after the last change. */
@@ -78,10 +79,20 @@ function SaveStatus({ dirty, state }: { readonly dirty: boolean; readonly state:
   );
 }
 
-/** The page as visitors will see it: the same renderer as the published page, in a frame that runs no script. */
-function Preview({ draft, assets }: { readonly draft: ShopDraft; readonly assets: ReadonlyMap<string, ImageAsset> }): ReactNode {
+/**
+ * The page as visitors will see it: the same renderer as the published page, order form and fonts included, in a
+ * frame that runs no script and sends no form (the form's token is a stand-in; the frame cannot submit anyway).
+ */
+function Preview({ draft, assets, siteName }: { readonly draft: ShopDraft; readonly assets: ReadonlyMap<string, ImageAsset>; readonly siteName: string }): ReactNode {
   const { t } = useI18n();
-  const html = useMemo(() => renderShop(draft, assets, { madeWith: { name: brand.appName, url: window.location.origin } }).html, [draft, assets]);
+  const html = useMemo(() => {
+    const origin = window.location.origin;
+    return renderShop(draft, assets, {
+      madeWith: { name: brand.appName, url: origin },
+      orderForm: { action: `${origin}/f/${siteName}`, token: 'preview' },
+      fontUrl: previewFontUrl,
+    }).html;
+  }, [draft, assets, siteName]);
   return (
     <iframe
       className="preview-frame"
@@ -263,6 +274,8 @@ export function SiteEditor({
             />
           </section>
 
+          <StylePicker value={draft.style} palette={draft.palette} onChange={(style) => edit({ style })} />
+
           <fieldset className="panel palette">
             <legend className="panel-title">{t('editor.palette')}</legend>
             <div className="swatches">
@@ -278,7 +291,7 @@ export function SiteEditor({
         </div>
 
         <div className="editor-preview">
-          <Preview draft={draft} assets={assets} />
+          <Preview draft={draft} assets={assets} siteName={site.name} />
         </div>
       </div>
 

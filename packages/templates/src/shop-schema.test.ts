@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { facebookLink, normalizePhone, phoneLink, zaloLink } from './contact-links';
-import { newShopDraft, shopDraftSchema, shopImageIds, shopPublishIssues, type ShopDraft } from './shop-schema';
+import { DEFAULT_STYLE, newShopDraft, shopDraftSchema, shopImageIds, shopPublishIssues, type ShopDraft } from './shop-schema';
 
 const COVER = '11111111-1111-4111-8111-111111111111';
 const P1 = '22222222-2222-4222-8222-222222222222';
@@ -13,6 +13,7 @@ function draft(overrides: Partial<ShopDraft> = {}): ShopDraft {
     products: [{ key: 'p1', name: 'Bánh tráng trộn', image: P1, description: '', price: '25.000đ' }],
     contacts: { zalo: '0912 345 678', phone: '', facebook: '' },
     palette: 'sunset',
+    style: 'ruc-ro',
     ...overrides,
   };
 }
@@ -26,6 +27,7 @@ describe('shop draft schema', () => {
   it.each([
     ['an unknown field', { ...draft(), script: 'x' }],
     ['an unknown colour', { ...draft(), palette: 'neon' }],
+    ['an unknown style', { ...draft(), style: 'neon' }],
     ['a name too long', draft({ name: 'x'.repeat(81) })],
     ['a line break in the name', draft({ name: 'a\nb' })],
     ['a control character', draft({ description: 'a\u0000b' })],
@@ -35,6 +37,13 @@ describe('shop draft schema', () => {
     ['a product key with odd characters', draft({ products: [{ key: '<p>', name: 'x', image: null, description: '', price: '' }] })],
   ])('refuses %s', (_label, value) => {
     expect(shopDraftSchema.safeParse(value).success).toBe(false);
+  });
+
+  it('reads a draft saved before styles existed in the default style', () => {
+    const { style: _style, ...stored } = draft({ style: 'am-cung' });
+    expect(shopDraftSchema.parse(stored).style).toBe(DEFAULT_STYLE);
+    expect(shopDraftSchema.parse({ ...stored, style: 'tinh-te' }).style).toBe('tinh-te');
+    expect(newShopDraft({ cover: COVER, products: [] }).style).toBe(DEFAULT_STYLE);
   });
 
   it('lists what keeps a draft from being published', () => {

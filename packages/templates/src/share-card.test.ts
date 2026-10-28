@@ -12,6 +12,7 @@ const draft: ShopDraft = {
   products: [],
   contacts: { zalo: '', phone: '', facebook: '' },
   palette: 'leaf',
+  style: 'tinh-te',
 };
 
 describe('renderShareCard', () => {
