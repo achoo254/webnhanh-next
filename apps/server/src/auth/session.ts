@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
 import { accounts, SESSION_ABSOLUTE_MS, SESSION_IDLE_MS, sessions, type Db } from '@trang/db';
-import { eq, lt, lte, or, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import type { CookieOptions, Response } from 'express';
 import type { ServerConfig } from '../config';
 
@@ -64,14 +64,6 @@ export async function sessionAccount(db: Db, token: string, now: Date): Promise<
 
 export async function deleteSession(db: Db, token: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, hashToken(token)));
-}
-
-/**
- * Deletes every session that expired or went unused for SESSION_IDLE_MS. Run on each sign-in: there is no
- * background worker yet, and sign-ins are rare enough for the extra delete to cost nothing.
- */
-export async function pruneSessions(db: Db, now: Date): Promise<void> {
-  await db.delete(sessions).where(or(lte(sessions.expiresAt, now), lt(sessions.lastSeenAt, new Date(now.getTime() - SESSION_IDLE_MS))));
 }
 
 /**

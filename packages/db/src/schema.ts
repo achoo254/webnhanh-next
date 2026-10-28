@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
 export const accounts = pgTable('accounts', {
@@ -28,7 +28,7 @@ export const sessions = pgTable(
   (t) => [index('sessions_account_idx').on(t.accountId), index('sessions_expires_idx').on(t.expiresAt)],
 );
 
-export const SITE_KINDS =['template', 'developer'] as const;
+export const SITE_KINDS = ['template', 'developer'] as const;
 export type SiteKind = (typeof SITE_KINDS)[number];
 
 export const SITE_STATUSES = ['draft', 'published', 'pending-review', 'removed'] as const;
@@ -47,6 +47,13 @@ export const sites = pgTable(
     status: text('status').$type<SiteStatus>().notNull(),
     /** The release `current` points to; null until the first publish. */
     currentReleaseId: uuid('current_release_id'),
+    /** Template of a `template` site (`@trang/templates`); null for developer sites. */
+    template: text('template'),
+    /**
+     * What the owner is editing, checked against the template's draft schema on every save. The last publish rendered
+     * the draft as it was then; the live site does not change until the next publish.
+     */
+    draft: jsonb('draft').$type<unknown>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
@@ -123,4 +130,50 @@ export const jobs = pgTable(
     check('jobs_type_check', sql`${t.type} in ('publish', 'build')`),
     check('jobs_status_check', sql`${t.status} in ('queued', 'running', 'done', 'failed', 'skipped')`),
   ],
+);
+
+/**
+ * A photo uploaded for one site: stored as WebP, at most 1600 px on its longer side, without metadata, in one file per width
+ * under UPLOADS_DIR/<site id>/ (`siteImageFile`). A publish copies the ones the draft uses into the release.
+ */
+export const siteImages = pgTable(
+  'site_images',
+  {
+    id: uuid('id').primaryKey(),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    /** Size of the largest file. */
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    /** Widths stored, ascending; the last one is `width`. */
+    widths: jsonb('widths').$type<number[]>().notNull(),
+    /** All files of the image together, counted against the site's size limit. */
+    bytes: integer('bytes').notNull(),
+    /** One of the template's sample photos, copied in when the site was made: the editor marks it for replacing. */
+    sample: boolean('sample').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('site_images_site_idx').on(t.siteId, t.createdAt)],
+);
+
+/** How long the old name of a renamed site stays reserved (answering 404) before anyone can take it. */
+export const NAME_HOLD_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Old names of renamed, published sites. A link someone already shared must not lead to another person's page for a
+ * while: the name answers 404 (its directory is removed by the next publish) and nobody else can take it until
+ * `held_until`. The site that let it go can take it back.
+ */
+export const siteNameHolds = pgTable(
+  'site_name_holds',
+  {
+    name: text('name').primaryKey(),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    heldUntil: timestamp('held_until', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('site_name_holds_site_idx').on(t.siteId)],
 );
