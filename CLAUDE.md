@@ -21,8 +21,11 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   ba; form đặt hàng chỉ gửi về app (`POST /f/<tên>`), CSP trong trang cho phép đúng origin đó.
 - Script của form đặt hàng (`ORDER_SCRIPT` trong `packages/templates/src/order-form.ts`) được CSP cho phép bằng hash
   `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Không thêm script nào khác vào trang mẫu.
-- `/f/:site` và `/hooks/chat` gắn trước `requireAllowedOrigin` và tự kiểm (CORS theo origin của site + token ký;
-  HMAC của bot). Route mới của app đặt sau, như cũ.
+- `/f/:site`, `/hooks/chat` và `/hooks/git/:site` gắn trước `requireAllowedOrigin` và tự kiểm (CORS theo origin của
+  site + token ký; HMAC của bot; secret webhook của từng site). Route mới của app đặt sau, như cũ.
+- Build của lập trình viên chạy trong `webnhanh-builder` (nhóm `docker`); mọi lệnh `docker` chỉ đi qua
+  `apps/worker/src/build/run-build.ts` với mảng tham số đã kiểm, không ghép chuỗi lệnh từ input. Builder không ghi
+  `SITES_DIR`: output vào `BUILD_OUTPUT_DIR`, worker phát hành.
 - Báo đơn đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
   và thử lại riêng (`notifications/deliveries.ts`), một kênh lỗi không chặn kênh khác. Gửi từ `webnhanh-server`
   (worker chỉ nói chuyện loopback). Endpoint push chỉ nhận host dịch vụ push của trình duyệt (`isPushEndpoint`).
