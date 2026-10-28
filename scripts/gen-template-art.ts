@@ -1,7 +1,7 @@
 /**
  * Draws the pictures of the template variants (`packages/templates/variants/<template>/<variant>.json`) on the home PC
  * with the `inet-artgen` skill, one at a time, and keeps them as WebP in `packages/templates/library/<template>/<variant>/`.
- * The seed of every picture drawn is written back into its variant file, so a picture can be drawn again exactly.
+ * The seed of every picture drawn is written back into its variant file, so a picture without `ref` can be drawn again exactly (one drawn after a `ref` only closely: the reference is now the resized file).
  * A picture is kept at the size a page shows it (`librarySize`: photos 900 px on the long side like `samples/`,
  * ornaments 512 px), and the variant's first slot also gives its 240 px thumbnail for the app's template picker
  * (`thumbs/<template>/<variant>.webp`).

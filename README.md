@@ -73,7 +73,7 @@ sinh thái; thuộc về hoandat, giữ mọi quyền, không phải CC0). `pnpm
 vào `brand/icon.svg` và `brand/icon-maskable.svg`; favicon, manifest và dấu app trên header đều đọc `brand/icon.svg`.
 
 Ảnh mẫu của các biến thể (`packages/templates/library/`) vẽ bằng `pnpm exec tsx scripts/gen-template-art.ts` (xem đầu
-file); mỗi ảnh ghi seed vào file biến thể để vẽ lại đúng như cũ. Ảnh lưu đúng cỡ trang hiển thị (`librarySize`: ảnh 900 px
+file); mỗi ảnh ghi seed vào file biến thể: ảnh không có `ref` vẽ lại được y như cũ, ảnh vẽ theo `ref` chỉ gần giống (ảnh tham chiếu giờ là bản đã thu nhỏ). Ảnh lưu đúng cỡ trang hiển thị (`librarySize`: ảnh 900 px
 cạnh dài như `samples/`, hoạ tiết 512 px) kèm ảnh thu nhỏ cho trang chọn mẫu (`packages/templates/thumbs/`); `--refit`
 thu nhỏ lại ảnh có sẵn và viết ảnh thu nhỏ còn thiếu mà không cần PC.
 
