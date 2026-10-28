@@ -19,12 +19,24 @@ function SiteCard({ site }: { readonly site: Site }): ReactNode {
     <li className="site-card" data-id={`site-${site.name}`}>
       <div className="site-card-media">{site.cover ? <img src={thumbUrl(site.id, site.cover, 480)} alt="" loading="lazy" /> : null}</div>
       <div className="site-card-body">
-        <span className={`badge badge-${status.tone}`}>{t(status.key)}</span>
+        <div className="row">
+          <span className={`badge badge-${status.tone}`}>{t(status.key)}</span>
+          {site.newOrders > 0 ? (
+            <span className="badge badge-orders" data-id={`site-${site.name}-new-orders`}>
+              {t('home.newOrders', { n: site.newOrders })}
+            </span>
+          ) : null}
+        </div>
         <h2 className="site-card-name">{siteHost(site.name)}</h2>
         <div className="site-card-actions">
           <Link className="pill pill-dark" to={`/sites/${site.id}`} data-id={`site-${site.name}-edit`}>
             {t('home.edit')}
           </Link>
+          {site.published || site.newOrders > 0 ? (
+            <Link className="pill pill-ghost" to={`/sites/${site.id}/orders`} data-id={`site-${site.name}-orders`}>
+              {t('home.orders')}
+            </Link>
+          ) : null}
           {site.published ? (
             <a className="pill pill-ghost" href={`https://${siteHost(site.name)}/`} target="_blank" rel="noopener noreferrer" data-id={`site-${site.name}-view`}>
               {t('home.view')}

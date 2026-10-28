@@ -41,6 +41,8 @@ const siteSchema = z.object({
   updatedAt: z.string(),
   cover: imageSchema.nullable(),
   job: jobSchema.nullable(),
+  /** Orders not yet marked handled. */
+  newOrders: z.number(),
 });
 export type Site = z.infer<typeof siteSchema>;
 
@@ -58,13 +60,13 @@ const detailSchema = z.object({
 });
 export type SiteDetail = z.infer<typeof detailSchema>;
 
-function parse<T>(schema: z.ZodType<T>, body: unknown): T {
+export function parse<T>(schema: z.ZodType<T>, body: unknown): T {
   const parsed = schema.safeParse(body);
   if (!parsed.success) throw new ApiError(500, 'bad-response');
   return parsed.data;
 }
 
-const sendJson = (method: string, value: unknown): RequestInit => ({
+export const sendJson = (method: string, value: unknown): RequestInit => ({
   method,
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(value),

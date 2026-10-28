@@ -13,6 +13,7 @@ import { LOGIN_PATH, TrangPage } from './public-page';
 const HomePage = lazy(() => import('./pages/home-page').then((m) => ({ default: m.HomePage })));
 const NewSitePage = lazy(() => import('./pages/new-site-page').then((m) => ({ default: m.NewSitePage })));
 const EditorPage = lazy(() => import('./pages/editor-page').then((m) => ({ default: m.EditorPage })));
+const OrdersPage = lazy(() => import('./pages/orders-page').then((m) => ({ default: m.OrdersPage })));
 
 function Loading(): ReactNode {
   const { t } = useI18n();
@@ -40,6 +41,7 @@ export function App(): ReactNode {
         <Route path="/" element={<Home />} />
         <Route path="/new" element={<NewSitePage />} />
         <Route path="/sites/:siteId" element={<EditorPage />} />
+        <Route path="/sites/:siteId/orders" element={<OrdersPage />} />
         <Route path={LOGIN_PATH} element={<LoginPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />

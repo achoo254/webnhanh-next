@@ -17,7 +17,7 @@ const images = [
 ];
 
 function site(overrides: Record<string, unknown> = {}) {
-  return { id: SITE_ID, name: 'nha-bo', template: 'shop', status: 'draft', published: false, createdAt: NOW, updatedAt: NOW, cover: images[0], job: null, ...overrides };
+  return { id: SITE_ID, name: 'nha-bo', template: 'shop', status: 'draft', published: false, createdAt: NOW, updatedAt: NOW, cover: images[0], job: null, newOrders: 0, ...overrides };
 }
 
 function emptyDraft(): ShopDraft {
