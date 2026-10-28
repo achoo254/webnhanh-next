@@ -1,6 +1,8 @@
 /**
- * The `publish` job: the site's current draft, rendered with its template, its photos copied beside it, made live
- * through @webnhanh/publish. Each named step is timed in `jobs.steps` for the progress screen.
+ * The `publish` job: the site's current draft, rendered with its template (any of `@webnhanh/templates`), its photos
+ * and the look's fonts copied beside it, its share picture photographed, made live through @webnhanh/publish. Each
+ * named step is timed in `jobs.steps` for the progress screen. What went live is kept in `sites.live_page`, so the page
+ * can be rendered again later without the draft (`renderLivePage`, used by the wedding countdown refresh).
  */
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
@@ -9,6 +11,8 @@ import path from 'node:path';
 import {
   imageFileName,
   jobs,
+  type LivePage,
+  type OrderFormSpec,
   releases,
   saveJobSteps,
   signFormToken,
@@ -24,19 +28,19 @@ import {
 } from '@webnhanh/db';
 import { publishRelease, PublishError, removeSite } from '@webnhanh/publish';
 import {
+  draftShareCard,
   imageAsset,
   orderProducts,
-  renderShareCard,
-  renderShop,
+  parseDraft,
+  publishIssues,
+  renderCard,
+  renderDraft,
   SHARE_CARD_SIZE,
-  SHOP_TEMPLATE,
-  shopDraftSchema,
-  shopImageIds,
-  shopPublishIssues,
   styleFontFiles,
+  templateImageIds,
   type ImageAsset,
   type ShareImage,
-  type ShopDraft,
+  type TemplateDraft,
 } from '@webnhanh/templates';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { fontFilePath, pageFontUrl } from './font-files';
@@ -108,8 +112,11 @@ class StepClock {
   }
 }
 
-/** At most one file per width of each of 31 photos, plus the page, its share picture and its font files. */
-const MAX_FILES = 200;
+/**
+ * Three widths of each photo of the largest page (a café menu: a cover and 120 dishes), plus the page, its share
+ * picture and its font files. The site's size limit still applies on top.
+ */
+const MAX_FILES = 400;
 
 /**
  * Publishes the job's site. Returns the new release id; the job itself is marked done or failed by the caller
@@ -121,13 +128,12 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
 
   await clock.begin('prepare');
   const [site] = await db.select().from(sites).where(and(eq(sites.id, job.siteId), eq(sites.accountId, job.accountId)));
-  if (!site || site.kind !== 'template' || site.template !== SHOP_TEMPLATE) throw new JobError('site-missing', `site ${job.siteId}`);
-  const parsed = shopDraftSchema.safeParse(site.draft);
-  if (!parsed.success) throw new JobError('draft-invalid', 'draft does not match the schema');
-  const draft = parsed.data;
-  const issues = shopPublishIssues(draft);
+  if (!site || site.kind !== 'template') throw new JobError('site-missing', `site ${job.siteId}`);
+  const value = parseDraft(site.template, site.draft);
+  if (!value) throw new JobError('draft-invalid', `draft does not match the schema of ${site.template ?? 'no template'}`);
+  const issues = publishIssues(value);
   if (issues.length > 0) throw new JobError('draft-invalid', issues.map((i) => `${i.field}:${i.code}`).join(','));
-  const ids = shopImageIds(draft);
+  const ids = templateImageIds(value);
   const images = ids.length > 0 ? await db.select().from(siteImages).where(and(eq(siteImages.siteId, site.id), inArray(siteImages.id, ids))) : [];
   if (images.length !== ids.length) throw new JobError('image-missing', `${ids.length - images.length} photo(s) not stored`);
 
@@ -137,18 +143,11 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
     await clock.begin('render');
     const assets = new Map<string, ImageAsset>(images.map((image) => [image.id, imageAsset(image, (width) => `img/${imageFileName(image.id, width)}`)]));
     await mkdir(path.join(work, 'img'), { recursive: true });
-    const pageUrl = `${siteOrigin(site.name)}/`;
-    const shareImage = await shareImageOf(deps, { siteId: site.id, siteName: site.name, draft, images, assets, work, releaseId });
-    const { html } = renderShop(draft, assets, {
-      madeWith: deps.madeWith,
-      orderForm: { action: `${deps.appUrl}/f/${site.name}`, token: signFormToken(deps.formSecret, site.id, deps.now()) },
-      page: { url: pageUrl, image: shareImage ? { ...shareImage, url: `${pageUrl}${shareImage.file}` } : undefined },
-      fontUrl: pageFontUrl,
-    });
-    await writeFile(path.join(work, 'index.html'), html);
+    const shareImage = await shareImageOf(deps, { siteId: site.id, siteName: site.name, value, images, assets, work, releaseId });
+    await writeFile(path.join(work, 'index.html'), renderLivePage(deps, site, value, assets, shareImage));
     // The style's fonts ship inside the release, beside the page: the page asks no one else for them.
     await mkdir(path.join(work, 'fonts'));
-    for (const font of styleFontFiles(draft.style)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
+    for (const font of styleFontFiles(value.draft.style)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
 
     await clock.begin('images');
     for (const image of images) {
@@ -175,9 +174,14 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
     const now = deps.now();
     await db.transaction(async (tx) => {
       await tx.insert(releases).values({ id: releaseId, siteId: site.id, source: 'template', bytes: result.bytes, fileCount: result.fileCount, createdAt: now });
+      const livePage: LivePage = {
+        draft: value.draft,
+        images: images.map((image) => ({ id: image.id, width: image.width, height: image.height, widths: image.widths })),
+        shareImage,
+      };
       await tx
         .update(sites)
-        .set({ currentReleaseId: releaseId, status: 'published', orderForm: { products: orderProducts(draft).map(({ key, name }) => ({ key, name })) }, updatedAt: now })
+        .set({ currentReleaseId: releaseId, status: 'published', orderForm: formSpecOf(value), livePage, updatedAt: now })
         .where(eq(sites.id, site.id));
       await tx.update(jobs).set({ releaseId }).where(eq(jobs.id, job.id));
     });
@@ -196,6 +200,40 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
 
 type ImageRow = typeof siteImages.$inferSelect;
 
+/** The share picture of a live page: its file in the release and what `og:image` says of it. */
+export type LiveShareImage = Omit<ShareImage, 'url'> & { file: string };
+
+/** What the form of the live page takes (`sites.order_form`): a shop's products, a wedding's replies, or nothing. */
+export function formSpecOf(value: TemplateDraft): OrderFormSpec | null {
+  if (value.template === 'shop') return { products: orderProducts(value.draft).map(({ key, name }) => ({ key, name })) };
+  if (value.template === 'wedding' && value.draft.rsvp) return { products: [], rsvp: true };
+  return null;
+}
+
+/**
+ * The page's HTML as it goes live: its form (orders of a shop, replies of a wedding) posting to the app with a token
+ * signed now, its address and share picture, fonts beside it, and a wedding's countdown as of now.
+ */
+export function renderLivePage(
+  deps: Pick<PublishDeps, 'appUrl' | 'formSecret' | 'madeWith' | 'now'>,
+  site: { readonly id: string; readonly name: string },
+  value: TemplateDraft,
+  assets: ReadonlyMap<string, ImageAsset>,
+  shareImage: LiveShareImage | null,
+): string {
+  const now = deps.now();
+  const form = { action: `${deps.appUrl}/f/${site.name}`, token: signFormToken(deps.formSecret, site.id, now) };
+  const pageUrl = `${siteOrigin(site.name)}/`;
+  return renderDraft(value, assets, {
+    madeWith: deps.madeWith,
+    orderForm: value.template === 'shop' ? form : undefined,
+    rsvpForm: value.template === 'wedding' ? form : undefined,
+    now,
+    page: { url: pageUrl, image: shareImage ? { ...shareImage, url: `${pageUrl}${shareImage.file}` } : undefined },
+    fontUrl: pageFontUrl,
+  }).html;
+}
+
 /**
  * Photographs the share card into the release as `og-<release>.<ext>` (a new name per release, so Zalo and Facebook
  * fetch the new picture after a change). Null, logged, when there is no Chrome or it failed: the page goes out
@@ -203,17 +241,18 @@ type ImageRow = typeof siteImages.$inferSelect;
  */
 async function shareImageOf(
   deps: PublishDeps,
-  page: { siteId: string; siteName: string; draft: ShopDraft; images: readonly ImageRow[]; assets: ReadonlyMap<string, ImageAsset>; work: string; releaseId: string },
-): Promise<(Omit<ShareImage, 'url'> & { file: string }) | null> {
+  page: { siteId: string; siteName: string; value: TemplateDraft; images: readonly ImageRow[]; assets: ReadonlyMap<string, ImageAsset>; work: string; releaseId: string },
+): Promise<LiveShareImage | null> {
   if (!deps.chromePath) {
     deps.log.info(`site ${page.siteName}: no CHROME_PATH, published without a share picture`);
     return null;
   }
   const cardDir = `${page.work}-card`;
   try {
-    const cover = page.images.find((image) => image.id === page.draft.cover);
+    const content = draftShareCard(page.value);
+    const cover = page.images.find((image) => image.id === content.photo);
     const files = cover ? cover.widths.map((width) => ({ name: `img/${imageFileName(cover.id, width)}`, from: siteImageFile(deps.uploadsDir, page.siteId, cover.id, width) })) : [];
-    const html = renderShareCard(page.draft, page.assets, { host: `${page.siteName}.${SITES_DOMAIN}`, fontUrl: cardFontUrl });
+    const html = renderCard(content, page.assets, { host: `${page.siteName}.${SITES_DOMAIN}`, fontUrl: cardFontUrl });
     const shot = await captureShareImage({ workDir: cardDir, html, files, chromePath: deps.chromePath, ffmpegPath: deps.ffmpegPath });
     const file = `og-${page.releaseId.slice(0, 8)}.jpg`;
     await copyFile(shot.file, path.join(page.work, file));

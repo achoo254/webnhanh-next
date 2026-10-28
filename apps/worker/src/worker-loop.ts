@@ -2,6 +2,7 @@ import { claimNextJob, failJob, failStuckJobs, markJobDone, markJobFailed } from
 import { runBuildPublish } from './build-publish';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
+import { refreshNextWedding } from './wedding-refresh';
 
 export type WorkerDeps = PublishDeps & {
   /** Where webnhanh-builder stages finished builds; unset: built jobs fail here (no builder on this server). */
@@ -48,13 +49,19 @@ export interface RunningWorker {
 
 /** Cleanup (expired sessions and name holds, unused photos) runs this often. */
 const CLEANUP_EVERY_MS = 60 * 60 * 1000;
+/** After finding no wedding page to refresh, the worker looks again this much later. */
+const REFRESH_CHECK_MS = 10 * 60 * 1000;
 
-/** Polls the queue every `pollMs`, one job at a time; right after a job it looks again at once. */
+/**
+ * Polls the queue every `pollMs`, one job at a time; right after a job it looks again at once. With nothing queued it
+ * does the housekeeping: cleanup about once an hour, and the daily refresh of wedding countdowns.
+ */
 export function startWorker(deps: WorkerDeps & { readonly pollMs: number }): RunningWorker {
   let stopped = false;
   let timer: NodeJS.Timeout | null = null;
   let current: Promise<void> = Promise.resolve();
   let lastCleanup = 0;
+  let nextRefreshCheck = 0;
 
   const tick = (): void => {
     timer = null;
@@ -68,6 +75,11 @@ export function startWorker(deps: WorkerDeps & { readonly pollMs: number }): Run
           deps.log.info(
             `cleanup: ${result.sessions} session(s), ${result.nameHolds} name hold(s), ${result.chatLinkCodes} chat code(s), ${result.deliveries} notification(s), ${result.images} unused photo(s)`,
           );
+        }
+        // Low priority: only with an empty queue, one page a turn, and the queue is looked at again first.
+        if (outcome === 'idle' && deps.now().getTime() >= nextRefreshCheck) {
+          if (await refreshNextWedding(deps)) outcome = 'done';
+          else nextRefreshCheck = deps.now().getTime() + REFRESH_CHECK_MS;
         }
       } catch (error) {
         deps.log.warn(`worker turn failed: ${error instanceof Error ? error.message : String(error)}`);
