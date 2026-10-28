@@ -32,7 +32,9 @@ ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 # Zips come from builds/inbox (written by webnhanh-server); outputs go to builds/out (read by webnhanh-worker).
-ReadWritePaths=/var/lib/webnhanh/builds/inbox /var/lib/webnhanh/builds/out /var/lib/webnhanh/work /var/lib/webnhanh/cache
+# One mount for all of them: separate ReadWritePaths are separate mounts, and the cache is moved from the work
+# directory with rename(), which fails across mounts (EXDEV) even on one disk. Ownership still limits what is writable.
+ReadWritePaths=/var/lib/webnhanh
 
 [Install]
 WantedBy=multi-user.target
