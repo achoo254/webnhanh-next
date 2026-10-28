@@ -6,8 +6,9 @@
  * picture.
  */
 import { spawn } from 'node:child_process';
-import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CARD_FONTS, SHARE_CARD_SIZE } from '@webnhanh/templates';
@@ -122,9 +123,7 @@ export const cardFontUrl = (file: string): string => `fonts/${file}`;
 export async function captureShareImage(input: ShareImageInput): Promise<ShareImage> {
   const deadline = Date.now() + SHARE_IMAGE_TIMEOUT_MS;
   const { workDir } = input;
-  const home = path.join(workDir, 'home');
   await mkdir(path.join(workDir, 'fonts'), { recursive: true });
-  await mkdir(home, { recursive: true });
   for (const font of CARD_FONTS) await copyFile(path.join(FONT_DIR, font.file), path.join(workDir, cardFontUrl(font.file)));
   for (const file of input.files) {
     await mkdir(path.dirname(path.join(workDir, file.name)), { recursive: true });
@@ -133,8 +132,15 @@ export async function captureShareImage(input: ShareImageInput): Promise<ShareIm
   const page = path.join(workDir, 'card.html');
   await writeFile(page, input.html);
   const png = path.join(workDir, 'card.png');
+  // Chrome's home is short on purpose: it binds a socket at <home>/com.google.Chrome.XXXXXX/SingletonSocket, and a
+  // Unix socket path longer than 107 bytes makes it abort (SIGTRAP). The job's own directory is too deep for that.
+  const home = await mkdtemp(path.join(os.tmpdir(), 'wnc-'));
   const env = toolEnv(home);
-  await run(input.chromePath, chromeArgs(page, png, path.join(home, 'profile')), env, deadline);
+  try {
+    await run(input.chromePath, chromeArgs(page, png, path.join(home, 'profile')), env, deadline);
+  } finally {
+    await rm(home, { recursive: true, force: true });
+  }
   if ((await stat(png).catch(() => null))?.isFile() !== true) throw new ShareImageError('chrome wrote no screenshot');
 
   const jpg = path.join(workDir, 'card.jpg');
