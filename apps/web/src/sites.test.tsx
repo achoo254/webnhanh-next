@@ -6,6 +6,9 @@ import { AccountProvider } from './account';
 import { App } from './app';
 import { I18nProvider } from './i18n';
 
+// jsdom has no layout, so no scrollIntoView; browsers all do. Tests that care spy on this one.
+Element.prototype.scrollIntoView ??= (): void => undefined;
+
 const SITE_ID = '11111111-1111-4111-8111-111111111111';
 const COVER = '22222222-2222-4222-8222-222222222222';
 const P1 = '33333333-3333-4333-8333-333333333333';
@@ -206,6 +209,21 @@ describe('editor', () => {
     expect((await screen.findByText(/chỗ cần sửa/)).textContent).toBe('Còn 3 chỗ cần sửa trước khi đăng.');
     expect(screen.getAllByText('Cần điền ô này trước khi đăng.')).toHaveLength(2);
     expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
+  });
+
+  it('brings the first wrong field into view and focus when Publish is refused', async () => {
+    const scrolled: Element[] = [];
+    const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function (this: Element) {
+      scrolled.push(this);
+    });
+    on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
+    renderAt(`/sites/${SITE_ID}`);
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
+    await waitFor(() => expect(scrolled).toHaveLength(1));
+    const first = document.querySelector('[aria-invalid="true"]');
+    expect(scrolled[0]).toBe(first);
+    expect(document.activeElement).toBe(first);
+    scrollIntoView.mockRestore();
   });
 
   it('publishes: saves, shows each step with its time, then the live link', async () => {

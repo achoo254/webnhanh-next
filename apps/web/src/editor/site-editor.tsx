@@ -135,6 +135,9 @@ export function SiteEditor({
   const [images, setImages] = useState<ReadonlyMap<string, SiteImage>>(() => new Map(initialImages.map((image) => [image.id, image])));
   const [view, setView] = useState<'edit' | 'preview'>('edit');
   const [attempted, setAttempted] = useState(false);
+  // Bumped on every refused publish: the first wrong field is then brought into view, even far above the button.
+  const [refusals, setRefusals] = useState(0);
+  const editorRef = useRef<HTMLDivElement>(null);
   const { dirty, state, flush } = useAutosave(site.id, draft, initialDraft);
 
   const assets = useMemo(() => new Map([...images].map(([id, image]) => [id, editorAsset(site.id, image)])), [images, site.id]);
@@ -154,18 +157,31 @@ export function SiteEditor({
   const addImage = (image: SiteImage): void => setImages((current) => new Map(current).set(image.id, image));
   const editProducts = (update: (products: readonly ShopProduct[]) => ShopProduct[]): void => setDraft((current) => ({ ...current, products: update(current.products) }));
 
-  const prepare = async (): Promise<boolean> => {
+  const refuse = useCallback((): void => {
     setAttempted(true);
+    setView('edit');
+    setRefusals((count) => count + 1);
+  }, []);
+  useEffect(() => {
+    if (refusals === 0) return;
+    const first = editorRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!first) return;
+    first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    first.focus({ preventScroll: true });
+  }, [refusals]);
+
+  const prepare = async (): Promise<boolean> => {
     if (shopPublishIssues(draft).length > 0) {
-      setView('edit');
+      refuse();
       return false;
     }
+    setAttempted(true);
     return flush();
   };
   const onDone = useCallback(() => setSite((current) => ({ ...current, published: true })), []);
 
   return (
-    <div className="editor" data-view={view} data-id="editor">
+    <div className="editor" data-view={view} data-id="editor" ref={editorRef}>
       <div className="editor-bar">
         <Link className="back-link" to="/" data-id="editor-back">
           {t('editor.back')}
@@ -308,7 +324,7 @@ export function SiteEditor({
           published={site.published}
           initialJob={job}
           prepare={prepare}
-          onFieldsRefused={() => setAttempted(true)}
+          onFieldsRefused={refuse}
           onDone={onDone}
         />
       </div>
