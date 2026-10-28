@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, utimes, writeFile } fro
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { currentRelease, listReleases, publishRelease, PublishError, rollbackRelease } from './publish';
+import { currentRelease, listReleases, publishRelease, PublishError, removeSite, rollbackRelease } from './publish';
 
 const LIMITS = { maxBytes: 1024 * 1024, maxFiles: 100 };
 
@@ -109,5 +109,20 @@ describe('publishRelease', () => {
   it('refuses a release id that is not a uuid', async () => {
     const attempt = publishRelease({ sitesDir, site: 'shop', sourceDir: await source('x'), releaseId: '../x', limits: LIMITS });
     await expect(attempt).rejects.toMatchObject({ code: 'bad-release-id' });
+  });
+});
+
+describe('removeSite', () => {
+  it('takes a published site off and leaves the others', async () => {
+    await publish('old-name', 'v1', 10);
+    await publish('other', 'v1', 10);
+    await removeSite(sitesDir, 'old-name');
+    expect(await readdir(sitesDir)).toEqual(['other']);
+    expect(await live('other')).toBe('v1');
+    await removeSite(sitesDir, 'old-name');
+  });
+
+  it('refuses a name that is not a site name', async () => {
+    await expect(removeSite(sitesDir, '../x')).rejects.toMatchObject({ code: 'bad-site-name' });
   });
 });

@@ -150,3 +150,19 @@ export async function rollbackRelease(sitesDir: string, site: string, toReleaseI
   await pointCurrentAt(siteDir, target);
   return target;
 }
+
+/**
+ * Takes a site off the web: `current` goes first (one rename, so the next request is already a 404), then its
+ * releases. For the old name of a renamed site; doing nothing when the site has no directory.
+ */
+export async function removeSite(sitesDir: string, site: string): Promise<void> {
+  const siteDir = siteDirOf(sitesDir, site);
+  const retired = path.join(sitesDir, `.removed-${site}-${Date.now()}`);
+  try {
+    await rename(siteDir, retired);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
+  await rm(retired, { recursive: true, force: true });
+}
