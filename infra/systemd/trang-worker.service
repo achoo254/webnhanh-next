@@ -1,5 +1,6 @@
 # /etc/systemd/system/trang-worker.service — publishes queued sites one at a time: renders the template, copies the
-# photos, makes the release live through @trang/publish. Also deletes expired sessions, name holds and unused photos.
+# photos, photographs the share picture with headless Chrome (CHROME_PATH), makes the release live through
+# @trang/publish. Also deletes expired sessions, name holds, link codes, old notification records and unused photos.
 [Unit]
 Description=Trang publish worker
 After=network-online.target postgresql.service trang-server.service
@@ -8,20 +9,23 @@ Wants=network-online.target postgresql.service
 [Service]
 User=trang
 Group=trang
-# DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, SITE_MAX_MB (the shared env file; docs/deployment-guide.md).
+# DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, FORM_SECRET, CHROME_PATH, FFMPEG_PATH, SITE_MAX_MB (the shared
+# env file; docs/deployment-guide.md). Chrome and ffmpeg get a minimal environment of their own, never this file.
 EnvironmentFile=/etc/trang/production.env
 WorkingDirectory=/var/www/trang/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/main.mjs
 Restart=on-failure
 RestartSec=5
-# A publish is a file copy: small memory, low priority beside the other apps of the server.
-MemoryMax=192M
+# A publish is a file copy plus one Chrome screenshot (a few seconds, one Chrome at a time): capped memory, low
+# priority beside the other apps of the server.
+MemoryMax=512M
 CPUQuota=50%
 Nice=10
 # Stop: the worker finishes the publish in hand (seconds), then exits.
 TimeoutStopSec=30
 UMask=0027
-# Loopback only: Postgres on 127.0.0.1 is all the worker talks to.
+# Loopback only: Postgres on 127.0.0.1 is all the worker talks to; Chrome resolves no name either (share-image.ts).
+# Order notifications go out from trang-server, not from here.
 IPAddressDeny=any
 IPAddressAllow=localhost
 NoNewPrivileges=true
