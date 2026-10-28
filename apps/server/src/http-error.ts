@@ -3,7 +3,7 @@ export class HttpError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
-    readonly extra: Readonly<Record<string, string | number>> = {},
+    readonly extra: Readonly<Record<string, string | number | readonly string[]>> = {},
   ) {
     super(code);
     this.name = 'HttpError';

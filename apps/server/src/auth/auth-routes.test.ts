@@ -155,7 +155,7 @@ describe('sign-in with the account service', () => {
     const health = await app.http().get('/healthz');
     expect(health.status).toBe(200);
     expect(health.text).toBe('ok');
-    const unknown = await app.http().get('/api/sites');
+    const unknown = await app.http().get('/api/nothing-here');
     expect(unknown.status).toBe(404);
     expect(unknown.body).toEqual({ error: 'not-found' });
   });

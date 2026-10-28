@@ -1,6 +1,9 @@
 // Helpers for the server's tests: an app on a fresh in-memory database, and signed-in sessions made directly in the
 // database (the IdP round trip has its own tests).
+import { mkdtemp, rm } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
+import os from 'node:os';
+import path from 'node:path';
 import { openPglite, type DbHandle } from '@trang/db';
 import request from 'supertest';
 import { createApp } from './app';
@@ -20,7 +23,9 @@ export interface TestApp {
 }
 
 export async function startTestApp(overrides: Partial<ServerConfig> = {}): Promise<TestApp> {
-  const config: ServerConfig = { ...loadConfig({ NODE_ENV: 'test' }), ...overrides };
+  // Photos of each test app go to a temp dir of its own, removed on close.
+  const uploadsDir = await mkdtemp(path.join(os.tmpdir(), 'trang-uploads-'));
+  const config: ServerConfig = { ...loadConfig({ NODE_ENV: 'test' }), uploadsDir, ...overrides };
   const handle = await openPglite();
   const server = createApp({ config, db: handle.db }).listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -37,6 +42,8 @@ export async function startTestApp(overrides: Partial<ServerConfig> = {}): Promi
     async close() {
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await handle.close();
+      await rm(uploadsDir, { recursive: true, force: true });
+      await rm(config.uploadsDir, { recursive: true, force: true });
     },
   };
 }

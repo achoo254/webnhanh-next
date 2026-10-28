@@ -6,6 +6,7 @@ import { authRoutes } from './auth/auth-routes';
 import { requireAllowedOrigin } from './auth/origin-check';
 import type { ServerConfig } from './config';
 import { HttpError } from './http-error';
+import { siteRoutes } from './sites/site-routes';
 
 export interface AppDeps {
   readonly config: ServerConfig;
@@ -28,12 +29,23 @@ export function createApp({ config, db }: AppDeps): Express {
   app.use(['/auth/login', '/auth/callback'], signInLimit);
   app.use(requireAllowedOrigin(config.allowedOrigins));
   app.use(authRoutes(config, db));
+  app.use(siteRoutes(config, db));
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'not-found')));
 
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
     if (error instanceof HttpError) {
       res.status(error.status).json({ error: error.code, ...error.extra });
+      return;
+    }
+    // body-parser: a body over its route's limit, or JSON that does not parse.
+    const type = typeof error === 'object' && error !== null ? (error as { type?: unknown }).type : undefined;
+    if (type === 'entity.too.large') {
+      res.status(413).json({ error: 'too-large' });
+      return;
+    }
+    if (type === 'entity.parse.failed') {
+      res.status(400).json({ error: 'bad-request' });
       return;
     }
     console.error('request failed', error instanceof Error ? error.message : String(error));

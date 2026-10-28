@@ -8,6 +8,7 @@ const PRODUCTION = {
   DATABASE_URL: 'postgres://trang:pw@127.0.0.1:5432/trang',
   AUTH_ISSUER: 'https://auth.hoandat.com',
   AUTH_CLIENT_SECRET: 'x'.repeat(40),
+  UPLOADS_DIR: '/var/www/trang/uploads',
 };
 
 describe('server config', () => {
@@ -17,6 +18,10 @@ describe('server config', () => {
     expect(config.auth).toBeNull();
     expect(config.port).toBe(5296);
     expect(config.allowedOrigins).toContain('http://localhost:5297');
+    expect(config.uploadsDir).toMatch(/\.data[/\\]uploads$/);
+    expect(config.sitesPerAccount).toBe(5);
+    expect(config.siteMaxBytes).toBe(20 * 1024 * 1024);
+    expect(config.ffmpegPath).toBe('ffmpeg');
   });
 
   it('reads production env', () => {
@@ -33,7 +38,7 @@ describe('server config', () => {
   });
 
   it('fails fast on missing or unsafe production env', () => {
-    for (const key of ['DATABASE_URL', 'AUTH_CLIENT_SECRET', 'PUBLIC_URL'] as const) {
+    for (const key of ['DATABASE_URL', 'AUTH_CLIENT_SECRET', 'PUBLIC_URL', 'UPLOADS_DIR'] as const) {
       const env: Record<string, string | undefined> = { ...PRODUCTION, [key]: undefined };
       expect(() => loadConfig(env), key).toThrow(key);
     }
@@ -41,5 +46,6 @@ describe('server config', () => {
     expect(() => loadConfig({ ...PRODUCTION, AUTH_ISSUER: 'http://auth.hoandat.com' })).toThrow('AUTH_ISSUER');
     expect(() => loadConfig({ ...PRODUCTION, AUTH_CLIENT_SECRET: 'short' })).toThrow('AUTH_CLIENT_SECRET');
     expect(() => loadConfig({ ...PRODUCTION, PORT: 'abc' })).toThrow('PORT');
+    expect(() => loadConfig({ ...PRODUCTION, SITES_PER_ACCOUNT: '0' })).toThrow('SITES_PER_ACCOUNT');
   });
 });
