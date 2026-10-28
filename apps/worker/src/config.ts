@@ -1,4 +1,4 @@
-import { DEFAULT_SITE_MAX_MB } from '@webnhanh/db';
+import { DEFAULT_SITE_MAX_MB, parseAdminSubs } from '@webnhanh/db';
 import { z } from 'zod';
 
 const emptyIsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
@@ -19,6 +19,8 @@ const Env = z.object({
   FFMPEG_PATH: z.preprocess(emptyIsUnset, z.string().min(1).default('ffmpeg')),
   /** Finished developer builds staged by webnhanh-builder; unset: no builder on this server. */
   BUILD_OUTPUT_DIR: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
+  /** IdP subjects of the admins (comma-separated), told when a release is held for review. Unset: nobody is told. */
+  ADMIN_SUBS: z.preprocess(emptyIsUnset, z.string().optional()),
   POLL_MS: z.coerce.number().int().min(200).max(60_000).default(1_000),
   SITE_MAX_MB: z.coerce.number().int().min(1).max(500).default(DEFAULT_SITE_MAX_MB),
 });
@@ -34,6 +36,7 @@ export interface WorkerConfig {
   readonly buildOutputDir: string | undefined;
   readonly pollMs: number;
   readonly siteMaxBytes: number;
+  readonly adminSubs: readonly string[];
 }
 
 /** Validates the worker's env once at start; throws naming the offending keys. */
@@ -52,5 +55,6 @@ export function loadWorkerConfig(env: Record<string, string | undefined> = proce
     buildOutputDir: e.BUILD_OUTPUT_DIR,
     pollMs: e.POLL_MS,
     siteMaxBytes: e.SITE_MAX_MB * 1024 * 1024,
+    adminSubs: parseAdminSubs(e.ADMIN_SUBS),
   };
 }

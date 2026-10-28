@@ -11,6 +11,8 @@ import path from 'node:path';
 import {
   imageFileName,
   jobs,
+  publishBlock,
+  reportUrl,
   type LivePage,
   type OrderFormSpec,
   releases,
@@ -26,7 +28,7 @@ import {
   type Job,
   type JobStep,
 } from '@webnhanh/db';
-import { publishRelease, PublishError, removeSite } from '@webnhanh/publish';
+import { deleteRelease, publishRelease, PublishError, removeSite } from '@webnhanh/publish';
 import {
   draftShareCard,
   imageAsset,
@@ -44,6 +46,8 @@ import {
 } from '@webnhanh/templates';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { fontFilePath, pageFontUrl } from './font-files';
+import { reviewPage } from './review';
+import { holdRelease, SiteRemovedError } from './review-hold';
 import { captureShareImage, cardFontUrl } from './share-image';
 
 /** The named steps of a publish, in order. The web app shows each under its own label. */
@@ -53,7 +57,7 @@ export type PublishStep = (typeof PUBLISH_STEPS)[number];
 /** A failure the person can be told about: a stable code, and detail for the log only. */
 export class JobError extends Error {
   constructor(
-    readonly code: 'site-missing' | 'draft-invalid' | 'image-missing' | 'too-large' | 'publish-failed',
+    readonly code: 'site-missing' | 'draft-invalid' | 'image-missing' | 'too-large' | 'publish-failed' | 'account-locked' | 'site-removed',
     readonly detail: string,
   ) {
     super(`${code}: ${detail}`);
@@ -85,6 +89,8 @@ export interface PublishDeps {
   readonly now: () => Date;
   /** Where the release is put together before it is published (default: the system temp dir). */
   readonly workDir?: string;
+  /** IdP subjects of the admins, told when a release is held for review. */
+  readonly adminSubs?: readonly string[];
 }
 
 /** Times the steps of one job and saves them after each change. */
@@ -118,17 +124,40 @@ class StepClock {
  */
 const MAX_FILES = 400;
 
+/** How a publish ended: live, or copied in and held for an admin's review (`held`, nothing changed on the web). */
+export interface PublishOutcome {
+  readonly releaseId: string;
+  readonly held: boolean;
+}
+
+/** Throws when the account was locked or the site taken down since the job was queued. */
+export async function assertPublishable(db: Db, siteId: string): Promise<void> {
+  const block = await publishBlock(db, siteId);
+  if (block) throw new JobError(block, `site ${siteId}`);
+}
+
+/** Old names of a renamed site answer 404 from a publish on (their hold keeps anyone else from taking them). */
+export async function removeOldNames(deps: Pick<PublishDeps, 'db' | 'sitesDir'>, site: { readonly id: string; readonly name: string }): Promise<void> {
+  const held = await deps.db
+    .select({ name: siteNameHolds.name })
+    .from(siteNameHolds)
+    .where(and(eq(siteNameHolds.siteId, site.id), ne(siteNameHolds.name, site.name)));
+  for (const { name } of held) await removeSite(deps.sitesDir, name);
+}
+
 /**
- * Publishes the job's site. Returns the new release id; the job itself is marked done or failed by the caller
- * (the worker loop), which also catches the JobError.
+ * Publishes the job's site, or holds the release for review when the page asks for a password or poses as a bank, a
+ * wallet or the state (`review.ts`). The job itself is marked done or failed by the caller (the worker loop), which
+ * also catches the JobError.
  */
-export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
+export async function runPublish(deps: PublishDeps, job: Job): Promise<PublishOutcome> {
   const { db } = deps;
   const clock = new StepClock(db, job.id, deps.now);
 
   await clock.begin('prepare');
   const [site] = await db.select().from(sites).where(and(eq(sites.id, job.siteId), eq(sites.accountId, job.accountId)));
   if (!site || site.kind !== 'template') throw new JobError('site-missing', `site ${job.siteId}`);
+  await assertPublishable(db, site.id);
   const value = parseDraft(site.template, site.draft);
   if (!value) throw new JobError('draft-invalid', `draft does not match the schema of ${site.template ?? 'no template'}`);
   const issues = publishIssues(value);
@@ -144,7 +173,8 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
     const assets = new Map<string, ImageAsset>(images.map((image) => [image.id, imageAsset(image, (width) => `img/${imageFileName(image.id, width)}`)]));
     await mkdir(path.join(work, 'img'), { recursive: true });
     const shareImage = await shareImageOf(deps, { siteId: site.id, siteName: site.name, value, images, assets, work, releaseId });
-    await writeFile(path.join(work, 'index.html'), renderLivePage(deps, site, value, assets, shareImage));
+    const html = renderLivePage(deps, site, value, assets, shareImage);
+    await writeFile(path.join(work, 'index.html'), html);
     // The style's fonts ship inside the release, beside the page: the page asks no one else for them.
     await mkdir(path.join(work, 'fonts'));
     for (const font of styleFontFiles(value.draft.style)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
@@ -159,12 +189,41 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
     }
 
     await clock.begin('publish');
+    const limits = { maxBytes: deps.siteMaxBytes, maxFiles: MAX_FILES };
+    const livePage: LivePage = {
+      draft: value.draft,
+      images: images.map((image) => ({ id: image.id, width: image.width, height: image.height, widths: image.widths })),
+      shareImage,
+    };
+    const findings = reviewPage(html);
+    if (findings.reasons.length > 0) {
+      await holdRelease(deps, {
+        site,
+        sourceDir: work,
+        releaseId,
+        limits,
+        findings,
+        jobId: job.id,
+        source: 'template',
+        commitSha: null,
+        livePage,
+        orderForm: formSpecOf(value),
+        buildKey: null,
+      }).catch((error: unknown) => {
+        if (error instanceof SiteRemovedError) throw new JobError('site-removed', error.message);
+        if (error instanceof PublishError && (error.code === 'too-large' || error.code === 'too-many-files')) throw new JobError('too-large', error.message);
+        throw error;
+      });
+      deps.log.info(`site ${site.name}: held for review (${findings.reasons.join(', ')})`);
+      await clock.end();
+      return { releaseId, held: true };
+    }
     const result = await publishRelease({
       sitesDir: deps.sitesDir,
       site: site.name,
       sourceDir: work,
       releaseId,
-      limits: { maxBytes: deps.siteMaxBytes, maxFiles: MAX_FILES },
+      limits,
     }).catch((error: unknown) => {
       if (error instanceof PublishError && (error.code === 'too-large' || error.code === 'too-many-files')) throw new JobError('too-large', error.message);
       throw new JobError('publish-failed', error instanceof Error ? error.message : String(error));
@@ -174,25 +233,17 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
     const now = deps.now();
     await db.transaction(async (tx) => {
       await tx.insert(releases).values({ id: releaseId, siteId: site.id, source: 'template', bytes: result.bytes, fileCount: result.fileCount, createdAt: now });
-      const livePage: LivePage = {
-        draft: value.draft,
-        images: images.map((image) => ({ id: image.id, width: image.width, height: image.height, widths: image.widths })),
-        shareImage,
-      };
+      // A release that was waiting for review is replaced by this one.
       await tx
         .update(sites)
-        .set({ currentReleaseId: releaseId, status: 'published', orderForm: formSpecOf(value), livePage, updatedAt: now })
-        .where(eq(sites.id, site.id));
+        .set({ currentReleaseId: releaseId, status: 'published', orderForm: formSpecOf(value), livePage, pendingReleaseId: null, pendingReview: null, updatedAt: now })
+        .where(and(eq(sites.id, site.id), ne(sites.status, 'removed')));
       await tx.update(jobs).set({ releaseId }).where(eq(jobs.id, job.id));
     });
-    // Old names of this site answer 404 from now on (their hold keeps anyone else from taking them).
-    const held = await db
-      .select({ name: siteNameHolds.name })
-      .from(siteNameHolds)
-      .where(and(eq(siteNameHolds.siteId, site.id), ne(siteNameHolds.name, site.name)));
-    for (const { name } of held) await removeSite(deps.sitesDir, name);
+    if (site.pendingReleaseId) await deleteRelease(deps.sitesDir, site.name, site.pendingReleaseId).catch(() => undefined);
+    await removeOldNames(deps, site);
     await clock.end();
-    return releaseId;
+    return { releaseId, held: false };
   } finally {
     await rm(work, { recursive: true, force: true });
   }
@@ -226,6 +277,7 @@ export function renderLivePage(
   const pageUrl = `${siteOrigin(site.name)}/`;
   return renderDraft(value, assets, {
     madeWith: deps.madeWith,
+    reportUrl: reportUrl(deps.appUrl, site.name),
     orderForm: value.template === 'shop' ? form : undefined,
     rsvpForm: value.template === 'wedding' ? form : undefined,
     now,

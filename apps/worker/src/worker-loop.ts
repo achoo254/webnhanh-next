@@ -1,4 +1,5 @@
 import { claimNextJob, failJob, failStuckJobs, markJobDone, markJobFailed } from '@webnhanh/db';
+import { processNextAdminAction, pruneTakenDown } from './admin-actions';
 import { runBuildPublish } from './build-publish';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
@@ -12,11 +13,13 @@ export type WorkerDeps = PublishDeps & {
 export type JobOutcome = 'idle' | 'done' | 'failed';
 
 /**
- * One turn of the worker: fails jobs stuck in `running`, then claims the oldest queued job of its lane (template
- * publishes, and developer builds the builder handed back) and publishes it. A publish takes seconds, so a stopping
- * worker finishes the job in hand instead of putting it back.
+ * One turn of the worker: an admin's takedown, restore or review decision first (they must not wait behind
+ * publishes), else fails jobs stuck in `running`, then claims the oldest queued job of its lane (template publishes,
+ * and developer builds the builder handed back) and publishes it. A publish takes seconds, so a stopping worker
+ * finishes the job in hand instead of putting it back.
  */
 export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
+  if (await processNextAdminAction(deps)) return 'done';
   const stuck = await failStuckJobs(deps.db, deps.now());
   for (const id of stuck) deps.log.warn(`job ${id} was running too long: marked failed`);
   const job = await claimNextJob(deps.db, deps.now());
@@ -24,13 +27,13 @@ export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
   deps.log.info(`job ${job.id} ${job.type} for site ${job.siteId}`);
   try {
     if (job.type === 'build') {
-      const releaseId = await runBuildPublish(deps, job);
-      deps.log.info(`build ${job.id} published: release ${releaseId}`);
+      const outcome = await runBuildPublish(deps, job);
+      deps.log.info(`build ${job.id} ${outcome.held ? 'held for review' : 'published'}: release ${outcome.releaseId}`);
       return 'done';
     }
-    const releaseId = await runPublish(deps, job);
-    if (!(await markJobDone(deps.db, job.id, releaseId, deps.now()))) deps.log.warn(`job ${job.id} finished after it was marked failed`);
-    deps.log.info(`job ${job.id} done: release ${releaseId}`);
+    const outcome = await runPublish(deps, job);
+    if (!(await markJobDone(deps.db, job.id, outcome.held ? null : outcome.releaseId, deps.now()))) deps.log.warn(`job ${job.id} finished after it was marked failed`);
+    deps.log.info(`job ${job.id} ${outcome.held ? 'held for review' : 'done'}: release ${outcome.releaseId}`);
     return 'done';
   } catch (error) {
     const code = error instanceof JobError ? error.code : 'publish-failed';
@@ -72,8 +75,9 @@ export function startWorker(deps: WorkerDeps & { readonly pollMs: number }): Run
         if (outcome === 'idle' && deps.now().getTime() - lastCleanup >= CLEANUP_EVERY_MS) {
           lastCleanup = deps.now().getTime();
           const result = await cleanup(deps.db, deps.uploadsDir, deps.now());
+          const takenDown = await pruneTakenDown(deps);
           deps.log.info(
-            `cleanup: ${result.sessions} session(s), ${result.nameHolds} name hold(s), ${result.chatLinkCodes} chat code(s), ${result.deliveries} notification(s), ${result.images} unused photo(s)`,
+            `cleanup: ${result.sessions} session(s), ${result.nameHolds} name hold(s), ${result.chatLinkCodes} chat code(s), ${result.deliveries} notification(s), ${result.images} unused photo(s), ${takenDown} taken-down site(s)`,
           );
         }
         // Low priority: only with an empty queue, one page a turn, and the queue is looked at again first.

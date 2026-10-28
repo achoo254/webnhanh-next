@@ -19,6 +19,7 @@ const worker = startWorker({
   chromePath: config.chromePath,
   ffmpegPath: config.ffmpegPath,
   buildOutputDir: config.buildOutputDir,
+  adminSubs: config.adminSubs,
   now: () => new Date(),
   pollMs: config.pollMs,
   log,
