@@ -16,7 +16,7 @@ thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, dat
 |---|---|
 | Site người dùng | `/var/www/webnhanh/sites/<tên>/releases/<id>/`, `current -> releases/<id>` (user `webnhanh`, nhóm `webnhanh`, `2750`: mọi thứ tạo bên trong giữ nhóm `webnhanh`; nginx thuộc nhóm `webnhanh` để đọc) |
 | Trang dùng chung | `/var/www/webnhanh/static/404.html` (từ `infra/static/`) |
-| nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `webnhanh.hoandat.com`, mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác |
+| nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `webnhanh.hoandat.com`, mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác; `/.well-known/report` của mọi site 302 về form báo cáo `https://webnhanh.hoandat.com/bao-cao?site=<tên>` (không đụng file của site) |
 | Chứng chỉ gốc | `/etc/pki/nginx/server.{crt,key}` như các app khác; Cloudflare SSL "full", Universal SSL phủ `hoandat.io.vn` và `*.hoandat.io.vn` |
 | App | `/var/www/webnhanh/app` (bản phát hành hiện tại, `root:webnhanh`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
 | Server | systemd `webnhanh-server` (user `webnhanh`, `127.0.0.1:4860`, `MemoryMax=512M` vì ffmpeg làm sạch ảnh chạy trong giới hạn này, ghi được `uploads/`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
@@ -76,6 +76,7 @@ thiếu `index.html`.
    | `CHAT_URL` | `https://chat.hoandat.com` (deep link `CHAT_URL/b/<bot>?start=<mã>`, Bot API `CHAT_URL/bot/v1`) |
    | `CHAT_BOT_USERNAME`, `CHAT_BOT_TOKEN` | Username (kết thúc bằng `bot`) và token `<bot_id>:<secret>` của bot báo đơn |
    | `CHAT_BOT_WEBHOOK_SECRET` | Secret webhook của bot (≥ 32 ký tự). Bốn biến Chat đủ thì hiện nút "Nhận báo đơn qua Chat", thiếu cả bốn thì ẩn |
+   | `ADMIN_SUBS` | `sub` (mã định danh ở `auth.hoandat.com`) của các admin, cách nhau bằng dấu phẩy. Admin có công cụ `/admin` (báo cáo lạm dụng, gỡ site, khoá tài khoản, duyệt bản chờ) và nhận báo qua bot Chat/Web Push khi có báo cáo hoặc bản bị giữ chờ duyệt (server và worker cùng đọc). Admin phải đăng nhập app một lần (có tài khoản) và bật thông báo trên máy hoặc "Nhận báo qua Chat" ở `/admin` (cùng cài đặt với báo đơn) thì mới nhận được tin. Bỏ trống: không ai là admin, báo cáo vẫn được lưu |
    | `CHROME_PATH` | Chrome headless cho ảnh xem trước `og:image` của trang (worker), ví dụ `/usr/bin/google-chrome` đã cài cho Clip. Bỏ trống: trang vẫn đăng, không có ảnh, log ghi "no CHROME_PATH" |
    | `BUILD_INBOX_DIR` | `/var/lib/webnhanh/builds/inbox` (server ghi zip của site lập trình viên). Bỏ trống: tải zip tắt, deploy từ git vẫn chạy |
    | `BUILD_OUTPUT_DIR` | `/var/lib/webnhanh/builds/out` (worker đọc output của build để phát hành). Bỏ trống: build xong sẽ lỗi ở bước Phát hành |
@@ -214,6 +215,48 @@ Trang đăng trước bản này chưa có `live_page`: thiệp cưới chỉ đ
 mới là một bản phát hành mới (giữ 3 bản), nên với thiệp cưới đang đếm ngược, bản để quay lại tay là các lần làm mới gần
 nhất, không phải lần đăng trước của chủ trang. Quay lại bản app trước: bản cũ đọc xác nhận tham dự như đơn hàng (thiếu
 địa chỉ, sản phẩm) trong hộp đơn; chỉ ảnh hưởng chủ thiệp cưới.
+
+## Chống lạm dụng
+
+Có từ bản thêm migration `0006_abuse-reports-admin` (chỉ thêm: bảng `abuse_reports`, `admin_actions`; cột
+`accounts.locked_at`, `sites.pending_release_id`, `pending_review`, `taken_down_at`, `takedown_release_id`;
+`notification_deliveries` thêm `report_id`, `review_site_id` và nới ràng buộc "đúng một chủ đề"). Bản app trước vẫn chạy
+trên schema này.
+
+- **Báo cáo:** `https://webnhanh.hoandat.com/bao-cao?site=<tên>` (cũng `/report`), không cần đăng nhập; mọi trang mẫu
+  đăng sau bản này có link "Báo cáo vi phạm" ở chân trang; mọi site (cả site lập trình viên, không sửa HTML của họ) có
+  `https://<tên>.hoandat.io.vn/.well-known/report` (nginx, 302) và trang 404 chung nhắc tới form. Email thay thế:
+  `noreply@hoandat.io.vn` (hộp thư chung của tên miền, đọc và trả lời trong 30 ngày). Mỗi IP 5 báo cáo mỗi giờ.
+- **Admin:** đặt `ADMIN_SUBS` trong `production.env` (lấy `sub` của tài khoản ở `auth-next`), khởi động lại
+  `webnhanh-server` và `webnhanh-worker`. Admin vào `https://webnhanh.hoandat.com/admin` (người khác nhận "Không có
+  trang này"; API trả 404).
+- **Gỡ site (một thao tác):** ở `/admin`, bấm "Gỡ website" ở báo cáo hoặc sau khi tìm theo địa chỉ. Ngay lúc đó site
+  thôi nhận đơn, không đăng hay build được (job đang chờ của site bị huỷ), báo cáo kèm theo thành "Đã xử lý"; trong
+  khoảng một giây worker đổi `current` sang trang "Website này đã bị gỡ" (một bản phát hành riêng có `index.html` và
+  `404.html`, nên mọi đường dẫn đều hiện trang này). Các bản cũ được giữ 30 ngày để xem lại
+  (`/var/www/webnhanh/sites/<tên>/releases/`), sau đó worker xoá, chỉ còn trang "đã bị gỡ". "Khôi phục" đưa bản đang
+  chạy trước khi gỡ lên lại; quá 30 ngày thì site thành bản nháp, chủ trang tự đăng lại.
+- **Khoá tài khoản:** "Khoá tài khoản" ở `/admin`: website đã đăng vẫn chạy (gỡ riêng nếu cần), nhưng tài khoản không
+  đăng, không build được (job đang chờ bị huỷ, push mới bị bỏ); chủ tài khoản thấy thông báo bị khoá. "Mở khoá" trả lại.
+- **Chờ duyệt:** worker kiểm mọi lần phát (trang mẫu và output build, kể cả file JS): có ô `<input type="password">`,
+  tiêu đề mang tên ngân hàng, ví điện tử, cơ quan nhà nước, hoặc trang nhắc các tên đó (hay thương hiệu lớn) kèm lời
+  hỏi đăng nhập, mật khẩu, mã OTP, xác minh. Bản bị giữ được chép vào `releases/` nhưng không đổi `current` (bản đang
+  chạy, nếu có, vẫn chạy và vẫn nhận đơn), chủ trang thấy "Đang chờ duyệt", admin được báo. "Duyệt, cho đăng" đưa bản
+  đó lên như một lần đăng; "Từ chối" xoá bản đó.
+- **Nhật ký:** mọi thao tác admin (kể cả ghi chú) nằm trong bảng `admin_actions`, xem ở `/admin`; thao tác chạm file
+  ghi "đang áp dụng" cho tới khi worker làm xong (`journalctl -u webnhanh-worker | grep 'admin '`).
+
+Triển khai: `release` (migration tự chạy, nginx app không đổi), rồi `hosting` (nginx `hoandat.io.vn.conf` có thêm
+`/.well-known/report`, trang 404 chung mới). Kiểm:
+
+```bash
+curl -sI https://kiem-tra.hoandat.io.vn/.well-known/report | grep -i location   # https://webnhanh.hoandat.com/bao-cao?site=kiem-tra
+curl -s -o /dev/null -w '%{http_code}\n' https://webnhanh.hoandat.com/api/admin/reports   # 404 khi chưa đăng nhập
+journalctl -u webnhanh-worker -n 50 | grep -E 'held for review|admin '          # sau khi thử một site có ô mật khẩu
+```
+
+Thử trọn vòng: báo cáo một site thử ở `/bao-cao` → admin nhận tin Chat → "Gỡ website" → site hiện "Website này đã bị
+gỡ" → "Khôi phục". Đăng một site lập trình viên có ô mật khẩu → chủ trang thấy "Đang chờ duyệt", site chưa lên → duyệt.
 
 ## Lịch sử
 

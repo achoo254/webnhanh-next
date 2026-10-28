@@ -30,7 +30,7 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   `SITES_DIR`: output vào `BUILD_OUTPUT_DIR`, worker phát hành.
 - Thiệp cưới được worker render lại mỗi ngày từ `sites.live_page` (bản đã đăng, không phải nháp đang sửa) để đếm
   ngược đúng ngày (`apps/worker/src/wedding-refresh.ts`), chỉ khi hàng đợi trống, không tạo job, không báo.
-- Báo đơn (và xác nhận tham dự) đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
+- Báo đơn (và xác nhận tham dự, báo admin về báo cáo lạm dụng và bản chờ duyệt) đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
   và thử lại riêng (`notifications/deliveries.ts`), một kênh lỗi không chặn kênh khác. Gửi từ `webnhanh-server`
   (worker chỉ nói chuyện loopback). Endpoint push chỉ nhận host dịch vụ push của trình duyệt (`isPushEndpoint`).
 - Migration là SQL sinh bằng `pnpm --filter @webnhanh/db db:generate`, commit và review như code; không `drizzle-kit push`.
@@ -39,3 +39,11 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   không viết tay. Nâng gói thì hash CSP của script theme trong `infra/nginx/webnhanh.hoandat.com.conf` có thể đổi:
   `apps/web/src/theme-bootstrap.test.ts` báo hash mới.
 - Không truyền `linkComponent` cho `SignInCard`: `/auth/login` là route của server.
+- Route admin (`/api/admin/*`) không đi qua `ownedSite`: cổng duy nhất là `requireAdmin` (`apps/server/src/admin/admin-guard.ts`,
+  `sub` trong `ADMIN_SUBS`, người khác kể cả chưa đăng nhập nhận 404). Mỗi thao tác admin ghi một dòng `admin_actions`
+  trong cùng transaction; thao tác chạm file (gỡ, khôi phục, duyệt, từ chối) chỉ xếp hàng, worker áp dụng.
+- Tài khoản bị khoá hoặc site bị gỡ thì không đăng, không build: `publishBlock` trong `enqueueJob`/`enqueueBuild`, và
+  worker kiểm lại trước khi phát (`assertPublishable`). Route mới xếp job phải đi qua hai hàm đó.
+- Mọi lần phát (trang mẫu, build) qua `review.ts` của worker: có ô mật khẩu hay mang tên ngân hàng, ví, cơ quan nhà
+  nước thì giữ chờ duyệt (`holdRelease`), không đổi `current`. Trang mẫu có link "Báo cáo vi phạm" ở chân trang
+  (`reportUrl`), không thêm script.
