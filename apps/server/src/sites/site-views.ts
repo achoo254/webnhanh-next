@@ -27,6 +27,8 @@ export interface JobView {
 export interface SiteView {
   readonly id: string;
   readonly name: string;
+  /** `template` (made in the editor) or `developer` (built from a repo or a zip). */
+  readonly kind: string;
   readonly template: string | null;
   readonly status: string;
   readonly published: boolean;
@@ -61,6 +63,7 @@ export function siteView(site: Site, cover: ImageRow | undefined, job: Job | und
   return {
     id: site.id,
     name: site.name,
+    kind: site.kind,
     template: site.template,
     status: site.status,
     published: site.currentReleaseId !== null,

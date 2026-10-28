@@ -3,6 +3,9 @@ import express, { type ErrorRequestHandler, type Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { authRoutes } from './auth/auth-routes';
+import { developerRoutes } from './builds/developer-routes';
+import { gitWebhookRoutes } from './builds/git-webhook';
+import type { Fetcher } from './builds/repo-check';
 import { requireAllowedOrigin } from './auth/origin-check';
 import type { ServerConfig } from './config';
 import { HttpError } from './http-error';
@@ -17,9 +20,11 @@ export interface AppDeps {
   readonly db: Db;
   /** Called after a new order is stored: the notification sender looks for due deliveries at once. */
   readonly onOrder?: () => void;
+  /** HTTPS client of the repo check (GitHub, GitLab); tests replace it. */
+  readonly fetcher?: Fetcher;
 }
 
-export function createApp({ config, db, onOrder = () => undefined }: AppDeps): Express {
+export function createApp({ config, db, onOrder = () => undefined, fetcher = (url, init) => fetch(url, init) }: AppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
   // nginx in front (one hop): req.ip is the visitor, for the rate limits.
@@ -34,12 +39,15 @@ export function createApp({ config, db, onOrder = () => undefined }: AppDeps): E
   const signInLimit = rateLimit({ windowMs: 15 * 60_000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false });
   app.use(['/auth/login', '/auth/callback'], signInLimit);
   // Callers from elsewhere, each with checks of its own: visitors' orders from published sites (CORS by the site's
-  // origin), and the Chat bot's webhook (HMAC). Everything after this takes requests from the app's origin only.
+  // origin), the Chat bot's webhook (HMAC), and pushes from GitHub/GitLab (the site's webhook secret). Everything after
+  // this takes requests from the app's origin only.
   app.use(formRoutes(config, db, onOrder));
   app.use(chatWebhookRoutes(config, db));
+  app.use(gitWebhookRoutes(db));
   app.use(requireAllowedOrigin(config.allowedOrigins));
   app.use(authRoutes(config, db));
   app.use(siteRoutes(config, db));
+  app.use(developerRoutes(config, db, fetcher));
   app.use(orderRoutes(config, db));
   app.use(notificationRoutes(config, db));
 

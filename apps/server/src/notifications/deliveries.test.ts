@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { accounts, chatLinks, notificationDeliveries, openPglite, pushSubscriptions, sites, submissions, type DbHandle } from '@webnhanh/db';
+import { accounts, chatLinks, jobs, notificationDeliveries, openPglite, pushSubscriptions, queueJobNotices, sites, submissions, type DbHandle } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { recordOrder } from '../orders/order-store';
@@ -125,5 +125,20 @@ describe('order notification fan-out', () => {
     const now = new Date();
     await recordOrder(handle.db, { siteId, accountId, order: ORDER }, { push: true, chat: true }, now);
     expect(await deliverDue(handle.db, { push: null, chat: null }, APP, now, quiet)).toEqual({ sent: 0, retrying: 0, dropped: 3, failed: 0 });
+  });
+});
+
+describe('build notices', () => {
+  it('tells the owner who pressed "Báo tôi khi xong" how the build ended, on every channel', async () => {
+    const now = new Date('2026-10-28T09:00:00Z');
+    const jobId = randomUUID();
+    await handle.db.insert(jobs).values({ id: jobId, siteId, accountId, type: 'build', status: 'done', notify: true, createdAt: now, finishedAt: now });
+    expect(await queueJobNotices(handle.db, { id: jobId, accountId, notify: true }, now)).toBe(3);
+    expect(await queueJobNotices(handle.db, { id: jobId, accountId, notify: false }, now)).toBe(0);
+    const push = recorder<[{ endpoint: string }, string]>(() => Promise.resolve('sent'));
+    const chat = recorder<[number, string, number]>(() => Promise.resolve('sent'));
+    expect(await deliverDue(handle.db, { push: { send: push.send } as PushSender, chat: { send: chat.send } as ChatSender }, APP, now, quiet)).toEqual({ sent: 3, retrying: 0, dropped: 0, failed: 0 });
+    expect(JSON.parse(push.calls[0]?.[1] ?? '{}')).toEqual({ title: 'Build xong · tiem-bo', body: 'tiem-bo.hoandat.io.vn đã cập nhật', url: `/sites/${siteId}/deploy?build=${jobId}`, tag: jobId });
+    expect(chat.calls[0]?.[1]).toBe(`tiem-bo.hoandat.io.vn đã cập nhật\nXem: ${APP}/sites/${siteId}/deploy?build=${jobId}`);
   });
 });

@@ -75,7 +75,7 @@ describe('creating sites', () => {
     const list = await app.http().get('/api/sites').set('Cookie', owner.cookie);
     expect(list.body.sites).toHaveLength(1);
     expect(list.body.sites[0].cover.id).toBe(body.draft.cover);
-    expect(list.body.limits).toEqual({ sites: 2, siteBytes: 20 * 1024 * 1024 });
+    expect(list.body.limits).toEqual({ sites: 2, developerSites: 3, siteBytes: 20 * 1024 * 1024 });
     expect(list.headers['cache-control']).toBe('no-store');
   });
 

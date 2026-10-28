@@ -2,13 +2,17 @@
  * Site rows and their rules: names (format, reserved, taken or held), the per-account limit, the template's sample
  * photos copied into a new site, and renaming with the old name held for NAME_HOLD_MS.
  */
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import {
   activeJobOf,
   checkSiteName,
+  DEVELOPER_SITES_PER_ACCOUNT,
+  developerSiteCount,
+  developerSites,
+  enqueueBuild,
   enqueueJob,
   isUniqueViolation,
   NAME_HOLD_MS,
@@ -17,7 +21,9 @@ import {
   siteNameHolds,
   sites,
   siteUploadsDir,
+  type BuildSettings,
   type Db,
+  type DeveloperSource,
   type Job,
 } from '@webnhanh/db';
 import { newShopDraft, SHOP_SAMPLES, SHOP_TEMPLATE } from '@webnhanh/templates';
@@ -103,6 +109,47 @@ export async function createTemplateSite(
   }
 }
 
+/** A webhook secret: 32 random bytes, base64url. */
+export function newWebhookSecret(): string {
+  return randomBytes(32).toString('base64url');
+}
+
+/** Creates a developer site (DEVELOPER_SITES_PER_ACCOUNT per account) with its source and confirmed settings. */
+export async function createDeveloperSite(
+  db: Db,
+  input: { accountId: string; name: string; source: DeveloperSource; repoUrl: string | null; branch: string | null; settings: BuildSettings; detection: unknown },
+  now: Date,
+): Promise<Site> {
+  if ((await developerSiteCount(db, input.accountId)) >= DEVELOPER_SITES_PER_ACCOUNT) {
+    throw new HttpError(403, 'developer-site-limit', { limit: DEVELOPER_SITES_PER_ACCOUNT });
+  }
+  await assertNameFree(db, input.name, now);
+  try {
+    return await db.transaction(async (tx) => {
+      const [site] = await tx
+        .insert(sites)
+        .values({ accountId: input.accountId, name: input.name, kind: 'developer', status: 'draft', createdAt: now, updatedAt: now })
+        .returning();
+      if (!site) throw new Error('site insert returned no row');
+      await tx.insert(developerSites).values({
+        siteId: site.id,
+        source: input.source,
+        repoUrl: input.repoUrl,
+        branch: input.branch,
+        settings: input.settings,
+        detection: input.detection,
+        webhookSecret: input.source === 'git' ? newWebhookSecret() : null,
+        createdAt: now,
+        updatedAt: now,
+      });
+      return site;
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new HttpError(409, 'name-taken');
+    throw error;
+  }
+}
+
 /**
  * Renames a site. A published site keeps its old name reserved (answering 404 once the new name is published) for
  * NAME_HOLD_MS, and is published again under the new name; a site never published simply changes name.
@@ -131,8 +178,12 @@ export async function renameSite(db: Db, site: Site, newName: string, now: Date)
       const [renamed] = await tx.update(sites).set({ name: newName, updatedAt: now }).where(eq(sites.id, site.id)).returning();
       if (!renamed) throw new Error('site update returned no row');
       if (!published) return { site: renamed, job: null };
-      const queued = await enqueueJob(tx, { siteId: site.id, accountId: site.accountId, type: 'publish' }, now);
-      if (!queued.ok) throw new HttpError(409, 'job-active');
+      // A developer site is built again under its new name (not counted against the day's builds).
+      const queued =
+        site.kind === 'developer'
+          ? await enqueueBuild(tx, { siteId: site.id, accountId: site.accountId, trigger: 'rename' }, now)
+          : await enqueueJob(tx, { siteId: site.id, accountId: site.accountId, type: 'publish' }, now);
+      if (!queued.ok) throw new HttpError(queued.reason === 'queue-full' ? 503 : 409, queued.reason);
       return { site: renamed, job: queued.job };
     });
   } catch (error) {

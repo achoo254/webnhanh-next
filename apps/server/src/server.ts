@@ -1,7 +1,8 @@
 import { openPglite, openPostgres } from '@webnhanh/db';
 import brandConfig from '../../../brand.config.json';
 import { createApp } from './app';
-import { DEV_PGLITE_DIR, DEV_SITES_DIR, loadConfig } from './config';
+import path from 'node:path';
+import { DEV_BUILDS_DIR, DEV_PGLITE_DIR, DEV_SITES_DIR, loadConfig } from './config';
 import { chatBotSender } from './notifications/chat-bot-api';
 import { startDeliveryLoop } from './notifications/deliveries';
 import { webPushSender } from './notifications/web-push-sender';
@@ -31,12 +32,35 @@ const devWorker = config.databaseUrl
         formSecret: config.formSecret,
         chromePath: config.chromePath,
         ffmpegPath: config.ffmpegPath,
+        buildOutputDir: path.join(DEV_BUILDS_DIR, 'out'),
         now: () => new Date(),
         pollMs: 1_000,
         log: { info: (m: string) => console.log(`[worker] ${m}`), warn: (m: string) => console.warn(`[worker] ${m}`) },
       }),
     );
 if (devWorker) console.log(`dev worker: publishing to ${DEV_SITES_DIR}`);
+
+// Developer builds in dev: the builder in-process as well. Plain HTML needs nothing; Node builds need Docker with the
+// image of infra/builder and the network of infra/builder/build-network.sh, else they fail with "docker-unavailable".
+const devBuilder = config.databaseUrl
+  ? null
+  : await import('@webnhanh/worker/build').then(async ({ startBuilder }) => {
+      const { mkdir } = await import('node:fs/promises');
+      const dirs = { inbox: path.join(DEV_BUILDS_DIR, 'inbox'), out: path.join(DEV_BUILDS_DIR, 'out'), work: path.join(DEV_BUILDS_DIR, 'work'), cache: path.join(DEV_BUILDS_DIR, 'cache') };
+      for (const dir of Object.values(dirs)) await mkdir(dir, { recursive: true });
+      return startBuilder({
+        db: database.db,
+        log: { info: (m: string) => console.log(`[builder] ${m}`), warn: (m: string) => console.warn(`[builder] ${m}`) },
+        now: () => new Date(),
+        docker: { docker: process.env.DOCKER_PATH ?? 'docker', image: 'webnhanh-build:node22', network: 'webnhanh-build' },
+        gitPath: 'git',
+        dirs,
+        siteMaxBytes: config.siteMaxBytes,
+        pollMs: 2_000,
+        minFreeMemory: 0,
+        minFreeDisk: 0,
+      });
+    });
 
 // Order notifications (Web Push, Chat) go out from here: the worker is loopback-only, the server may call out.
 const deliveries = startDeliveryLoop({
@@ -63,6 +87,7 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
   server.close();
   await deliveries.stop();
   await devWorker?.stop();
+  await devBuilder?.stop();
   await database.close();
   process.exit(0);
 }

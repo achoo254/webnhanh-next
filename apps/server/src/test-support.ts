@@ -8,6 +8,7 @@ import path from 'node:path';
 import { openPglite, signFormToken, sites, type DbHandle } from '@webnhanh/db';
 import request from 'supertest';
 import { createApp } from './app';
+import type { Fetcher } from './builds/repo-check';
 import { accountForSub, createSession, sessionCookieName } from './auth/session';
 import { loadConfig, type ServerConfig } from './config';
 
@@ -23,12 +24,15 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
-export async function startTestApp(overrides: Partial<ServerConfig> = {}, onOrder?: () => void): Promise<TestApp> {
-  // Photos of each test app go to a temp dir of its own, removed on close.
+export async function startTestApp(overrides: Partial<ServerConfig> = {}, onOrder?: () => void, fetcher?: Fetcher): Promise<TestApp> {
+  // Photos and uploaded zips of each test app go to temp dirs of its own, removed on close.
   const uploadsDir = await mkdtemp(path.join(os.tmpdir(), 'webnhanh-uploads-'));
-  const config: ServerConfig = { ...loadConfig({ NODE_ENV: 'test' }), uploadsDir, ...overrides };
+  const buildInboxDir = await mkdtemp(path.join(os.tmpdir(), 'webnhanh-inbox-'));
+  const config: ServerConfig = { ...loadConfig({ NODE_ENV: 'test' }), uploadsDir, buildInboxDir, ...overrides };
   const handle = await openPglite();
-  const server = createApp({ config, db: handle.db, onOrder }).listen(0, '127.0.0.1');
+  // No test reaches GitHub or GitLab: a check without a fake fetcher fails as unreachable.
+  const offline: Fetcher = () => Promise.reject(new Error('no network in tests'));
+  const server = createApp({ config, db: handle.db, onOrder, fetcher: fetcher ?? offline }).listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
   const { port } = server.address() as AddressInfo;
   return {
@@ -44,6 +48,7 @@ export async function startTestApp(overrides: Partial<ServerConfig> = {}, onOrde
       await new Promise<void>((resolve) => server.close(() => resolve()));
       await handle.close();
       await rm(uploadsDir, { recursive: true, force: true });
+      await rm(buildInboxDir, { recursive: true, force: true });
       await rm(config.uploadsDir, { recursive: true, force: true });
     },
   };

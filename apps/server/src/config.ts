@@ -11,6 +11,8 @@ export const DEV_PGLITE_DIR = path.join(REPO_ROOT, '.data', 'pglite');
 /** Dev photos and published sites (the dev server runs the publish worker in-process: PGlite has one owner). */
 export const DEV_UPLOADS_DIR = path.join(REPO_ROOT, '.data', 'uploads');
 export const DEV_SITES_DIR = path.join(REPO_ROOT, '.data', 'sites');
+/** Dev developer builds (the dev server runs the builder in-process too): inbox, staging, work, caches. */
+export const DEV_BUILDS_DIR = path.join(REPO_ROOT, '.data', 'builds');
 /** The Vite dev server (apps/web), which proxies /api, /auth and /healthz here. */
 export const DEV_WEB_ORIGINS = ['http://localhost:5297', 'http://127.0.0.1:5297'] as const;
 const LOOPBACK_HOSTS = ['127.0.0.1', 'localhost', '[::1]'];
@@ -46,6 +48,11 @@ const Env = z.object({
   CHAT_BOT_USERNAME: z.preprocess(emptyIsUnset, z.string().regex(/^[A-Za-z0-9_]{3,64}$/).optional()),
   CHAT_BOT_TOKEN: z.preprocess(emptyIsUnset, z.string().regex(/^\d+:\S{16,}$/).optional()),
   CHAT_BOT_WEBHOOK_SECRET: z.preprocess(emptyIsUnset, z.string().min(32).optional()),
+  /**
+   * Uploaded zips of developer sites (`<site id>.zip`), read by webnhanh-builder. Unset in production: zip upload is
+   * off (git deploys still work).
+   */
+  BUILD_INBOX_DIR: z.preprocess(emptyIsUnset, z.string().regex(/^\/[A-Za-z0-9._/-]+$/).optional()),
   /** Headless Chrome for share pictures, used by the worker inside the dev server only. */
   CHROME_PATH: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
 });
@@ -104,6 +111,8 @@ export interface ServerConfig {
   /** New orders in the Chat app; null when the bot is not set up. */
   readonly chatBot: ChatBotConfig | null;
   readonly chromePath: string | undefined;
+  /** Where uploaded zips go; null: zip upload is off. */
+  readonly buildInboxDir: string | null;
   /** Orders accepted per visitor IP (10 minutes) and per site (an hour). */
   readonly orderLimits: { readonly perIp: number; readonly perSite: number };
 }
@@ -161,6 +170,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
         ? { url: new URL(e.CHAT_URL).origin, username: e.CHAT_BOT_USERNAME, token: e.CHAT_BOT_TOKEN, webhookSecret: e.CHAT_BOT_WEBHOOK_SECRET }
         : null,
     chromePath: e.CHROME_PATH,
+    buildInboxDir: e.BUILD_INBOX_DIR ?? (production ? null : path.join(DEV_BUILDS_DIR, 'inbox')),
     orderLimits: { perIp: 10, perSite: 60 },
   };
 }

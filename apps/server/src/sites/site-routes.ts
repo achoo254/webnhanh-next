@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   deleteSiteImages,
+  DEVELOPER_SITES_PER_ACCOUNT,
   enqueueJob,
   imageFileName,
   isUuid,
@@ -83,7 +84,7 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
         const coverId = draft.success ? draft.data.cover : null;
         return siteView(site, coverId ? byId.get(coverId) : undefined, latest.get(site.id), openOrders.get(site.id) ?? 0);
       }),
-      limits: { sites: config.sitesPerAccount, siteBytes: config.siteMaxBytes },
+      limits: { sites: config.sitesPerAccount, developerSites: DEVELOPER_SITES_PER_ACCOUNT, siteBytes: config.siteMaxBytes },
     });
   });
 
@@ -114,8 +115,14 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     });
   });
 
+  /** Drafts, photos and Publish belong to template sites; a developer site is built (builds/developer-routes.ts). */
+  const templateOnly = (site: { kind: string }): void => {
+    if (site.kind !== 'template') throw new HttpError(404, 'site-not-found');
+  };
+
   router.put('/api/sites/:siteId/draft', signedIn, noStore, json, async (req, res) => {
     const site = await ownedSite(db, accountOf(res.locals).id, req.params.siteId);
+    templateOnly(site);
     const parsed = shopDraftSchema.safeParse(body(req).draft);
     if (!parsed.success) throw new HttpError(400, 'invalid-draft');
     const draft = parsed.data;
@@ -150,6 +157,7 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
     async (req, res) => {
       const site = await ownedSite(db, accountOf(res.locals).id, req.params.siteId);
+      templateOnly(site);
       const bytes: unknown = req.body;
       if (!Buffer.isBuffer(bytes) || bytes.length === 0) throw new HttpError(400, 'image-type');
       if ((await storedBytes(db, site.id)) >= config.siteMaxBytes) throw new HttpError(413, 'site-full');
@@ -189,6 +197,7 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
   router.post('/api/sites/:siteId/publish', signedIn, noStore, async (req, res) => {
     const account = accountOf(res.locals);
     const site = await ownedSite(db, account.id, req.params.siteId);
+    templateOnly(site);
     const draft = shopDraftSchema.safeParse(site.draft);
     if (!draft.success) throw new HttpError(422, 'draft-incomplete', { fields: [] });
     const issues = shopPublishIssues(draft.data);

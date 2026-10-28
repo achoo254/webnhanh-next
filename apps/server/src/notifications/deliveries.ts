@@ -1,11 +1,13 @@
 /**
- * The order notification outbox: `notification_deliveries` rows are written with the order (orders/order-store.ts)
- * and sent from here, each on its own. A failing row only moves its own next attempt (with backoff), so a push
+ * The notification outbox: `notification_deliveries` rows are written with the order (orders/order-store.ts) or with
+ * the end of a build the owner asked to hear about (`queueJobNotices` of @webnhanh/db), and sent from here, each on
+ * its own. A failing row only moves its own next attempt (with backoff), so a push
  * service that is down never holds back the Chat message, nor the other way round, and the order itself is stored
  * whatever happens here. A row is leased while it is sent: a crash mid-send retries it after the lease.
  */
-import { chatLinks, notificationDeliveries, pushSubscriptions, sites, submissions, type Db } from '@webnhanh/db';
+import { chatLinks, jobs, notificationDeliveries, pushSubscriptions, sites, submissions, type Db } from '@webnhanh/db';
 import { and, asc, eq, inArray, lte } from 'drizzle-orm';
+import { buildChatText, buildPushPayload, type BuildNotice } from './build-message';
 import { chatText, pushPayload, randomIdOf, type OrderNotice } from './order-message';
 import { DeliveryError, type Senders } from './senders';
 
@@ -60,17 +62,40 @@ async function noticeOf(db: Db, submissionId: string): Promise<OrderNotice | nul
   return row ? { submissionId: row.id, siteId: row.siteId, siteName: row.siteName, order: row.data } : null;
 }
 
+async function buildNoticeOf(db: Db, jobId: string): Promise<BuildNotice | null> {
+  const [row] = await db
+    .select({ jobId: jobs.id, siteId: jobs.siteId, status: jobs.status, siteName: sites.name })
+    .from(jobs)
+    .innerJoin(sites, eq(sites.id, jobs.siteId))
+    .where(eq(jobs.id, jobId));
+  if (!row || (row.status !== 'done' && row.status !== 'failed' && row.status !== 'skipped')) return null;
+  return { jobId: row.jobId, siteId: row.siteId, siteName: row.siteName, status: row.status };
+}
+
+/** The push payload and chat text of a delivery's order or build; null when it no longer exists. */
+async function messageOf(db: Db, appUrl: string, delivery: Delivery): Promise<{ push: string; chat: string } | null> {
+  if (delivery.submissionId) {
+    const notice: OrderNotice | null = await noticeOf(db, delivery.submissionId);
+    return notice ? { push: pushPayload(notice), chat: chatText(notice, appUrl) } : null;
+  }
+  if (delivery.jobId) {
+    const notice = await buildNoticeOf(db, delivery.jobId);
+    return notice ? { push: buildPushPayload(notice), chat: buildChatText(notice, appUrl) } : null;
+  }
+  return null;
+}
+
 type Outcome = 'sent' | 'dropped';
 
 /** Sends one delivery; throws DeliveryError (or anything else) when it did not go out. */
 async function sendOne(db: Db, senders: Senders, appUrl: string, delivery: Delivery): Promise<Outcome> {
-  const notice = await noticeOf(db, delivery.submissionId);
-  if (!notice) return 'dropped';
+  const message = await messageOf(db, appUrl, delivery);
+  if (!message) return 'dropped';
   if (delivery.channel === 'push') {
     if (!senders.push) return 'dropped';
     const [target] = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.id, delivery.target));
     if (!target) return 'dropped';
-    if ((await senders.push.send(target, pushPayload(notice))) === 'gone') {
+    if ((await senders.push.send(target, message.push)) === 'gone') {
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, target.id));
       return 'dropped';
     }
@@ -83,7 +108,7 @@ async function sendOne(db: Db, senders: Senders, appUrl: string, delivery: Deliv
     .from(chatLinks)
     .where(and(eq(chatLinks.accountId, delivery.accountId), eq(chatLinks.chatId, chatId)));
   if (!link) return 'dropped';
-  if ((await senders.chat.send(chatId, chatText(notice, appUrl), randomIdOf(delivery.id))) === 'gone') {
+  if ((await senders.chat.send(chatId, message.chat, randomIdOf(delivery.id))) === 'gone') {
     await db.delete(chatLinks).where(and(eq(chatLinks.accountId, delivery.accountId), eq(chatLinks.chatId, chatId)));
     return 'dropped';
   }
