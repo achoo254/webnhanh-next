@@ -23,7 +23,7 @@ thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, dat
 | Worker | systemd `webnhanh-worker` (user `webnhanh`, `MemoryMax=512M` vì mỗi lần đăng chạy một Chrome headless chụp ảnh xem trước, chỉ nói chuyện với loopback, ghi được `sites/` và `uploads/`): đăng site từ hàng đợi `jobs` (kèm form đặt hàng có token ký và ảnh `og-<bản>.jpg` 1200×630), mỗi giờ dọn phiên hết hạn, tên giữ chỗ và mã liên kết Chat hết hạn, bản ghi báo đơn quá 30 ngày, ảnh không còn dùng quá 1 ngày |
 | Báo đơn | `webnhanh-server` nhận đơn ở `POST /f/<tên>` và gửi báo đơn (Web Push, bot Chat) từ bảng `notification_deliveries`: mỗi dòng một máy hoặc một chat, thử lại riêng sau 30 giây, 2, 10, 30 phút, 2 rồi 6 giờ; đăng ký push hết hạn (404/410) và chat chặn bot (403) bị xoá |
 | Ảnh tải lên | `/var/www/webnhanh/uploads/<site id>/<ảnh>-<rộng>.webp` (`webnhanh:webnhanh`, `750`, nginx không phát; trình sửa đọc qua `/api/sites/<id>/images/…` có kiểm chủ) |
-| nginx app | `/etc/nginx/conf.d/webnhanh.hoandat.com.conf` (từ `infra/nginx/`): HTTP → HTTPS, phát web tĩnh, chuyển `/api`, `/auth`, `/healthz` vào server; CSP có hash của script theme. Cùng file phục vụ tên cũ `trang.hoandat.com`: 301 về cùng đường dẫn trên `webnhanh.hoandat.com`, trừ `/f/` và `/hooks/chat` vẫn vào server (xem "Đổi tên sang Web Nhanh") |
+| nginx app | `/etc/nginx/conf.d/webnhanh.hoandat.com.conf` (từ `infra/nginx/`): HTTP → HTTPS, phát web tĩnh, chuyển `/api`, `/auth`, `/healthz` vào server; CSP có hash của script theme. Cùng file phục vụ tên cũ `trang.hoandat.com`: 301 về cùng đường dẫn trên `webnhanh.hoandat.com` |
 | Database | Postgres đang chạy trên `.65`, database `webnhanh`, role `webnhanh`; `pg_hba.conf` có hai dòng `host webnhanh webnhanh 127.0.0.1/32` và `::1/128` `scram-sha-256` đặt trên dòng `ident` chung |
 | Env | `/etc/webnhanh/production.env` (640 `root:webnhanh`), nguồn ở thư mục env iCloud `ENV production/webnhanh-next/.env.production` |
 
@@ -116,11 +116,8 @@ App chuyển từ `trang.hoandat.com` sang `webnhanh.hoandat.com`; site người
 
 - **nginx:** `release` cài `webnhanh.hoandat.com.conf` và gỡ `/etc/nginx/conf.d/trang.hoandat.com.conf` trong cùng một
   bước (cả hai cùng nhận `server_name trang.hoandat.com`; `nginx -t` hỏng thì trả lại cả hai file, không reload).
-  Tên cũ trả 301 về `https://webnhanh.hoandat.com$request_uri` (cổng 80 và 443, cùng chứng chỉ gốc), trừ hai đường:
-  `/f/` (trang đăng trước ngày đổi tên gửi đơn về `https://trang.hoandat.com/f/<tên>` và CSP `connect-src`,
-  `form-action` trong trang chỉ cho phép origin đó, nên chuyển hướng sẽ làm hỏng form; chuyển hướng còn biến POST
-  thành GET) và `/hooks/chat` (phòng khi webhook của bot chưa đổi). Ngoại lệ `/f/` bỏ được khi mọi trang đăng trước
-  28/10/2026 đã đăng lại. `hoandat.io.vn` (tên miền gốc) chuyển về `https://webnhanh.hoandat.com/`.
+  Tên cũ trả 301 về `https://webnhanh.hoandat.com$request_uri` (cổng 80 và 443, cùng chứng chỉ gốc), mọi đường dẫn: chưa trang nào
+  đăng dưới tên cũ có form đặt hàng, và bot Chat được tạo sau khi đổi tên. `hoandat.io.vn` (tên miền gốc) chuyển về `https://webnhanh.hoandat.com/`.
 - **Thứ tự:** DNS `webnhanh.hoandat.com` (proxied) và redirect URI mới ở IdP trước, rồi `release`, rồi `hosting`.
 - **Env:** `PUBLIC_URL=https://webnhanh.hoandat.com`, `AUTH_CLIENT_ID=webnhanh-web` (hoặc bỏ trống), `DATABASE_URL` trỏ
   database và role `webnhanh`. Trang đăng sau khi đổi có footer "Làm bằng Web Nhanh" và form gửi về origin mới.
@@ -138,7 +135,6 @@ curl -sI https://kiem-tra.hoandat.io.vn/            # 200, không Set-Cookie (si
 curl -sI https://khong-co-trang.hoandat.io.vn/      # 404, trang 404 chung
 curl -sI https://hoandat.io.vn/                     # 302 về webnhanh.hoandat.com
 curl -sI https://trang.hoandat.com/sites            # 301 về https://webnhanh.hoandat.com/sites
-curl -s -o /dev/null -w '%{http_code}\n' -X POST https://trang.hoandat.com/f/khong-co-trang   # 404 từ server, không phải 301
 systemctl is-active webnhanh-worker                    # active
 journalctl -u webnhanh-server -n 20 | grep -i webp     # không có dòng "cannot write WebP"
 journalctl -u webnhanh-server -n 20 | grep 'order notifications'   # push on/off, chat on/off như env
