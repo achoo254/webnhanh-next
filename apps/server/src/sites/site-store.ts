@@ -34,6 +34,9 @@ import type { Site } from './site-access';
 /** The templates' sample photos, found through their package so the path holds in the bundle too. */
 const SAMPLES_DIR = path.join(path.dirname(createRequire(import.meta.url).resolve('@webnhanh/templates/package.json')), 'samples');
 
+/** HTTP status of each reason a job is not queued. */
+export const ENQUEUE_STATUS = { 'job-active': 409, 'daily-limit': 429, 'queue-full': 503, 'account-locked': 403, 'site-removed': 403 } as const;
+
 /** Old names one site may hold at once: renaming back and forth must not reserve names by the dozen. */
 export const MAX_HELD_NAMES = 2;
 
@@ -201,7 +204,7 @@ export async function renameSite(db: Db, site: Site, newName: string, now: Date)
         site.kind === 'developer'
           ? await enqueueBuild(tx, { siteId: site.id, accountId: site.accountId, trigger: 'rename' }, now)
           : await enqueueJob(tx, { siteId: site.id, accountId: site.accountId, type: 'publish' }, now);
-      if (!queued.ok) throw new HttpError(queued.reason === 'queue-full' ? 503 : 409, queued.reason);
+      if (!queued.ok) throw new HttpError(ENQUEUE_STATUS[queued.reason], queued.reason);
       return { site: renamed, job: queued.job };
     });
   } catch (error) {

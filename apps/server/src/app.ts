@@ -2,6 +2,8 @@ import type { Db } from '@webnhanh/db';
 import express, { type ErrorRequestHandler, type Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
+import { reportRoutes } from './abuse/report-routes';
+import { adminRoutes } from './admin/admin-routes';
 import { authRoutes } from './auth/auth-routes';
 import { developerRoutes } from './builds/developer-routes';
 import { gitWebhookRoutes } from './builds/git-webhook';
@@ -18,7 +20,7 @@ import { siteRoutes } from './sites/site-routes';
 export interface AppDeps {
   readonly config: ServerConfig;
   readonly db: Db;
-  /** Called after a new order is stored: the notification sender looks for due deliveries at once. */
+  /** Called after a new order or abuse report is stored: the notification sender looks for due deliveries at once. */
   readonly onOrder?: () => void;
   /** HTTPS client of the repo check (GitHub, GitLab); tests replace it. */
   readonly fetcher?: Fetcher;
@@ -46,6 +48,9 @@ export function createApp({ config, db, onOrder = () => undefined, fetcher = (ur
   app.use(gitWebhookRoutes(db));
   app.use(requireAllowedOrigin(config.allowedOrigins));
   app.use(authRoutes(config, db));
+  // The public abuse report form posts from the app's own page (`/bao-cao`), without sign-in.
+  app.use(reportRoutes(config, db, onOrder));
+  app.use(adminRoutes(config, db));
   app.use(siteRoutes(config, db));
   app.use(developerRoutes(config, db, fetcher));
   app.use(orderRoutes(config, db));

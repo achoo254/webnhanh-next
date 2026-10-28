@@ -1,12 +1,13 @@
 /**
  * The notification outbox: `notification_deliveries` rows are written with an order or a wedding reply
- * (orders/order-store.ts) or with the end of a build the owner asked to hear about (`queueJobNotices` of @webnhanh/db),
- * and sent from here, each on its own. A failing row only moves its own next attempt (with backoff), so a push
+ * (orders/order-store.ts), with the end of a build the owner asked to hear about (`queueJobNotices` of @webnhanh/db),
+ * or for the admins with an abuse report or a release held for review (`queueAdminNotices`), and sent from here, each on its own. A failing row only moves its own next attempt (with backoff), so a push
  * service that is down never holds back the Chat message, nor the other way round, and the submission itself is
  * stored whatever happens here. A row is leased while it is sent: a crash mid-send retries it after the lease.
  */
-import { chatLinks, jobs, notificationDeliveries, pushSubscriptions, sites, submissionContent, submissions, type Db } from '@webnhanh/db';
+import { abuseReports, chatLinks, jobs, notificationDeliveries, pushSubscriptions, sites, submissionContent, submissions, type Db } from '@webnhanh/db';
 import { and, asc, eq, inArray, lte } from 'drizzle-orm';
+import { reportChatText, reportPushPayload, reviewChatText, reviewPushPayload } from './admin-message';
 import { buildChatText, buildPushPayload, type BuildNotice } from './build-message';
 import { chatText, pushPayload, randomIdOf, type OrderNotice } from './order-message';
 import { DeliveryError, type Senders } from './senders';
@@ -64,15 +65,32 @@ async function noticeOf(db: Db, submissionId: string): Promise<OrderNotice | nul
 
 async function buildNoticeOf(db: Db, jobId: string): Promise<BuildNotice | null> {
   const [row] = await db
-    .select({ jobId: jobs.id, siteId: jobs.siteId, status: jobs.status, siteName: sites.name })
+    .select({ jobId: jobs.id, siteId: jobs.siteId, status: jobs.status, error: jobs.error, siteName: sites.name })
     .from(jobs)
     .innerJoin(sites, eq(sites.id, jobs.siteId))
     .where(eq(jobs.id, jobId));
   if (!row || (row.status !== 'done' && row.status !== 'failed' && row.status !== 'skipped')) return null;
-  return { jobId: row.jobId, siteId: row.siteId, siteName: row.siteName, status: row.status };
+  return { jobId: row.jobId, siteId: row.siteId, siteName: row.siteName, status: row.status, held: row.status === 'done' && row.error === 'held-for-review' };
 }
 
-/** The push payload and chat text of a delivery's order or build; null when it no longer exists. */
+/** The admins' message of a report or a held release; null once there is nothing to tell (a review already decided). */
+async function adminMessageOf(db: Db, appUrl: string, delivery: Delivery): Promise<{ push: string; chat: string } | null> {
+  if (delivery.reportId) {
+    const [report] = await db.select().from(abuseReports).where(eq(abuseReports.id, delivery.reportId));
+    if (!report) return null;
+    const notice = { reportId: report.id, siteName: report.siteName, category: report.category, details: report.details };
+    return { push: reportPushPayload(notice), chat: reportChatText(notice, appUrl) };
+  }
+  if (delivery.reviewSiteId) {
+    const [site] = await db.select().from(sites).where(eq(sites.id, delivery.reviewSiteId));
+    if (site?.status !== 'pending-review' || !site.pendingReview) return null;
+    const notice = { siteId: site.id, siteName: site.name, reasons: site.pendingReview.reasons };
+    return { push: reviewPushPayload(notice), chat: reviewChatText(notice, appUrl) };
+  }
+  return null;
+}
+
+/** The push payload and chat text of a delivery's order, build, report or review; null when it no longer exists. */
 async function messageOf(db: Db, appUrl: string, delivery: Delivery): Promise<{ push: string; chat: string } | null> {
   if (delivery.submissionId) {
     const notice: OrderNotice | null = await noticeOf(db, delivery.submissionId);
@@ -82,7 +100,7 @@ async function messageOf(db: Db, appUrl: string, delivery: Delivery): Promise<{ 
     const notice = await buildNoticeOf(db, delivery.jobId);
     return notice ? { push: buildPushPayload(notice), chat: buildChatText(notice, appUrl) } : null;
   }
-  return null;
+  return adminMessageOf(db, appUrl, delivery);
 }
 
 type Outcome = 'sent' | 'dropped';

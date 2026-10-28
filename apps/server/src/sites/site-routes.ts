@@ -14,6 +14,7 @@ import {
   jobs,
   latestJobsOf,
   parseImageFileName,
+  publishBlock,
   siteImageFile,
   siteImages,
   sites,
@@ -200,12 +201,15 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     const account = accountOf(res.locals);
     const site = await ownedSite(db, account.id, req.params.siteId);
     templateOnly(site);
+    // Locked or taken down: said first, whatever the draft looks like.
+    const block = await publishBlock(db, site.id);
+    if (block) throw new HttpError(403, block);
     const draft = parseDraft(site.template, site.draft);
     if (!draft) throw new HttpError(422, 'draft-incomplete', { fields: [] });
     const issues = publishIssues(draft);
     if (issues.length > 0) throw new HttpError(422, 'draft-incomplete', { fields: issues.map((issue) => issue.field) });
     const queued = await enqueueJob(db, { siteId: site.id, accountId: account.id, type: 'publish' }, new Date());
-    if (!queued.ok) throw new HttpError(409, 'job-active');
+    if (!queued.ok) throw new HttpError(queued.reason === 'job-active' ? 409 : 403, queued.reason);
     res.status(202).json({ job: jobView(queued.job) });
   });
 

@@ -6,6 +6,8 @@ export interface BuildNotice {
   readonly siteId: string;
   readonly siteName: string;
   readonly status: 'done' | 'failed' | 'skipped';
+  /** Done, but held for an admin's review: nothing changed on the web yet. */
+  readonly held?: boolean;
 }
 
 /** Where the owner follows the build in the app. */
@@ -15,6 +17,7 @@ export function buildPath(siteId: string, jobId: string): string {
 
 function headline(notice: BuildNotice): string {
   const host = `${notice.siteName}.${SITES_DOMAIN}`;
+  if (notice.status === 'done' && notice.held) return `${host}: bản mới đang chờ duyệt trước khi đăng`;
   if (notice.status === 'done') return `${host} đã cập nhật`;
   if (notice.status === 'skipped') return `${host}: không có gì mới để build`;
   return `${host}: build chưa thành công, site cũ vẫn chạy`;
@@ -22,7 +25,7 @@ function headline(notice: BuildNotice): string {
 
 export function buildPushPayload(notice: BuildNotice): string {
   return JSON.stringify({
-    title: notice.status === 'done' ? `Build xong · ${notice.siteName}` : notice.status === 'failed' ? `Build lỗi · ${notice.siteName}` : `Build bỏ qua · ${notice.siteName}`,
+    title: notice.held ? `Chờ duyệt · ${notice.siteName}` : notice.status === 'done' ? `Build xong · ${notice.siteName}` : notice.status === 'failed' ? `Build lỗi · ${notice.siteName}` : `Build bỏ qua · ${notice.siteName}`,
     body: headline(notice),
     url: buildPath(notice.siteId, notice.jobId),
     tag: notice.jobId,

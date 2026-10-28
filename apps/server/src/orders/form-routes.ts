@@ -4,12 +4,12 @@
  * itself: only the site's own origin (CORS, and refused when a browser says it came from elsewhere), the page's
  * signed token, a hidden field bots fill, a minimum time to fill the form (measured by the page's script), rate
  * limits per IP and per site, and every field checked. A site whose live page has no form of that kind, and unknown,
- * unpublished or renamed-away sites, answer 404. Mounted before the app's own Origin check: the visitor's origin is
+ * unpublished, taken-down or renamed-away sites, answer 404. Mounted before the app's own Origin check: the visitor's origin is
  * the site, not the app.
  */
 import { SITE_NAME_PATTERN, siteOrigin, sites, verifyFormToken, type Db, type SubmissionContent } from '@webnhanh/db';
 import { ORDER_FIELDS, orderInputSchema, orderIssueFields, RSVP_FIELDS, RSVP_KIND, rsvpInputSchema, rsvpIssueFields } from '@webnhanh/templates';
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import express, { type Request, type RequestHandler, type Response, type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { ServerConfig } from '../config';
@@ -102,7 +102,8 @@ export function formRoutes(config: ServerConfig, db: Db, onOrder: () => void): R
       ? await db
           .select()
           .from(sites)
-          .where(and(eq(sites.name, name), eq(sites.status, 'published'), isNotNull(sites.currentReleaseId), isNotNull(sites.orderForm)))
+          // A site whose next release waits for review still has its live page, and that page takes orders.
+          .where(and(eq(sites.name, name), inArray(sites.status, ['published', 'pending-review']), isNotNull(sites.currentReleaseId), isNotNull(sites.orderForm)))
       : [];
     const kind = kindOf(req);
     if (!site) return sendFormOutcome(req, res, 404, 'not-found', { kind });

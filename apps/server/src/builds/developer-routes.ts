@@ -35,7 +35,7 @@ import { accountOf, requireAccount } from '../auth/auth-routes';
 import type { ServerConfig } from '../config';
 import { HttpError } from '../http-error';
 import { ownedSite, type Site } from '../sites/site-access';
-import { createDeveloperSite, validName } from '../sites/site-store';
+import { createDeveloperSite, ENQUEUE_STATUS, validName } from '../sites/site-store';
 import { siteView } from '../sites/site-views';
 import { buildView, developerView, type BuildView, type EstimateView, type QueueView } from './build-views';
 import { checkRepo, type Fetcher } from './repo-check';
@@ -115,8 +115,6 @@ async function buildDetail(db: Db, job: Job): Promise<BuildDetail> {
     previousMs: job.status === 'done' ? await previousDuration(db, job) : null,
   };
 }
-
-const ENQUEUE_ERRORS = { 'job-active': 409, 'daily-limit': 429, 'queue-full': 503 } as const;
 
 /** Writes the request body to `file` (through a temporary name), refusing more than `max` bytes. */
 async function receiveFile(req: express.Request, file: string, max: number): Promise<number> {
@@ -275,7 +273,7 @@ export function developerRoutes(config: ServerConfig, db: Db, fetcher: Fetcher):
     const dev = await developerOf(db, site);
     if (dev.source === 'zip' && !(await hasZip(site.id))) throw new HttpError(409, 'zip-missing');
     const queued = await enqueueBuild(db, { siteId: site.id, accountId: account.id, trigger: 'manual' }, new Date());
-    if (!queued.ok) throw new HttpError(ENQUEUE_ERRORS[queued.reason], queued.reason, queued.reason === 'daily-limit' ? { limit: BUILDS_PER_DAY } : {});
+    if (!queued.ok) throw new HttpError(ENQUEUE_STATUS[queued.reason], queued.reason, queued.reason === 'daily-limit' ? { limit: BUILDS_PER_DAY } : {});
     res.status(202).json(await buildDetail(db, queued.job));
   });
 

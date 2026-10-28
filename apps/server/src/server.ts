@@ -33,6 +33,7 @@ const devWorker = config.databaseUrl
         chromePath: config.chromePath,
         ffmpegPath: config.ffmpegPath,
         buildOutputDir: path.join(DEV_BUILDS_DIR, 'out'),
+        adminSubs: config.adminSubs,
         now: () => new Date(),
         pollMs: 1_000,
         log: { info: (m: string) => console.log(`[worker] ${m}`), warn: (m: string) => console.warn(`[worker] ${m}`) },

@@ -3,6 +3,7 @@
 // person started from. Off until AUTH_CLIENT_SECRET is set.
 import { pruneSessions, type Db } from '@webnhanh/db';
 import express, { type RequestHandler, type Router } from 'express';
+import { accountStanding } from '../admin/admin-guard';
 import type { AuthConfig, ServerConfig } from '../config';
 import { HttpError } from '../http-error';
 import { codeChallenge, newLoginState, openState, safeReturnPath, sealState, subFromIdToken, withLoginResult } from './oidc-login';
@@ -61,7 +62,8 @@ async function exchangeCode(auth: AuthConfig, discovery: Discovery, code: string
 
 /** The signed-in account as the web app sees it. */
 export interface MeResponse {
-  readonly account: { readonly id: string; readonly createdAt: string };
+  /** `admin`: the admin tools are open to it (ADMIN_SUBS); `locked`: an admin locked it (nothing is published or built). */
+  readonly account: { readonly id: string; readonly createdAt: string; readonly admin: boolean; readonly locked: boolean };
 }
 
 export function authRoutes(config: ServerConfig, db: Db): Router {
@@ -135,9 +137,10 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
     res.status(204).end();
   });
 
-  router.get('/api/me', requireAccount(config, db), (_req, res) => {
+  router.get('/api/me', requireAccount(config, db), async (_req, res) => {
     const account = accountOf(res.locals);
-    const body: MeResponse = { account: { id: account.id, createdAt: account.createdAt.toISOString() } };
+    const standing = await accountStanding(db, config, account.id);
+    const body: MeResponse = { account: { id: account.id, createdAt: account.createdAt.toISOString(), ...standing } };
     res.set('Cache-Control', 'no-store').json(body);
   });
 

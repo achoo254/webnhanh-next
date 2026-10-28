@@ -107,7 +107,7 @@ describe('sign-in with the account service', () => {
 
     const me = await http.get('/api/me');
     expect(me.status).toBe(200);
-    expect(me.body).toEqual({ account: { id: account?.id, createdAt: account?.createdAt.toISOString() } });
+    expect(me.body).toEqual({ account: { id: account?.id, createdAt: account?.createdAt.toISOString(), admin: false, locked: false } });
 
     expect((await http.post('/auth/logout').set('Origin', ORIGIN)).status).toBe(204);
     expect((await http.get('/api/me')).status).toBe(401);

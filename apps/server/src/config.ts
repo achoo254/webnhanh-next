@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_SITE_MAX_MB } from '@webnhanh/db';
+import { DEFAULT_SITE_MAX_MB, parseAdminSubs } from '@webnhanh/db';
 import { z } from 'zod';
 
 const emptyIsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
@@ -53,6 +53,11 @@ const Env = z.object({
    * off (git deploys still work).
    */
   BUILD_INBOX_DIR: z.preprocess(emptyIsUnset, z.string().regex(/^\/[A-Za-z0-9._/-]+$/).optional()),
+  /**
+   * IdP subjects (`sub` from auth.hoandat.com) of the admins, comma-separated: they get the admin tools (reports,
+   * takedowns, locks, reviews) and the notices of reports and held releases. Unset: no admin.
+   */
+  ADMIN_SUBS: z.preprocess(emptyIsUnset, z.string().optional()),
   /** Headless Chrome for share pictures, used by the worker inside the dev server only. */
   CHROME_PATH: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
 });
@@ -115,6 +120,10 @@ export interface ServerConfig {
   readonly buildInboxDir: string | null;
   /** Orders accepted per visitor IP (10 minutes) and per site (an hour). */
   readonly orderLimits: { readonly perIp: number; readonly perSite: number };
+  /** IdP subjects of the admins. */
+  readonly adminSubs: readonly string[];
+  /** Abuse reports accepted per IP in an hour. */
+  readonly reportsPerIp: number;
 }
 
 /** Validates env once at startup; throws with the offending keys so the process fails fast. */
@@ -172,5 +181,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     chromePath: e.CHROME_PATH,
     buildInboxDir: e.BUILD_INBOX_DIR ?? (production ? null : path.join(DEV_BUILDS_DIR, 'inbox')),
     orderLimits: { perIp: 10, perSite: 60 },
+    adminSubs: parseAdminSubs(e.ADMIN_SUBS),
+    reportsPerIp: 5,
   };
 }
