@@ -100,8 +100,11 @@ thiếu `index.html`.
 
 nginx của app nhận thân request tới 6 MB chỉ ở route tải ảnh `/api/sites/<id>/images`; mọi chỗ khác vẫn 64 KB
 (form đặt hàng `/f/` 16 KB). `/f/` và `/hooks/chat` đi vào server như `/api/`. Giới hạn đơn theo IP dùng
-`$remote_addr` mà nginx chuyển trong `X-Forwarded-For`: nó phải là IP của khách (real_ip từ Cloudflare), không phải IP
-của Cloudflare.
+`$remote_addr` mà nginx chuyển trong `X-Forwarded-For` (server tin proxy loopback, `trust proxy`): nó phải là IP của
+khách, không phải IP edge của Cloudflare. `.65` không đặt real_ip toàn cục, nên hai server block 443 trong
+`webnhanh.hoandat.com.conf` tự khai `real_ip_header CF-Connecting-IP` và `set_real_ip_from` cho mọi dải IP của
+Cloudflare (lấy từ https://www.cloudflare.com/ips ngày 28/10/2026). Cloudflare đổi danh sách thì sửa cả hai chỗ. Trước
+28/10/2026 chưa có real_ip: giới hạn theo IP của `/f/` đếm theo node Cloudflare.
 
 **Quay lại bản trước bằng tay:** `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
 webnhanh-worker`.
