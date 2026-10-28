@@ -9,7 +9,26 @@ export const accounts = pgTable('accounts', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
 
-export const SITE_KINDS = ['template', 'developer'] as const;
+/** A session ends 30 days after sign-in, or after 7 days without use. */
+export const SESSION_ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
+export const SESSION_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Web sessions of trang.hoandat.com: the id is the sha256 of the cookie token, so a database leak hands out no live session. */
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: text('id').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('sessions_account_idx').on(t.accountId), index('sessions_expires_idx').on(t.expiresAt)],
+);
+
+export const SITE_KINDS =['template', 'developer'] as const;
 export type SiteKind = (typeof SITE_KINDS)[number];
 
 export const SITE_STATUSES = ['draft', 'published', 'pending-review', 'removed'] as const;
