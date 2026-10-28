@@ -112,10 +112,15 @@ async function pointCurrentAt(siteDir: string, releaseId: string): Promise<void>
   await rename(staged, path.join(siteDir, 'current'));
 }
 
-/** Copies `sourceDir` in as a new release, makes it live, and prunes old releases. */
-export async function publishRelease(input: PublishInput): Promise<PublishResult> {
+/** Same as a publish, without making it live: the release waits under releases/ (an admin's review). */
+export type StageInput = Omit<PublishInput, 'keep'>;
+
+/**
+ * Copies `sourceDir` in as releases/<id> without touching `current`: nginx only serves `current`, so the copy is not
+ * on the web until `activateRelease`.
+ */
+export async function stageRelease(input: StageInput): Promise<PublishResult> {
   const { sitesDir, site, sourceDir, releaseId, limits } = input;
-  const keep = input.keep ?? 3;
   const siteDir = siteDirOf(sitesDir, site);
   if (!RELEASE_ID_PATTERN.test(releaseId)) throw new PublishError('bad-release-id', `not a release id: ${releaseId}`);
 
@@ -130,12 +135,41 @@ export async function publishRelease(input: PublishInput): Promise<PublishResult
   await rm(incoming, { recursive: true, force: true });
   await cp(sourceDir, incoming, { recursive: true, errorOnExist: true, force: false });
   await rename(incoming, releaseDir);
-  await pointCurrentAt(siteDir, releaseId);
-
-  const stale = (await listReleases(sitesDir, site)).filter((id) => id !== releaseId).slice(Math.max(keep - 1, 0));
-  await Promise.all(stale.map((id) => rm(path.join(releasesDir, id), { recursive: true, force: true })));
-
   return { releaseDir, ...size };
+}
+
+/** Whether releases/<id> of the site is on disk. */
+export async function hasRelease(sitesDir: string, site: string, releaseId: string): Promise<boolean> {
+  if (!RELEASE_ID_PATTERN.test(releaseId)) return false;
+  const info = await lstat(path.join(siteDirOf(sitesDir, site), 'releases', releaseId)).catch(() => undefined);
+  return info?.isDirectory() === true;
+}
+
+/**
+ * Makes a release already on disk live. With `keep`, prunes to the `keep` newest releases (the live one included);
+ * without it nothing is deleted (a takedown keeps every release for review).
+ */
+export async function activateRelease(sitesDir: string, site: string, releaseId: string, keep?: number): Promise<void> {
+  const siteDir = siteDirOf(sitesDir, site);
+  if (!(await hasRelease(sitesDir, site, releaseId))) throw new PublishError('no-release', `no release ${releaseId} for ${site}`);
+  await pointCurrentAt(siteDir, releaseId);
+  if (keep === undefined) return;
+  const stale = (await listReleases(sitesDir, site)).filter((id) => id !== releaseId).slice(Math.max(keep - 1, 0));
+  await Promise.all(stale.map((id) => rm(path.join(siteDir, 'releases', id), { recursive: true, force: true })));
+}
+
+/** Deletes one release that is not live; doing nothing when it is not on disk. */
+export async function deleteRelease(sitesDir: string, site: string, releaseId: string): Promise<void> {
+  if (!RELEASE_ID_PATTERN.test(releaseId)) throw new PublishError('bad-release-id', `not a release id: ${releaseId}`);
+  if ((await currentRelease(sitesDir, site)) === releaseId) throw new PublishError('bad-release-id', `${releaseId} is live`);
+  await rm(path.join(siteDirOf(sitesDir, site), 'releases', releaseId), { recursive: true, force: true });
+}
+
+/** Copies `sourceDir` in as a new release, makes it live, and prunes old releases. */
+export async function publishRelease(input: PublishInput): Promise<PublishResult> {
+  const result = await stageRelease(input);
+  await activateRelease(input.sitesDir, input.site, input.releaseId, input.keep ?? 3);
+  return result;
 }
 
 /** Makes an earlier release live again: the given one, or the newest one older than the live release. */

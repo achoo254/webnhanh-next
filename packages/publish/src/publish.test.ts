@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, utimes, writeFile } fro
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { currentRelease, listReleases, publishRelease, PublishError, removeSite, rollbackRelease } from './publish';
+import { activateRelease, currentRelease, deleteRelease, hasRelease, listReleases, publishRelease, PublishError, removeSite, rollbackRelease, stageRelease } from './publish';
 
 const LIMITS = { maxBytes: 1024 * 1024, maxFiles: 100 };
 
@@ -124,5 +124,26 @@ describe('removeSite', () => {
 
   it('refuses a name that is not a site name', async () => {
     await expect(removeSite(sitesDir, '../x')).rejects.toMatchObject({ code: 'bad-site-name' });
+  });
+});
+
+describe('releases waiting off the web', () => {
+  it('stages a release without touching `current`, activates it later without pruning, and deletes one that is not live', async () => {
+    const live1 = await publish('shop', 'v1', 30);
+    const staged = randomUUID();
+    await stageRelease({ sitesDir, site: 'shop', sourceDir: await source('<input type="password">'), releaseId: staged, limits: LIMITS });
+    expect(await currentRelease(sitesDir, 'shop')).toBe(live1);
+    expect(await live('shop')).toBe('v1');
+    expect(await hasRelease(sitesDir, 'shop', staged)).toBe(true);
+
+    await activateRelease(sitesDir, 'shop', staged);
+    expect(await live('shop')).toBe('<input type="password">');
+    await activateRelease(sitesDir, 'shop', live1);
+    expect(await listReleases(sitesDir, 'shop')).toHaveLength(2);
+
+    await expect(deleteRelease(sitesDir, 'shop', live1)).rejects.toBeInstanceOf(PublishError);
+    await deleteRelease(sitesDir, 'shop', staged);
+    expect(await hasRelease(sitesDir, 'shop', staged)).toBe(false);
+    await expect(activateRelease(sitesDir, 'shop', staged)).rejects.toMatchObject({ code: 'no-release' });
   });
 });
