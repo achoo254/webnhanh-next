@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
@@ -148,8 +149,20 @@ describe('publish job', () => {
     const html = await readFile(path.join(live, 'index.html'), 'utf8');
     const file = /og:image" content="https:\/\/co-anh\.hoandat\.io\.vn\/(og-[0-9a-f]{8}\.(?:jpg|png))"/.exec(html)?.[1];
     expect(file).toBeDefined();
-    const picture = await readFile(path.join(live, file ?? ''));
-    expect(picture.length).toBeGreaterThan(1000);
+    const picture = path.join(live, file ?? '');
+    expect((await readFile(picture)).length).toBeGreaterThan(1000);
+    // The whole 1200×630 card, down to its last row: the text side is the palette's colour (leaf, #15803d) there too,
+    // not a band of blank page below Chrome's viewport.
+    const probe = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', picture], { encoding: 'utf8' });
+    expect(probe.stdout.trim()).toBe('1200,630');
+    const rows = spawnSync('ffmpeg', ['-v', 'error', '-i', picture, '-vf', 'crop=600:4:0:626', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], { maxBuffer: 1 << 20 });
+    const pixels = rows.stdout as Buffer;
+    expect(pixels.length).toBe(600 * 4 * 3);
+    let near = 0;
+    for (let i = 0; i < pixels.length; i += 3) {
+      if (Math.abs((pixels[i] ?? 0) - 0x15) + Math.abs((pixels[i + 1] ?? 0) - 0x80) + Math.abs((pixels[i + 2] ?? 0) - 0x3d) < 40) near += 1;
+    }
+    expect(near / (600 * 4)).toBeGreaterThan(0.95);
     expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
   });
 

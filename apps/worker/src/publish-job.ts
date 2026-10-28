@@ -209,7 +209,7 @@ async function shareImageOf(
     const files = cover ? cover.widths.map((width) => ({ name: `img/${imageFileName(cover.id, width)}`, from: siteImageFile(deps.uploadsDir, page.siteId, cover.id, width) })) : [];
     const html = renderShareCard(page.draft, page.assets, { host: `${page.siteName}.${SITES_DOMAIN}`, fontUrl: cardFontUrl });
     const shot = await captureShareImage({ workDir: cardDir, html, files, chromePath: deps.chromePath, ffmpegPath: deps.ffmpegPath });
-    const file = `og-${page.releaseId.slice(0, 8)}.${shot.type === 'image/jpeg' ? 'jpg' : 'png'}`;
+    const file = `og-${page.releaseId.slice(0, 8)}.jpg`;
     await copyFile(shot.file, path.join(page.work, file));
     return { file, type: shot.type, ...SHARE_CARD_SIZE };
   } catch (error) {

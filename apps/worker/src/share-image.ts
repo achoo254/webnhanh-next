@@ -1,6 +1,7 @@
 /**
- * The share picture of a published page (`og:image`): the card HTML of @webnhanh/templates, photographed by headless
- * Chrome at 1200×630, then made a JPEG with ffmpeg (a PNG when ffmpeg cannot). Chrome gets a minimal environment
+ * The share picture of a published page (`og:image`): the card HTML of @webnhanh/templates (laid out in a fixed
+ * 1200×630 box at the top left), photographed by headless Chrome in a taller window, then cut to the box and made a
+ * JPEG with ffmpeg. Chrome gets a minimal environment
  * (nothing of the worker's env, which holds the database password), a throwaway profile, and no network: the card
  * loads only the files laid out beside it. Any failure is the caller's to log; the page is published without the
  * picture.
@@ -74,9 +75,16 @@ function run(command: string, args: readonly string[], env: NodeJS.ProcessEnv, d
   });
 }
 
+/**
+ * Chrome's window is taller than the card on purpose: in `--headless=new` the page's viewport is the window minus
+ * room for browser UI that is never drawn (about 90 px), and nothing below the viewport is painted. With this much
+ * spare height the whole card is always inside the viewport; ffmpeg then keeps only the card's box.
+ */
+export const SHOT_WINDOW = { width: SHARE_CARD_SIZE.width, height: SHARE_CARD_SIZE.height + 400 } as const;
+
 /** Chrome's arguments for one screenshot of `page` into `png`. */
 export function chromeArgs(page: string, png: string, profile: string): string[] {
-  const { width, height } = SHARE_CARD_SIZE;
+  const { width, height } = SHOT_WINDOW;
   return [
     '--headless=new',
     '--disable-gpu',
@@ -113,13 +121,19 @@ export interface ShareImageInput {
 
 export interface ShareImage {
   readonly file: string;
-  readonly type: 'image/jpeg' | 'image/png';
+  readonly type: 'image/jpeg';
+}
+
+/** ffmpeg's arguments: the card's box from the top left of the screenshot, as a JPEG. Fails on a smaller shot. */
+export function cropArgs(png: string, jpg: string): string[] {
+  const { width, height } = SHARE_CARD_SIZE;
+  return ['-hide_banner', '-loglevel', 'error', '-y', '-i', png, '-vf', `crop=${width}:${height}:0:0`, '-q:v', '3', jpg];
 }
 
 /** The relative URL of a font file next to the card, for `renderShareCard`. */
 export const cardFontUrl = (file: string): string => `fonts/${file}`;
 
-/** Photographs the card; resolves with the picture (JPEG, or PNG when ffmpeg failed), or throws ShareImageError. */
+/** Photographs the card; resolves with the picture (a 1200×630 JPEG), or throws ShareImageError. */
 export async function captureShareImage(input: ShareImageInput): Promise<ShareImage> {
   const deadline = Date.now() + SHARE_IMAGE_TIMEOUT_MS;
   const { workDir } = input;
@@ -143,11 +157,8 @@ export async function captureShareImage(input: ShareImageInput): Promise<ShareIm
   }
   if ((await stat(png).catch(() => null))?.isFile() !== true) throw new ShareImageError('chrome wrote no screenshot');
 
+  // The uncut screenshot is not the card, so without ffmpeg there is no picture at all.
   const jpg = path.join(workDir, 'card.jpg');
-  try {
-    await run(input.ffmpegPath, ['-hide_banner', '-loglevel', 'error', '-y', '-i', png, '-q:v', '3', jpg], env, deadline);
-    return { file: jpg, type: 'image/jpeg' };
-  } catch {
-    return { file: png, type: 'image/png' };
-  }
+  await run(input.ffmpegPath, cropArgs(png, jpg), env, deadline);
+  return { file: jpg, type: 'image/jpeg' };
 }
