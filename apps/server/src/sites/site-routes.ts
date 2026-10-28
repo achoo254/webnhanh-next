@@ -91,10 +91,18 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
 
   router.post('/api/sites', signedIn, noStore, json, async (req, res) => {
     const account = accountOf(res.locals);
-    const { name, template } = body(req);
+    const { name, template, variant } = body(req);
     const site = await createTemplateSite(
       db,
-      { accountId: account.id, name: validName(name), template: typeof template === 'string' ? template : '', uploadsDir: config.uploadsDir, sitesPerAccount: config.sitesPerAccount },
+      {
+        accountId: account.id,
+        name: validName(name),
+        template: typeof template === 'string' ? template : '',
+        // Optional: one of the template's variants (its look, copy and pictures), checked in createTemplateSite.
+        variant,
+        uploadsDir: config.uploadsDir,
+        sitesPerAccount: config.sitesPerAccount,
+      },
       new Date(),
     );
     res.status(201).json({ site: siteView(site, undefined, undefined) });

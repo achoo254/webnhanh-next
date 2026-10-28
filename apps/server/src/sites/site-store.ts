@@ -1,11 +1,10 @@
 /**
  * Site rows and their rules: names (format, reserved, taken or held), the per-account limit, the template's sample
- * photos copied into a new site, and renaming with the old name held for NAME_HOLD_MS.
+ * photos (or the chosen variant's library pictures) copied into a new site, and renaming with the old name held for
+ * NAME_HOLD_MS.
  */
 import { randomBytes, randomUUID } from 'node:crypto';
 import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
-import { createRequire } from 'node:module';
-import path from 'node:path';
 import {
   activeJobOf,
   checkSiteName,
@@ -26,13 +25,11 @@ import {
   type DeveloperSource,
   type Job,
 } from '@webnhanh/db';
-import { isTemplateId, TEMPLATE_SAMPLES, templateDraft, type SamplePhoto, type TemplateId } from '@webnhanh/templates';
+import { isTemplateId } from '@webnhanh/templates';
 import { and, count, eq, gt, ne } from 'drizzle-orm';
 import { HttpError } from '../http-error';
 import type { Site } from './site-access';
-
-/** The templates' sample photos, found through their package so the path holds in the bundle too. */
-const SAMPLES_DIR = path.join(path.dirname(createRequire(import.meta.url).resolve('@webnhanh/templates/package.json')), 'samples');
+import { chosenVariant, starter } from './site-starter';
 
 /** HTTP status of each reason a job is not queued. */
 export const ENQUEUE_STATUS = { 'job-active': 409, 'daily-limit': 429, 'queue-full': 503, 'account-locked': 403, 'site-removed': 403 } as const;
@@ -59,26 +56,20 @@ async function assertNameFree(db: Db, name: string, now: Date, siteId?: string):
   if (hold && hold.siteId !== siteId) throw new HttpError(409, 'name-taken');
 }
 
-/** Every sample photo of `template`, each once, in the order the template lists them. */
-function samplesOf(template: TemplateId): SamplePhoto[] {
-  const byFile = new Map<string, SamplePhoto>();
-  for (const value of Object.values(TEMPLATE_SAMPLES[template])) {
-    for (const photo of Array.isArray(value) ? value : [value]) byFile.set(photo.file, photo);
-  }
-  return [...byFile.values()];
-}
 
 /**
- * Creates a template site of any template: its sample photos copied in as the site's own (marked `sample`), and the
- * template's new draft pointing at them. Template sites of every kind share one limit per account.
+ * Creates a template site of any template: its sample photos, or those of the chosen variant, copied in as the site's
+ * own (samples marked `sample`, a variant's ornaments not), and the draft pointing at them. Template sites of every
+ * kind share one limit per account.
  */
 export async function createTemplateSite(
   db: Db,
-  input: { accountId: string; name: string; template: string; uploadsDir: string; sitesPerAccount: number },
+  input: { accountId: string; name: string; template: string; variant?: unknown; uploadsDir: string; sitesPerAccount: number },
   now: Date,
 ): Promise<Site> {
   const template = input.template;
   if (!isTemplateId(template)) throw new HttpError(400, 'unknown-template');
+  const variant = chosenVariant(template, input.variant);
   const [mine] = await db
     .select({ n: count() })
     .from(sites)
@@ -87,36 +78,30 @@ export async function createTemplateSite(
   await assertNameFree(db, input.name, now);
 
   const siteId = randomUUID();
-  const samples = samplesOf(template).map((sample) => ({ ...sample, id: randomUUID() }));
-  const idOf = new Map(samples.map((sample) => [sample.file, sample.id]));
+  const { photos, draft: { draft } } = starter(template, variant);
   const dir = siteUploadsDir(input.uploadsDir, siteId);
   try {
     await mkdir(dir, { recursive: true });
-    for (const sample of samples) {
-      await copyFile(path.join(SAMPLES_DIR, sample.file), siteImageFile(input.uploadsDir, siteId, sample.id, sample.width));
+    for (const photo of photos) {
+      await copyFile(photo.source, siteImageFile(input.uploadsDir, siteId, photo.id, photo.width));
     }
-    const sizes = await Promise.all(samples.map((sample) => stat(siteImageFile(input.uploadsDir, siteId, sample.id, sample.width))));
-    const { draft } = templateDraft(template, (photo) => {
-      const id = idOf.get(photo.file);
-      if (!id) throw new Error(`sample ${photo.file} was not copied`);
-      return id;
-    });
+    const sizes = await Promise.all(photos.map((photo) => stat(siteImageFile(input.uploadsDir, siteId, photo.id, photo.width))));
     return await db.transaction(async (tx) => {
       const [site] = await tx
         .insert(sites)
         .values({ id: siteId, accountId: input.accountId, name: input.name, kind: 'template', template, status: 'draft', draft, createdAt: now, updatedAt: now })
         .returning();
       if (!site) throw new Error('site insert returned no row');
-      if (samples.length > 0) {
+      if (photos.length > 0) {
         await tx.insert(siteImages).values(
-          samples.map((sample, index) => ({
-            id: sample.id,
+          photos.map((photo, index) => ({
+            id: photo.id,
             siteId,
-            width: sample.width,
-            height: sample.height,
-            widths: [sample.width],
+            width: photo.width,
+            height: photo.height,
+            widths: [photo.width],
             bytes: sizes[index]?.size ?? 0,
-            sample: true,
+            sample: photo.sample,
             createdAt: now,
           })),
         );
