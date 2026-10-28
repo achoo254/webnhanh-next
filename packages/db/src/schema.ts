@@ -34,8 +34,32 @@ export interface OrderFormProduct {
   name: string;
 }
 
+/**
+ * What the form of the live page takes: a shop's products (orders), or a wedding page's "Xác nhận tham dự" replies
+ * (`rsvp`). A page with neither has no form, and its `order_form` is null.
+ */
 export interface OrderFormSpec {
   products: OrderFormProduct[];
+  rsvp?: boolean;
+}
+
+/** One photo of a live page as it was rendered: enough to render the page again from the release's own files. */
+export interface LivePageImage {
+  id: string;
+  width: number;
+  height: number;
+  widths: number[];
+}
+
+/**
+ * The page that is live, as the last publish rendered it: its draft (the one published, not the one being edited),
+ * its photos and its share picture (a file of the release). The worker renders it again from this (a wedding page's
+ * countdown, once a day) without touching the draft or the uploads.
+ */
+export interface LivePage {
+  draft: unknown;
+  images: LivePageImage[];
+  shareImage: { file: string; type: 'image/jpeg' | 'image/png'; width: number; height: number } | null;
 }
 
 export const SITE_KINDS = ['template', 'developer'] as const;
@@ -69,6 +93,8 @@ export const sites = pgTable(
      * orders. Visitors' orders are checked against this, not against the draft being edited.
      */
     orderForm: jsonb('order_form').$type<OrderFormSpec>(),
+    /** The live page as last published (`LivePage`); null for developer sites and before the first publish. */
+    livePage: jsonb('live_page').$type<LivePage>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
@@ -307,7 +333,7 @@ export const siteNameHolds = pgTable(
   (t) => [index('site_name_holds_site_idx').on(t.siteId)],
 );
 
-export const SUBMISSION_KINDS = ['order'] as const;
+export const SUBMISSION_KINDS = ['order', 'rsvp'] as const;
 export type SubmissionKind = (typeof SUBMISSION_KINDS)[number];
 
 /** An order as stored: what the visitor typed, checked, and the product's name as the page showed it. */
@@ -321,9 +347,24 @@ export interface OrderData {
   note: string;
 }
 
+/** A wedding guest's reply ("Xác nhận tham dự"), as checked by `rsvpInputSchema`. */
+export interface RsvpData {
+  name: string;
+  /** Normalized Vietnamese number, or '' when the guest left it out. */
+  phone: string;
+  attending: 'yes' | 'no';
+  /** People coming, the guest included. */
+  guests: number;
+  note: string;
+}
+
+/** A submission's data read by its kind. */
+export type SubmissionContent = { readonly kind: 'order'; readonly data: OrderData } | { readonly kind: 'rsvp'; readonly data: RsvpData };
+
 /**
- * What visitors sent through a published page's form (an order of the shop template). The owner sees them in the
- * app; `handled_at` is set when the owner marks one done. No IP address or other trace of the visitor is kept.
+ * What visitors sent through a published page's form: an order of a shop page, or a reply to a wedding invitation.
+ * The owner sees them in the app; `handled_at` is set when the owner marks one done. No IP address or other trace of
+ * the visitor is kept.
  */
 export const submissions = pgTable(
   'submissions',
@@ -333,16 +374,25 @@ export const submissions = pgTable(
       .notNull()
       .references(() => sites.id, { onDelete: 'cascade' }),
     kind: text('kind').$type<SubmissionKind>().notNull(),
-    data: jsonb('data').$type<OrderData>().notNull(),
+    /** `OrderData` or `RsvpData` by `kind` (read it with `submissionContent`). */
+    data: jsonb('data').$type<OrderData | RsvpData>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     handledAt: timestamp('handled_at', { withTimezone: true }),
   },
   (t) => [
     index('submissions_site_idx').on(t.siteId, t.createdAt),
     index('submissions_open_idx').on(t.siteId).where(sql`${t.handledAt} is null`),
-    check('submissions_kind_check', sql`${t.kind} in ('order')`),
+    check('submissions_kind_check', sql`${t.kind} in ('order', 'rsvp')`),
   ],
 );
+
+/**
+ * The data of a submission by its kind. The two only ever go in together (`recordSubmission` of the server writes
+ * the data checked for its kind), so `kind` tells which shape `data` has.
+ */
+export function submissionContent(row: { readonly kind: SubmissionKind; readonly data: OrderData | RsvpData }): SubmissionContent {
+  return row.kind === 'rsvp' ? { kind: 'rsvp', data: row.data as RsvpData } : { kind: 'order', data: row.data as OrderData };
+}
 
 /** A browser (one device) that asked for Web Push of new orders. The endpoint is the push service's URL for it. */
 export const pushSubscriptions = pgTable(
