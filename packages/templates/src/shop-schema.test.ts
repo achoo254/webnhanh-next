@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { facebookLink, normalizePhone, phoneLink, zaloLink } from './contact-links';
-import { DEFAULT_STYLE, newShopDraft, shopDraftSchema, shopImageIds, shopPublishIssues, type ShopDraft } from './shop-schema';
+import { DEFAULT_STYLE } from './looks';
+import { newShopDraft, shopDraftSchema, shopImageIds, shopPublishIssues, type ShopDraft } from './shop-schema';
 
 const COVER = '11111111-1111-4111-8111-111111111111';
 const P1 = '22222222-2222-4222-8222-222222222222';

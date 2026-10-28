@@ -34,7 +34,7 @@ export function phoneLink(input: string): ContactLink | null {
 }
 
 /** Parses `input` as an https URL on one of `hosts` (a scheme may be left out), or null. */
-function urlOn(input: string, hosts: readonly string[]): URL | null {
+export function urlOn(input: string, hosts: readonly string[]): URL | null {
   const trimmed = input.trim();
   if (!/^[a-z0-9.]+\.[a-z]+\//i.test(trimmed) && !/^https?:\/\//i.test(trimmed)) return null;
   let url: URL;
@@ -47,7 +47,7 @@ function urlOn(input: string, hosts: readonly string[]): URL | null {
   return url;
 }
 
-const SEGMENT = /^[A-Za-z0-9._-]{1,64}$/;
+export const SEGMENT = /^[A-Za-z0-9._-]{1,64}$/;
 
 /** A Zalo phone number (zalo.me/<number>) or a zalo.me link to a person, an Official Account or a group. */
 export function zaloLink(input: string): ContactLink | null {

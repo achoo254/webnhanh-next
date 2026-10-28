@@ -7,8 +7,9 @@
  *   product) and contacts that really are a phone number, Zalo or Facebook address.
  */
 import { z } from 'zod';
-import { facebookLink, phoneLink, zaloLink } from './contact-links';
-import { isPlainText } from './html';
+import { DEFAULT_STYLE, STYLE_IDS } from './looks';
+import { PALETTE_IDS } from './palettes';
+import { contactIssues, contactsSchema, EMPTY_CONTACTS, imageRef, itemKey, line, lines, uniqueKeys, type TemplateIssue } from './schema-parts';
 
 export const SHOP_TEMPLATE = 'shop';
 
@@ -22,29 +23,10 @@ export const LIMITS = {
   products: 30,
 } as const;
 
-/** The colours a page can take: few on purpose, each readable with white text on it. */
-export const PALETTE_IDS = ['berry', 'rose', 'sunset', 'leaf', 'ocean', 'ink'] as const;
-export type PaletteId = (typeof PALETTE_IDS)[number];
-
-/**
- * The page's look, each its own layout, type and decoration (any palette goes with any style). Drafts saved before
- * styles existed have none and read as DEFAULT_STYLE.
- */
-export const STYLE_IDS = ['ruc-ro', 'tinh-te', 'am-cung'] as const;
-export type StyleId = (typeof STYLE_IDS)[number];
-export const DEFAULT_STYLE: StyleId = 'ruc-ro';
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-
-const line = (max: number) => z.string().max(max).refine((v) => isPlainText(v, false), 'control-characters');
-const lines = (max: number) => z.string().max(max).refine((v) => isPlainText(v, true), 'control-characters');
-/** A photo of the site (`site_images.id`), or null for none. */
-const imageRef = z.string().regex(UUID).nullable();
-
 export const shopProductSchema = z
   .object({
     /** Stable id made by the editor, for lists that reorder. */
-    key: z.string().regex(/^[A-Za-z0-9_-]{1,32}$/),
+    key: itemKey,
     name: line(LIMITS.productName),
     image: imageRef,
     description: lines(LIMITS.productDescription),
@@ -59,25 +41,18 @@ export const shopDraftSchema = z
     description: lines(LIMITS.description),
     cover: imageRef,
     products: z.array(shopProductSchema).max(LIMITS.products),
-    contacts: z
-      .object({
-        zalo: line(LIMITS.contact),
-        phone: line(LIMITS.contact),
-        facebook: line(LIMITS.contact),
-      })
-      .strict(),
+    contacts: contactsSchema,
     palette: z.enum(PALETTE_IDS),
     style: z.enum(STYLE_IDS).default(DEFAULT_STYLE),
   })
   .strict()
-  .refine((draft) => new Set(draft.products.map((p) => p.key)).size === draft.products.length, 'duplicate-product-key');
+  .refine((draft) => uniqueKeys(draft.products), 'duplicate-product-key');
 
 export type ShopDraft = z.infer<typeof shopDraftSchema>;
 export type ShopProduct = z.infer<typeof shopProductSchema>;
 
 /** Why a draft cannot be published yet: the field (a dotted path, as the editor names its inputs) and the reason. */
-export interface ShopIssue {
-  readonly field: string;
+export interface ShopIssue extends TemplateIssue {
   readonly code: 'required' | 'no-products' | 'invalid-zalo' | 'invalid-phone' | 'invalid-facebook';
 }
 
@@ -88,11 +63,7 @@ export function shopPublishIssues(draft: ShopDraft): ShopIssue[] {
   draft.products.forEach((product, index) => {
     if (!product.name.trim()) issues.push({ field: `products.${index}.name`, code: 'required' });
   });
-  const { zalo, phone, facebook } = draft.contacts;
-  if (zalo.trim() && !zaloLink(zalo)) issues.push({ field: 'contacts.zalo', code: 'invalid-zalo' });
-  if (phone.trim() && !phoneLink(phone)) issues.push({ field: 'contacts.phone', code: 'invalid-phone' });
-  if (facebook.trim() && !facebookLink(facebook)) issues.push({ field: 'contacts.facebook', code: 'invalid-facebook' });
-  return issues;
+  return [...issues, ...contactIssues(draft.contacts)];
 }
 
 /** Every photo a draft shows, cover first, each once. */
@@ -120,18 +91,23 @@ export function newShopDraft(samples: { cover: string; products: readonly string
     description: '',
     cover: samples.cover,
     products: samples.products.map((image, index) => ({ key: `p${index + 1}`, name: '', image, description: '', price: '' })),
-    contacts: { zalo: '', phone: '', facebook: '' },
+    contacts: { ...EMPTY_CONTACTS },
     palette: 'berry',
     style: DEFAULT_STYLE,
   };
 }
 
-/**
- * The photos a stored draft of any template uses, or null when the draft cannot be read (then nothing of the site
- * may be treated as unused).
- */
-export function draftImageIds(template: string | null, draft: unknown): Set<string> | null {
-  if (template !== SHOP_TEMPLATE) return null;
-  const parsed = shopDraftSchema.safeParse(draft);
-  return parsed.success ? new Set(shopImageIds(parsed.data)) : null;
+/** A filled-in shop, for previews of the template and its variants. */
+export function sampleShopDraft(samples: { cover: string; products: readonly string[] }): ShopDraft {
+  const [first = null, second = null] = samples.products;
+  return {
+    ...newShopDraft(samples),
+    name: 'Tiệm Bánh Nhà Bơ',
+    description: 'Bánh nướng mỗi sáng từ bơ thật và bột mới xay. Đặt trước một ngày, giao trong nội thành.',
+    products: [
+      { key: 'p1', name: 'Bánh bông lan trứng muối', image: first, description: 'Hộp 6 cái, trứng muối tự làm.', price: '85.000đ' },
+      { key: 'p2', name: 'Bánh quy bơ hạnh nhân', image: second, description: 'Hũ 300 g, giòn thơm.', price: '120.000đ' },
+    ],
+    contacts: { zalo: '0912345678', phone: '0912345678', facebook: 'tiembanhnhabo' },
+  };
 }

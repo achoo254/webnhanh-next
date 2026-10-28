@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ORDER_SCRIPT_HASH } from './order-form';
-import { imageAsset, renderShop, type ImageAsset } from './shop-render';
+import { imageAsset, type ImageAsset } from './page';
+import { renderShop } from './shop-render';
 import { styleFontFiles } from './shop-fonts';
-import { STYLE_IDS, type ShopDraft } from './shop-schema';
+import { STYLE_IDS } from './looks';
+import type { ShopDraft } from './shop-schema';
 import { SHOP_STYLES } from './shop-styles';
 
 const COVER = '11111111-1111-4111-8111-111111111111';

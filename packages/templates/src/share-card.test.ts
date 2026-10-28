@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderShareCard } from './share-card';
-import { imageAsset } from './shop-render';
+import { imageAsset } from './page';
 import type { ShopDraft } from './shop-schema';
 
 const COVER = '11111111-1111-4111-8111-111111111111';

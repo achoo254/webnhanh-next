@@ -3,8 +3,7 @@
  * huge grotesque name, the light `pop` colour for stickers and price tags, a tilted band repeating the shop's name,
  * products in a bento grid where the first one is featured whenever that leaves no gap.
  */
-export const RUC_RO_CSS = `.s-ruc-ro{--bg:var(--soft);--surface:#fff;--radius:18px;--line:2.5px solid var(--ink);--card-line:var(--line);--card-shadow:5px 5px 0 var(--ink);--r-field:12px;--field-bg:#fff;--field-line:2px solid var(--ink);--r-btn:999px;--btn-shadow:3px 3px 0 var(--ink);--focus:var(--ink)}
-.s-ruc-ro .hero{max-width:1120px;margin:0 auto;padding:12px 12px 0;display:grid;gap:14px}
+export const RUC_RO_CSS = `.s-ruc-ro .hero{max-width:1120px;margin:0 auto;padding:12px 12px 0;display:grid;gap:14px}
 .s-ruc-ro .hero-text{background:var(--accent);color:#fff;border:var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);padding:28px 20px 24px;display:grid;gap:16px;align-content:end;--focus:#fff}
 .s-ruc-ro h1{font-size:clamp(40px,12.5vw,88px);line-height:.95;letter-spacing:-.035em;font-weight:800}
 .s-ruc-ro .lede{font-size:17px;max-width:36ch}
@@ -34,15 +33,6 @@ export const RUC_RO_CSS = `.s-ruc-ro{--bg:var(--soft);--surface:#fff;--radius:18
 .s-ruc-ro .pick{flex:1 0 auto;padding:8px 16px;border-radius:999px;background:var(--ink);color:#fff;font-size:15px}
 .s-ruc-ro .pick:active{transform:translateY(2px)}
 .s-ruc-ro .order h2,.s-ruc-ro .contact h2{text-decoration-color:var(--ink)}
-.s-ruc-ro .contact ul{display:grid;gap:12px}
-.s-ruc-ro .contact a{width:100%;flex-wrap:wrap;padding:14px 20px;border:var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);background:var(--surface);color:var(--ink);font-family:var(--display);font-size:19px;font-weight:800}
-.s-ruc-ro .contact li:first-child a{background:var(--accent);color:#fff;--focus:var(--ink)}
-.s-ruc-ro .contact li:nth-child(2) a{background:var(--pop)}
-.s-ruc-ro .c-value{font-family:var(--body);font-size:15px;font-weight:600}
-.s-ruc-ro .contact a:active{transform:translate(3px,3px);box-shadow:none}
-.s-ruc-ro .dock{inset:auto 0 0 0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--ink);border-top:var(--line)}
-.s-ruc-ro .dock a{border-radius:999px;font-family:var(--display);font-size:17px;font-weight:800;background:#fff;color:var(--ink);--focus:var(--pop)}
-.s-ruc-ro .dock a:first-child{background:var(--pop)}
 @media (min-width:720px){
 .s-ruc-ro .hero{padding:24px 24px 0;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:20px}
 .s-ruc-ro .hero-text{padding:48px 40px 40px;min-height:440px}
@@ -55,5 +45,4 @@ export const RUC_RO_CSS = `.s-ruc-ro{--bg:var(--soft);--surface:#fff;--radius:18
 .s-ruc-ro .product:first-child:nth-last-child(3n+2){grid-column:span 2}
 .s-ruc-ro .product:first-child:nth-last-child(odd) .product-photo img{aspect-ratio:1}
 .s-ruc-ro .product:first-child:nth-last-child(3n+2) .product-photo img{aspect-ratio:2/1}
-.s-ruc-ro .contact ul{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
 }`;
