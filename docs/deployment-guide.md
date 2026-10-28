@@ -20,8 +20,8 @@ thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, dat
 | Chứng chỉ gốc | `/etc/pki/nginx/server.{crt,key}` như các app khác; Cloudflare SSL "full", Universal SSL phủ `hoandat.io.vn` và `*.hoandat.io.vn` |
 | App | `/var/www/webnhanh/app` (bản phát hành hiện tại, `root:webnhanh`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
 | Server | systemd `webnhanh-server` (user `webnhanh`, `127.0.0.1:4860`, `MemoryMax=512M` vì ffmpeg làm sạch ảnh chạy trong giới hạn này, ghi được `uploads/`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
-| Worker | systemd `webnhanh-worker` (user `webnhanh`, `MemoryMax=512M` vì mỗi lần đăng chạy một Chrome headless chụp ảnh xem trước, chỉ nói chuyện với loopback, ghi được `sites/` và `uploads/`): đăng site từ hàng đợi `jobs` (kèm form đặt hàng có token ký và ảnh `og-<bản>.jpg` 1200×630), mỗi giờ dọn phiên hết hạn, tên giữ chỗ và mã liên kết Chat hết hạn, bản ghi báo đơn quá 30 ngày, ảnh không còn dùng quá 1 ngày |
-| Báo đơn | `webnhanh-server` nhận đơn ở `POST /f/<tên>` và gửi báo đơn (Web Push, bot Chat) từ bảng `notification_deliveries`: mỗi dòng một máy hoặc một chat, thử lại riêng sau 30 giây, 2, 10, 30 phút, 2 rồi 6 giờ; đăng ký push hết hạn (404/410) và chat chặn bot (403) bị xoá |
+| Worker | systemd `webnhanh-worker` (user `webnhanh`, `MemoryMax=512M` vì mỗi lần đăng chạy một Chrome headless chụp ảnh xem trước, chỉ nói chuyện với loopback, ghi được `sites/` và `uploads/`): đăng site của mọi mẫu từ hàng đợi `jobs` (trang bán hàng kèm form đặt hàng, thiệp cưới kèm form xác nhận tham dự, cả hai có token ký; ảnh `og-<bản>.jpg` 1200×630), lưu trang đang chạy vào `sites.live_page`; khi hàng đợi trống, mỗi ngày (giờ Việt Nam) render lại thiệp cưới chưa qua ngày cưới để đếm ngược đúng ngày (`wedding-refresh.ts`: chép bản đang chạy, chỉ viết lại `index.html`, không Chrome, không báo, không tạo job), mỗi giờ dọn phiên hết hạn, tên giữ chỗ và mã liên kết Chat hết hạn, bản ghi báo đơn quá 30 ngày, ảnh không còn dùng quá 1 ngày |
+| Báo đơn | `webnhanh-server` nhận đơn và xác nhận tham dự của thiệp cưới (`kind=rsvp`) ở `POST /f/<tên>` (cùng token, trường bẫy, thời gian điền, giới hạn theo IP và theo trang) và gửi báo (Web Push, bot Chat) từ bảng `notification_deliveries`: mỗi dòng một máy hoặc một chat, thử lại riêng sau 30 giây, 2, 10, 30 phút, 2 rồi 6 giờ; đăng ký push hết hạn (404/410) và chat chặn bot (403) bị xoá |
 | Ảnh tải lên | `/var/www/webnhanh/uploads/<site id>/<ảnh>-<rộng>.webp` (`webnhanh:webnhanh`, `750`, nginx không phát; trình sửa đọc qua `/api/sites/<id>/images/…` có kiểm chủ) |
 | nginx app | `/etc/nginx/conf.d/webnhanh.hoandat.com.conf` (từ `infra/nginx/`): HTTP → HTTPS, phát web tĩnh, chuyển `/api`, `/auth`, `/healthz` vào server; CSP có hash của script theme. Cùng file phục vụ tên cũ `trang.hoandat.com`: 301 về cùng đường dẫn trên `webnhanh.hoandat.com` |
 | Builder | systemd `webnhanh-builder` (user và nhóm `webnhanh-builder`, uid/gid **10001** như user build trong container, thêm nhóm `docker`; không thuộc nhóm `webnhanh` nên không đọc được `production.env`, đọc app qua ACL). Mỗi lần một build: `git clone --depth 1` (chỉ github.com/gitlab.com, HTTPS) hoặc giải zip, rồi hai container `--rm` từ image `webnhanh-build:node22` (`infra/builder/Dockerfile`, Node 22 ghim digest): bước cài trên network `webnhanh-build`, bước build `--network none`; cờ giới hạn và lý do ở `apps/worker/src/build/run-build.ts`. Chỉ bắt đầu khi RAM trống ≥ 1,5 GB và ổ trống ≥ 5 GB. Output vào `/var/lib/webnhanh/builds/out/<job>` rồi trả job về hàng đợi: `webnhanh-worker` phát hành như trang mẫu |
@@ -197,6 +197,23 @@ journalctl -u webnhanh-worker -n 50 | grep -i 'share picture'      # không có 
 
 Đổi tên một trang đã đăng: tên cũ được giữ 7 ngày (`site_name_holds`), lần đăng dưới tên mới gỡ thư mục tên cũ nên tên
 cũ trả 404 chung; trang chưa từng đăng thì đổi tên không giữ chỗ.
+
+## Kiểm sau khi có các mẫu mới
+
+Migration `0005_rsvp-live-page` (chỉ thêm: cột `sites.live_page`, `submissions.kind` nhận thêm `rsvp`) chạy khi server
+khởi động. Không có biến env mới.
+
+```bash
+# Trong app: tạo một thiệp cưới, đăng, mở trang, gửi một xác nhận tham dự.
+journalctl -u webnhanh-server -n 50 | grep -i 'rsvp not stored'   # không có dòng nào
+# Hôm sau (sau 0 giờ giờ Việt Nam, khi hàng đợi trống):
+journalctl -u webnhanh-worker --since today | grep 'wedding refresh'  # "countdown rendered again" cho mỗi thiệp chưa qua ngày cưới
+```
+
+Trang đăng trước bản này chưa có `live_page`: thiệp cưới chỉ được làm mới mỗi ngày sau lần đăng kế tiếp. Mỗi lần làm
+mới là một bản phát hành mới (giữ 3 bản), nên với thiệp cưới đang đếm ngược, bản để quay lại tay là các lần làm mới gần
+nhất, không phải lần đăng trước của chủ trang. Quay lại bản app trước: bản cũ đọc xác nhận tham dự như đơn hàng (thiếu
+địa chỉ, sản phẩm) trong hộp đơn; chỉ ảnh hưởng chủ thiệp cưới.
 
 ## Lịch sử
 

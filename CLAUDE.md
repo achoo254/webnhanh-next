@@ -10,9 +10,10 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
 - Site người dùng chỉ đi qua `@webnhanh/publish` (worker); không ghi thẳng vào `SITES_DIR`. Server không ghi `SITES_DIR`.
 - Route nào chạm một site đều lấy site qua `ownedSite` (`apps/server/src/sites/site-access.ts`): site của tài khoản
   khác trả 404 như site không tồn tại.
-- Mọi chữ người dùng gõ vào trang đều qua `escapeHtml` trong `@webnhanh/templates`; link liên hệ chỉ được dựng bởi
-  `zaloLink`/`phoneLink`/`facebookLink`. Xem trước trong app dùng đúng `renderShop` trong `iframe` `sandbox` không có
-  `allow-scripts`.
+- Mọi chữ người dùng gõ vào trang đều qua `escapeHtml` trong `@webnhanh/templates`; link chỉ được dựng bởi
+  `zaloLink`/`phoneLink`/`facebookLink` (`contact-links.ts`) và `mapLink`/`webLink`/`emailLink`/... (`web-links.ts`).
+  Mọi mẫu đi qua `parseDraft`/`publishIssues`/`renderDraft` (`templates.ts`); xem trước trong app dùng đúng `renderDraft`
+  trong `iframe` `sandbox` không có `allow-scripts`.
 - Ảnh tải lên không bao giờ lưu nguyên bản: kiểm magic bytes, ffmpeg làm sạch ra WebP không metadata
   (`apps/server/src/sites/image-processing.ts`).
 - Tên site kiểm bằng `checkSiteName`; regex `server_name` trong `infra/nginx/hoandat.io.vn.conf` phải cùng hình với
@@ -20,13 +21,16 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
 - Không đặt cookie nào trên `hoandat.io.vn`: site người dùng chạy JavaScript tuỳ ý ở đó. Trang mẫu không gọi bên thứ
   ba; form đặt hàng chỉ gửi về app (`POST /f/<tên>`), CSP trong trang cho phép đúng origin đó.
 - Script của form đặt hàng (`ORDER_SCRIPT` trong `packages/templates/src/order-form.ts`) được CSP cho phép bằng hash
-  `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Không thêm script nào khác vào trang mẫu.
+  `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Form xác nhận tham dự của thiệp cưới
+  (`rsvp-form.ts`, `kind=rsvp`) dùng nguyên script đó. Không thêm script nào khác vào trang mẫu.
 - `/f/:site`, `/hooks/chat` và `/hooks/git/:site` gắn trước `requireAllowedOrigin` và tự kiểm (CORS theo origin của
   site + token ký; HMAC của bot; secret webhook của từng site). Route mới của app đặt sau, như cũ.
 - Build của lập trình viên chạy trong `webnhanh-builder` (nhóm `docker`); mọi lệnh `docker` chỉ đi qua
   `apps/worker/src/build/run-build.ts` với mảng tham số đã kiểm, không ghép chuỗi lệnh từ input. Builder không ghi
   `SITES_DIR`: output vào `BUILD_OUTPUT_DIR`, worker phát hành.
-- Báo đơn đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
+- Thiệp cưới được worker render lại mỗi ngày từ `sites.live_page` (bản đã đăng, không phải nháp đang sửa) để đếm
+  ngược đúng ngày (`apps/worker/src/wedding-refresh.ts`), chỉ khi hàng đợi trống, không tạo job, không báo.
+- Báo đơn (và xác nhận tham dự) đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
   và thử lại riêng (`notifications/deliveries.ts`), một kênh lỗi không chặn kênh khác. Gửi từ `webnhanh-server`
   (worker chỉ nói chuyện loopback). Endpoint push chỉ nhận host dịch vụ push của trình duyệt (`isPushEndpoint`).
 - Migration là SQL sinh bằng `pnpm --filter @webnhanh/db db:generate`, commit và review như code; không `drizzle-kit push`.
