@@ -1366,11 +1366,6 @@ button.bento-card:focus-visible {
     align-content: start;
     min-width: 0;
   }
-  /* The right column stays in view beside a long build or history. */
-  .deploy-side {
-    position: sticky;
-    top: calc(var(--header-h, 64px) + var(--space-4));
-  }
   .deploy-main {
     container-type: inline-size;
   }

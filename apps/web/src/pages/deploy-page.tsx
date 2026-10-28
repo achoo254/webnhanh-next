@@ -78,8 +78,11 @@ function Deploy(): ReactNode {
   const firstBuild = !data.builds.some((b) => b.status === 'done');
   const canBuild = developer.source === 'git' || developer.hasZip;
   const quota = { used: limits.usedMinutesToday, limit: limits.buildMinutesPerDay };
-  // What the check recognized, as the values each setting goes back to.
-  const recognized: BuildSettings | null = developer.detection ? { rootDir: '', buildCommand: developer.detection.buildCommand, outputDir: developer.detection.outputDir } : null;
+  // What the check recognized, as the values each setting goes back to. The check ran in the app folder it was given,
+  // so that folder is its own recognized value.
+  const recognized: BuildSettings | null = developer.detection
+    ? { rootDir: developer.settings.rootDir, buildCommand: developer.detection.buildCommand, outputDir: developer.detection.outputDir }
+    : null;
   const openBuild = (id: string): void => {
     void navigate(`/sites/${site.id}/deploy?build=${id}`);
   };
@@ -185,13 +188,11 @@ function Deploy(): ReactNode {
         <div className="deploy-side">
           {developer.source === 'zip' ? <ZipUpload siteId={site.id} hasZip={developer.hasZip} disabled={active} onUploaded={load} /> : null}
           <SettingsPanel
-            // A new check (a new zip) brings new recognized values: start the form again from them.
-            key={JSON.stringify(developer.detection)}
             initial={developer.settings}
             defaults={recognized}
             onSave={async (settings) => {
               const saved = await saveBuildSettings(site.id, settings);
-              setData({ ...data, developer: saved });
+              setData((before) => before && { ...before, developer: saved });
               return saved.settings;
             }}
           />

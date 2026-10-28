@@ -2,7 +2,7 @@
  * The build settings of a developer site: the fields (grouped: where the app is, then how it is built and what is
  * published), each checked as the developer leaves it, and for an existing site the panel that saves them on their own.
  */
-import { useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { ApiError } from '../api';
 import type { BuildSettings } from '../builds-api';
 import { errorMessage } from '../error-messages';
@@ -39,6 +39,7 @@ export function SettingsFields({
   value,
   onChange,
   disabled,
+  readOnly,
   defaults,
   errors,
   onLeave,
@@ -46,6 +47,8 @@ export function SettingsFields({
   readonly value: BuildSettings;
   readonly onChange: (next: BuildSettings) => void;
   readonly disabled?: boolean;
+  /** While saving: the values stay readable and focusable, but cannot change. */
+  readonly readOnly?: boolean;
   readonly defaults?: BuildSettings | null;
   readonly errors?: SettingsErrors;
   readonly onLeave?: (field: SettingsField) => void;
@@ -88,6 +91,7 @@ export function SettingsFields({
                   spellCheck={false}
                   maxLength={copy.maxLength}
                   disabled={disabled}
+                  readOnly={readOnly}
                   aria-invalid={error ? true : undefined}
                   aria-describedby={error ? `${id}-error ${id}-help` : `${id}-help`}
                   data-id={copy.dataId}
@@ -103,7 +107,7 @@ export function SettingsFields({
                 {custom ? (
                   <p className="setting-default">
                     {t('deploy.settings.defaultValue', { value: recognized === '' ? t('deploy.settings.empty') : recognized })}
-                    <button type="button" className="text-button" onClick={() => onChange(withField(value, field, recognized))} disabled={disabled} data-id={`${copy.dataId}-reset`}>
+                    <button type="button" className="text-button" onClick={() => onChange(withField(value, field, recognized))} disabled={disabled || readOnly} data-id={`${copy.dataId}-reset`}>
                       {t('deploy.settings.reset')}
                     </button>
                   </p>
@@ -135,8 +139,10 @@ export function SettingsPanel({
 }): ReactNode {
   const { t } = useI18n();
   const form = useRef<HTMLFormElement>(null);
+  const savedLine = useRef<HTMLParagraphElement>(null);
   const [saved, setSaved] = useState(initial);
   const [value, setValue] = useState(initial);
+  const [seen, setSeen] = useState(initial);
   const [left, setLeft] = useState<ReadonlySet<SettingsField>>(new Set());
   const [submitted, setSubmitted] = useState(false);
   const [serverErrors, setServerErrors] = useState<SettingsErrors>({});
@@ -153,6 +159,19 @@ export function SettingsPanel({
   );
   const dirty = !sameSettings(value, saved);
   const saving = state === 'saving';
+
+  // The server can change the settings on its own (a new zip before the first build follows what it finds): take
+  // them as the saved values, and into the fields unless the developer is in the middle of a change.
+  if (!sameSettings(seen, initial)) {
+    setSeen(initial);
+    setSaved(initial);
+    if (!dirty) setValue(initial);
+  }
+
+  // Saving disables the button that had the focus: hand it to the line that says it is saved.
+  useEffect(() => {
+    if (state === 'saved') savedLine.current?.focus();
+  }, [state]);
 
   const reset = (next: BuildSettings): void => {
     setValue(next);
@@ -189,7 +208,7 @@ export function SettingsPanel({
   let status: ReactNode;
   if (state === 'saved' && !dirty) {
     status = (
-      <p className="settings-status settings-status-saved" role="status" data-id="settings-saved">
+      <p ref={savedLine} tabIndex={-1} className="settings-status settings-status-saved" role="status" data-id="settings-saved">
         {t('deploy.settings.saved')}
       </p>
     );
@@ -212,7 +231,7 @@ export function SettingsPanel({
         value={value}
         defaults={defaults}
         errors={shown}
-        disabled={saving}
+        readOnly={saving}
         onChange={reset}
         onLeave={(field) => setLeft((before) => new Set(before).add(field))}
       />

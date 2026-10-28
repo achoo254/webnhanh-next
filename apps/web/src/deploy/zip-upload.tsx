@@ -88,9 +88,13 @@ export function ZipUpload({
           htmlFor={inputId}
           onDragOver={(event) => {
             event.preventDefault();
+            event.dataTransfer.dropEffect = off ? 'none' : 'copy';
             if (!off) setOver(true);
           }}
-          onDragLeave={() => setOver(false)}
+          onDragLeave={(event) => {
+            // Moving over the texts inside is not leaving.
+            if (!(event.relatedTarget instanceof Node && event.currentTarget.contains(event.relatedTarget))) setOver(false);
+          }}
           onDrop={drop}
         >
           <span className="dropzone-title">{t('deploy.zip.replace')}</span>

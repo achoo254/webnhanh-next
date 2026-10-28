@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
@@ -273,6 +274,26 @@ describe('the build settings of a site', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('sửa các ô báo lỗi');
     expect(onSave).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(output);
+  });
+
+  it('follows settings the server changed, without dropping a change being typed', () => {
+    const view = (initial: BuildSettings): ReactElement => (
+      <I18nProvider>
+        <SettingsPanel initial={initial} defaults={recognized} onSave={async (value) => value} />
+      </I18nProvider>
+    );
+    const { rerender } = render(view({ ...recognized, outputDir: 'out' }));
+    const output = (): HTMLInputElement => screen.getByLabelText('Thư mục output');
+    expect(output().value).toBe('out');
+    // A new zip before the first build: the server goes back to what it finds.
+    rerender(view(recognized));
+    expect(output().value).toBe('dist');
+    expect(screen.queryByText('Có thay đổi chưa lưu.')).toBeNull();
+    // While the developer types, a change from the server becomes the saved value; the typing stays.
+    fireEvent.change(screen.getByLabelText('Lệnh build'), { target: { value: 'pnpm build' } });
+    rerender(view({ ...recognized, outputDir: 'public' }));
+    expect((screen.getByLabelText('Lệnh build') as HTMLInputElement).value).toBe('pnpm build');
+    expect(screen.getByText('Có thay đổi chưa lưu.')).toBeTruthy();
   });
 
   it("puts the server's refusal at the field it names", async () => {
