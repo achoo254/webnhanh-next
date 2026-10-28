@@ -1,0 +1,38 @@
+# /etc/systemd/system/webnhanh-builder.service — builds developer sites one at a time in Docker
+# (apps/worker/src/build/), then hands each output to webnhanh-worker, which publishes it. Separate from the worker on
+# purpose: the docker group is as good as root, and the worker writes every site. This one never writes the sites and
+# never reads /etc/webnhanh/production.env (it holds the app's secrets).
+[Unit]
+Description=Web Nhanh developer builder
+After=network-online.target postgresql.service docker.service webnhanh-build-network.service
+Wants=network-online.target postgresql.service
+Requires=docker.service webnhanh-build-network.service
+
+[Service]
+# uid and gid 10001, like the build user inside the containers (infra/deploy.sh setup).
+User=webnhanh-builder
+Group=webnhanh-builder
+SupplementaryGroups=docker
+# DATABASE_URL, BUILD_INBOX_DIR, BUILD_OUTPUT_DIR, BUILD_WORK_DIR, BUILD_CACHE_DIR, SERVER_PUBLIC_IP (optionally
+# BUILD_IMAGE, BUILD_MIN_FREE_MB, BUILD_MIN_DISK_MB): docs/deployment-guide.md.
+EnvironmentFile=/etc/webnhanh/builder.env
+WorkingDirectory=/var/www/webnhanh/app
+ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/builder.mjs
+Restart=on-failure
+RestartSec=5
+# This process clones, copies and waits; the builds run in Docker's own cgroups, 1 GB and one CPU each.
+MemoryMax=384M
+CPUQuota=50%
+Nice=10
+# Stop: the build in hand is killed and queued again.
+TimeoutStopSec=30
+UMask=0022
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+# Zips come from builds/inbox (written by webnhanh-server); outputs go to builds/out (read by webnhanh-worker).
+ReadWritePaths=/var/lib/webnhanh/builds/inbox /var/lib/webnhanh/builds/out /var/lib/webnhanh/work /var/lib/webnhanh/cache
+
+[Install]
+WantedBy=multi-user.target

@@ -22,8 +22,9 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-# Uploaded photos; published sites are written by webnhanh-worker only.
-ReadWritePaths=/var/www/webnhanh/uploads
+# Uploaded photos, and zips of developer sites for webnhanh-builder; published sites are written by webnhanh-worker
+# only.
+ReadWritePaths=/var/www/webnhanh/uploads /var/lib/webnhanh/builds/inbox
 
 [Install]
 WantedBy=multi-user.target

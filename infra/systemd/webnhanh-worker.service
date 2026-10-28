@@ -9,8 +9,9 @@ Wants=network-online.target postgresql.service
 [Service]
 User=webnhanh
 Group=webnhanh
-# DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, FORM_SECRET, CHROME_PATH, FFMPEG_PATH, SITE_MAX_MB (the shared
-# env file; docs/deployment-guide.md). Chrome and ffmpeg get a minimal environment of their own, never this file.
+# DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, FORM_SECRET, CHROME_PATH, FFMPEG_PATH, SITE_MAX_MB, BUILD_OUTPUT_DIR
+# (finished developer builds staged by webnhanh-builder, only read here) (the shared env file;
+# docs/deployment-guide.md). Chrome and ffmpeg get a minimal environment of their own, never this file.
 EnvironmentFile=/etc/webnhanh/production.env
 WorkingDirectory=/var/www/webnhanh/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/main.mjs

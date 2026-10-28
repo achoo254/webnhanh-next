@@ -9,14 +9,19 @@
 #          /var/www/webnhanh with sites/ (setgid, so everything published inside stays readable by the group),
 #          uploads/ (photos of the editor, never served by nginx) and static/, /etc/webnhanh, the systemd units. It writes no secret: /etc/webnhanh/production.env comes from the
 #          iCloud env folder "ENV production/webnhanh-next/" (see docs/deployment-guide.md). The database is a separate
-#          step of that guide.
+#          step of that guide. Developer builds: system user and group `webnhanh-builder` with uid/gid 10001 (the uid
+#          of the build user inside the containers) in group `docker`, /var/lib/webnhanh/builds/inbox (zips: server
+#          writes, builder reads), builds/out (outputs: builder writes, worker reads), work/ and cache/ (builder only).
+#          /etc/webnhanh/builder.env is written by hand too.
 # hosting  installs the shared pages (infra/static) and the nginx site for *.hoandat.io.vn: nginx -t first, the
 #          previous config restored if it fails, reload only when the config changed.
 # release  gates and build here, upload, `pnpm install --prod` for the server and the worker on the server, switch
 #          app/ (the previous one kept as app.prev), install changed units and the nginx site of webnhanh.hoandat.com
 #          (nginx -t first; it replaces the old trang.hoandat.com.conf, whose name it also serves), restart
 #          webnhanh-server and check /healthz (on failure switch back to app.prev, restart, exit 1), then restart
-#          webnhanh-worker.
+#          webnhanh-worker. With /etc/webnhanh/builder.env present: let webnhanh-builder read the app (ACL), build the
+#          image infra/builder as webnhanh-build:node22, (re)apply the build network and its firewall
+#          (webnhanh-build-network), restart webnhanh-builder.
 #
 # Rollback of the app: ssh in, `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
 # webnhanh-worker`.
@@ -71,6 +76,19 @@ setup() {
 		chown webnhanh:webnhanh $REMOTE $REMOTE/sites $REMOTE/uploads && chmod 2750 $REMOTE/sites && chmod 750 $REMOTE $REMOTE/uploads
 		chown root:webnhanh $REMOTE/static && chmod 750 $REMOTE/static
 		chown root:webnhanh /etc/webnhanh && chmod 750 /etc/webnhanh
+
+		# Developer builds. The builder's uid must be 10001: the containers run as 10001 and own what they write.
+		getent group webnhanh-builder >/dev/null || groupadd --system --gid 10001 webnhanh-builder
+		id webnhanh-builder >/dev/null 2>&1 || useradd --system --uid 10001 --gid webnhanh-builder --home-dir /var/lib/webnhanh --shell /sbin/nologin webnhanh-builder
+		[ \"\$(id -u webnhanh-builder):\$(id -g webnhanh-builder)\" = 10001:10001 ] || { echo 'webnhanh-builder must be uid and gid 10001' >&2; exit 1; }
+		if getent group docker >/dev/null; then usermod -aG docker webnhanh-builder; else echo 'no docker group: install Docker, then run setup again'; fi
+		mkdir -p /var/lib/webnhanh/builds/inbox /var/lib/webnhanh/builds/out /var/lib/webnhanh/work /var/lib/webnhanh/cache
+		chown root:root /var/lib/webnhanh /var/lib/webnhanh/builds && chmod 755 /var/lib/webnhanh /var/lib/webnhanh/builds
+		chown webnhanh:webnhanh-builder /var/lib/webnhanh/builds/inbox && chmod 2770 /var/lib/webnhanh/builds/inbox
+		chown webnhanh-builder:webnhanh /var/lib/webnhanh/builds/out && chmod 2750 /var/lib/webnhanh/builds/out
+		chown webnhanh-builder:webnhanh-builder /var/lib/webnhanh/work /var/lib/webnhanh/cache && chmod 700 /var/lib/webnhanh/work /var/lib/webnhanh/cache
+		[ -s /etc/webnhanh/builder.env ] || echo 'next: write /etc/webnhanh/builder.env (docs/deployment-guide.md, developer builds)'
+
 		install -m 644 /tmp/webnhanh-setup/infra/systemd/* /etc/systemd/system/
 		systemctl daemon-reload
 		rm -rf /tmp/webnhanh-setup
@@ -152,7 +170,23 @@ release() {
 		systemctl restart webnhanh-worker
 		sleep 3
 		systemctl is-active --quiet webnhanh-worker || { journalctl -u webnhanh-worker -n 40 --no-pager; echo 'webnhanh-worker is not running' >&2; exit 1; }
-		echo worker ok"
+		echo worker ok
+
+		if [ ! -s /etc/webnhanh/builder.env ]; then
+			echo 'no /etc/webnhanh/builder.env: developer builds stay off (docs/deployment-guide.md)'
+			exit 0
+		fi
+		# The builder is not in group webnhanh (that would let it read production.env): an ACL lets it read the app.
+		setfacl -m u:webnhanh-builder:x $REMOTE
+		setfacl -R -m u:webnhanh-builder:rX $REMOTE/app
+		docker build --pull=false -t webnhanh-build:node22 $REMOTE/app/infra/builder
+		systemctl enable webnhanh-build-network >/dev/null
+		systemctl restart webnhanh-build-network
+		systemctl enable webnhanh-builder >/dev/null
+		systemctl restart webnhanh-builder
+		sleep 3
+		systemctl is-active --quiet webnhanh-builder || { journalctl -u webnhanh-builder -n 40 --no-pager; echo 'webnhanh-builder is not running' >&2; exit 1; }
+		echo builder ok"
 }
 
 case "${1:-}" in

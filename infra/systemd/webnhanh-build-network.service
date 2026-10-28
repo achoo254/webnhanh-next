@@ -1,0 +1,18 @@
+# /etc/systemd/system/webnhanh-build-network.service — the Docker network of developer builds and its firewall
+# (infra/builder/build-network.sh), put back at every boot and every Docker restart (iptables rules do not survive a
+# reboot).
+[Unit]
+Description=Web Nhanh build network and firewall
+After=docker.service
+Requires=docker.service
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# SERVER_PUBLIC_IP: this server's public IPv4, blocked from builds (never in the repo).
+EnvironmentFile=/etc/webnhanh/builder.env
+ExecStart=/usr/bin/bash /var/www/webnhanh/app/infra/builder/build-network.sh ${SERVER_PUBLIC_IP}
+
+[Install]
+WantedBy=multi-user.target
