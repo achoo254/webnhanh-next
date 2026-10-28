@@ -9,13 +9,30 @@ body {
   --webnhanh-gradient: linear-gradient(135deg, var(--c-primary-solid) 0%, var(--c-accent) 55%, var(--c-warning) 100%);
 }
 
+/* Loader: centred in the space between the header and the footer. */
 .loading {
-  display: flex;
-  align-items: center;
+  display: grid;
+  justify-items: center;
+  align-content: center;
   gap: var(--space-3);
-  margin: 0;
+  min-height: calc(100dvh - 260px);
   padding-block: var(--space-7);
   color: var(--c-text-muted);
+}
+.loading-art {
+  width: 112px;
+  height: 112px;
+  filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--c-accent) 45%, transparent));
+  animation: loading-float 2.4s ease-in-out infinite;
+}
+.loading-text {
+  font-size: 15px;
+}
+@keyframes loading-float {
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+    filter: drop-shadow(0 22px 34px color-mix(in srgb, var(--c-accent) 30%, transparent));
+  }
 }
 
 /* Loader: three dots in the app's gradient, bouncing one after another. */
@@ -101,6 +118,7 @@ body {
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .loading-art,
   .loader-dots span,
   .shimmer {
     animation: none;

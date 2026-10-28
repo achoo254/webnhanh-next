@@ -1,22 +1,27 @@
 /**
- * What a page shows while it waits: a small loader in the app's gradient, or placeholder site cards where the list of
+ * What a page shows while it waits: a loader in the middle of the screen, or placeholder site cards where the list of
  * websites will appear. The words stay for screen readers (`role="status"`); the shapes are decoration.
  */
 import type { ReactNode } from 'react';
+import boltUrl from './assets/loader-bolt.webp';
 import { useI18n } from './i18n';
 
-/** Three dots in the app's gradient, then "Loading…" in muted text. */
+/**
+ * In the middle of the page: the AI-drawn pink bolt floating over a soft glow, three dots in the app's gradient, then
+ * "Loading…" in muted text.
+ */
 export function Loader(): ReactNode {
   const { t } = useI18n();
   return (
-    <p className="loading" role="status">
+    <div className="loading" role="status">
+      <img className="loading-art" src={boltUrl} width={112} height={112} alt="" />
       <span className="loader-dots" aria-hidden="true">
         <span />
         <span />
         <span />
       </span>
-      {t('loading')}
-    </p>
+      <span className="loading-text">{t('loading')}</span>
+    </div>
   );
 }
 
