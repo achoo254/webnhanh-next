@@ -15,3 +15,8 @@ export const SHELL_BRAND: ShellBrand = {
 
 /** Where user sites live: `<name>.hoandat.io.vn`. */
 export const SITES_DOMAIN = 'hoandat.io.vn';
+
+/** A site's address without the scheme, as people read it. */
+export function siteHost(name: string): string {
+  return `${name}.${SITES_DOMAIN}`;
+}

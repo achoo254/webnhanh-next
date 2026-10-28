@@ -1,45 +1,108 @@
-import type { ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import type { Account } from '../api';
-import { useAccount } from '../account';
-import { useI18n } from '../i18n';
-import { TrangPage } from '../public-page';
+import { siteHost } from '../brand';
+import { useI18n, type MessageKey } from '../i18n';
+import { SignedInPage } from '../signed-in-page';
+import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
 
-function SignOutButton(): ReactNode {
+function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy' | 'warn' } {
+  if (site.job && (site.job.status === 'queued' || site.job.status === 'running')) return { key: 'status.publishing', tone: 'busy' };
+  if (site.job?.status === 'failed') return { key: 'status.failed', tone: 'warn' };
+  return site.published ? { key: 'status.published', tone: 'live' } : { key: 'status.draft', tone: 'draft' };
+}
+
+function SiteCard({ site }: { readonly site: Site }): ReactNode {
   const { t } = useI18n();
-  const { signOut } = useAccount();
-  const navigate = useNavigate();
+  const status = statusOf(site);
   return (
-    <button
-      type="button"
-      className="shell-topbar-link shell-topbar-cta"
-      onClick={() => void signOut().then(() => navigate('/', { replace: true }))}
-      data-id="sign-out"
-    >
-      {t('home.signOut')}
-    </button>
+    <li className="site-card" data-id={`site-${site.name}`}>
+      <div className="site-card-media">{site.cover ? <img src={thumbUrl(site.id, site.cover, 480)} alt="" loading="lazy" /> : null}</div>
+      <div className="site-card-body">
+        <span className={`badge badge-${status.tone}`}>{t(status.key)}</span>
+        <h2 className="site-card-name">{siteHost(site.name)}</h2>
+        <div className="site-card-actions">
+          <Link className="pill pill-dark" to={`/sites/${site.id}`} data-id={`site-${site.name}-edit`}>
+            {t('home.edit')}
+          </Link>
+          {site.published ? (
+            <a className="pill pill-ghost" href={`https://${siteHost(site.name)}/`} target="_blank" rel="noopener noreferrer" data-id={`site-${site.name}-view`}>
+              {t('home.view')}
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </li>
   );
 }
 
 /**
- * What a signed-in person sees at `/`: which account they use and, honestly, that they have no page yet and that
- * making pages is still being built. No sample sites.
+ * What a signed-in person sees at `/`: their pages as cards (address, state, edit, open), or an empty state that
+ * leads to making the first one.
  */
-export function HomePage({ account }: { readonly account: Account }): ReactNode {
+export function HomePage(): ReactNode {
+  return <SignedInPage>{(account) => <Home account={account} />}</SignedInPage>;
+}
+
+function Home({ account }: { readonly account: Account }): ReactNode {
   const { t, locale } = useI18n();
+  const [list, setList] = useState<SiteList | null>(null);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let live = true;
+    listSites()
+      .then((value) => {
+        if (live) setList(value);
+      })
+      .catch((error: unknown) => {
+        console.warn('site list failed', error instanceof Error ? error.message : String(error));
+        if (live) setFailed(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
   const since = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'long' }).format(new Date(account.createdAt));
+  const atLimit = list !== null && list.sites.length >= list.limits.sites;
+
   return (
-    <TrangPage accountSlot={<SignOutButton />}>
-      <section className="home" data-id="home">
-        <h1 className="home-title">{t('home.title')}</h1>
-        <p className="home-account" data-id="home-account">
-          {t('home.account', { date: since })}
+    <section className="home" data-id="home">
+      <h1 className="page-title">{t('home.title')}</h1>
+      <p className="home-account" data-id="home-account">
+        {t('home.account', { date: since })}
+      </p>
+      {failed ? (
+        <p className="notice notice-warning" role="alert">
+          {t('home.loadFailed')}
         </p>
+      ) : list === null ? (
+        <p className="loading" role="status">
+          {t('loading')}
+        </p>
+      ) : list.sites.length === 0 ? (
         <div className="shell-card empty" data-id="home-empty">
           <h2 className="empty-title">{t('home.empty.title')}</h2>
           <p className="empty-body">{t('home.empty.body')}</p>
+          <Link className="pill pill-cta" to="/new" data-id="home-create">
+            {t('home.create')}
+          </Link>
         </div>
-      </section>
-    </TrangPage>
+      ) : (
+        <>
+          <ul className="site-grid" data-id="home-sites">
+            {list.sites.map((site) => (
+              <SiteCard key={site.id} site={site} />
+            ))}
+          </ul>
+          {atLimit ? (
+            <p className="hint">{t('home.limit', { limit: list.limits.sites })}</p>
+          ) : (
+            <Link className="pill pill-cta" to="/new" data-id="home-create">
+              {t('home.create')}
+            </Link>
+          )}
+        </>
+      )}
+    </section>
   );
 }

@@ -1,12 +1,20 @@
-/** A refused API call: the server's stable error code. */
+/** A refused API call: the server's stable error code, and the fields it named (an incomplete draft). */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     readonly code: string,
+    readonly fields: readonly string[] = [],
   ) {
     super(code);
     this.name = 'ApiError';
   }
+}
+
+/** The ApiError of a refused response body (`{ error, fields? }`). */
+export function apiError(status: number, body: unknown): ApiError {
+  const b = typeof body === 'object' && body !== null ? (body as { error?: unknown; fields?: unknown }) : {};
+  const fields = Array.isArray(b.fields) ? b.fields.filter((f): f is string => typeof f === 'string') : [];
+  return new ApiError(status, typeof b.error === 'string' ? b.error : 'generic', fields);
 }
 
 export interface Account {
@@ -20,12 +28,12 @@ function isAccount(value: unknown): value is Account {
   return typeof v.id === 'string' && typeof v.createdAt === 'string';
 }
 
-async function call(path: string, init: RequestInit = {}): Promise<unknown> {
+/** A JSON call to the app's server; throws ApiError with the server's code when it refuses. */
+export async function call(path: string, init: RequestInit = {}): Promise<unknown> {
   const res = await fetch(path, { credentials: 'same-origin', ...init });
   const body: unknown = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
-    const code = typeof body === 'object' && body !== null && typeof (body as { error?: unknown }).error === 'string' ? (body as { error: string }).error : 'generic';
-    throw new ApiError(res.status, code);
+    throw apiError(res.status, body);
   }
   return body;
 }

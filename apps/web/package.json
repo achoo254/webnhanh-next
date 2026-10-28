@@ -14,9 +14,12 @@
     "@achoo254/brand": "github:achoo254/shared-next#v0.8.0&path:/packages/brand",
     "@fontsource/inter": "^5.2.0",
     "@fontsource/jetbrains-mono": "^5.2.0",
+    "@trang/db": "workspace:*",
+    "@trang/templates": "workspace:*",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router": "^7.9.0"
+    "react-router": "^7.9.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

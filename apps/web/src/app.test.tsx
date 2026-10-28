@@ -5,11 +5,15 @@ import { AccountProvider } from './account';
 import { App } from './app';
 import { I18nProvider } from './i18n';
 
-/** /api/me answers with this status and body. */
+/** /api/me answers with this status and body; /api/sites with an empty list. */
 function stubMe(status: number, body: unknown): void {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })),
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      const answer = url === '/api/sites' ? { sites: [], limits: { sites: 5, siteBytes: 20971520 } } : body;
+      return new Response(JSON.stringify(answer), { status: url === '/api/sites' ? 200 : status, headers: { 'Content-Type': 'application/json' } });
+    }),
   );
 }
 
@@ -53,10 +57,11 @@ describe('web app', () => {
     expect((await screen.findByRole('status')).textContent).toContain('Đăng nhập tạm thời chưa dùng được');
   });
 
-  it('shows a signed-in account an honest empty home with sign-out', async () => {
+  it('shows a signed-in account without pages the way to make one, with sign-out', async () => {
     stubMe(200, { account: { id: 'a1', createdAt: '2026-10-28T03:00:00.000Z' } });
     renderAt('/');
     expect(await screen.findByText('Bạn chưa có trang nào')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Tạo trang mới' }).getAttribute('href')).toBe('/new');
     expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
   });
