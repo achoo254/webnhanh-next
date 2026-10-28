@@ -266,6 +266,38 @@ journalctl -u webnhanh-worker -n 50 | grep -E 'held for review|admin '          
 Thử trọn vòng: báo cáo một site thử ở `/bao-cao` → admin nhận tin Chat → "Gỡ website" → site hiện "Website này đã bị
 gỡ" → "Khôi phục". Đăng một site lập trình viên có ô mật khẩu → chủ trang thấy "Đang chờ duyệt", site chưa lên → duyệt.
 
+## Xoá website và phút build
+
+Có từ bản thêm migration `0007_site-deletion` (bảng `site_deletions`; `site_name_holds.site_id` thành tuỳ chọn, khoá
+ngoại chuyển từ `cascade` sang `set null` để tên của site đã xoá vẫn được giữ). Bản app trước vẫn chạy trên schema này
+(chỉ không đọc bảng mới). Không có biến env mới.
+
+- **Phút build:** mỗi tài khoản 60 phút build mỗi ngày (giờ Việt Nam), thay cho 5 lượt. Tính từ lúc builder bắt đầu
+  một build tới lúc nó giao output, lỗi hay hết giờ (build đang chạy tính phần đã chạy); thời gian chờ hàng đợi, build
+  bỏ qua vì không đổi gì và build lại do đổi tên không tính. Còn dưới 60 phút thì build mới được bắt đầu và chạy tới
+  giới hạn 5 phút của nó. Push khi đã hết phút được ghi vào lịch sử là bỏ qua (mã vẫn là `daily-limit`). API:
+  `limits: { buildMinutesPerDay, usedMinutesToday, developerSites }`, hết phút trả `429 { error: 'daily-limit', limit: 60 }`.
+- **Xoá website:** `DELETE /api/sites/<id>` với `{ "confirm": "<tên>" }` (site của tài khoản khác 404, tên sai 400
+  `confirm-name`). Từ chối khi site còn job đăng hoặc build đang chờ hay đang chạy (409 `job-active`), khi site bị admin
+  gỡ (403 `site-removed`) hay tài khoản bị khoá (403 `account-locked`), và khi còn báo cáo vi phạm chưa xử lý (409
+  `report-open`): bằng chứng giữ nguyên tới khi admin quyết. Xoá được thì trong một transaction: xoá dòng `sites` (đơn,
+  phản hồi, ảnh, job, log build, bản phát hành, nguồn và secret webhook đi theo), giữ tên 30 ngày cho mọi người kể cả
+  chủ cũ (tên cũ do đổi tên vẫn giữ tới hạn của nó), `abuse_reports` và `admin_actions` còn nguyên (id site thành null,
+  giữ tên), thời gian build hôm nay của site vẫn tính cho tài khoản, chỗ trống trong hạn mức site có ngay. Server xoá zip
+  tải lên của site; worker gỡ site khỏi web và xoá ảnh trong vòng một vòng lặp; cache build và zip sót của site đã xoá
+  được builder dọn trong lần bảo trì mỗi giờ.
+
+Triển khai: `release` (migration tự chạy). Kiểm:
+
+```bash
+journalctl -u webnhanh-worker -n 50 | grep 'site deleted'     # "site deleted <tên>: done" sau khi xoá thử một site
+ls /var/www/webnhanh/sites/ | grep -x '<tên>'                   # không còn
+curl -s -o /dev/null -w '%{http_code}\n' https://<tên>.hoandat.io.vn/   # 404 chung
+```
+
+Quay lại bản app trước: site đã xoá vẫn đã xoá; tên của chúng còn được giữ (bản cũ đọc `site_name_holds` như cũ); hàng
+đợi `site_deletions` chưa làm thì nằm đó tới khi lên lại bản này.
+
 ## Lịch sử
 
 - 28/10/2026: `/etc/nginx/conf.d/openapi.conf` (trang OpenAPI cũ từ 12/2025, chỉ cổng 80, cho `hoandat.io.vn`) đổi
