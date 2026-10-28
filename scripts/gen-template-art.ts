@@ -2,14 +2,19 @@
  * Draws the pictures of the template variants (`packages/templates/variants/<template>/<variant>.json`) on the home PC
  * with the `inet-artgen` skill, one at a time, and keeps them as WebP in `packages/templates/library/<template>/<variant>/`.
  * The seed of every picture drawn is written back into its variant file, so a picture can be drawn again exactly.
+ * A picture is kept at the size a page shows it (`librarySize`: photos 900 px on the long side like `samples/`,
+ * ornaments 512 px), and the variant's first slot also gives its 240 px thumbnail for the app's template picker
+ * (`thumbs/<template>/<variant>.webp`).
  *
  *   pnpm exec tsx scripts/gen-template-art.ts --type tet --dry-run   # what would be drawn, nothing is called
  *   pnpm exec tsx scripts/gen-template-art.ts --type tet             # draw the Tết set (the first one due)
  *   pnpm exec tsx scripts/gen-template-art.ts --type wedding --variant vintage --slot cover --force
  *   pnpm exec tsx scripts/gen-template-art.ts --all
+ *   pnpm exec tsx scripts/gen-template-art.ts --all --refit   # nothing drawn: resize pictures, write thumbnails
  *
  * Options: `--type <template>` or `--all`; `--variant <id>`; `--slot <slot>`; `--force` draws again pictures that
- * already exist (with their recorded seed: clear the seed in the file for a new picture); `--dry-run`.
+ * already exist (with their recorded seed: clear the seed in the file for a new picture); `--dry-run`; `--refit`
+ * re-encodes pictures not at their library size and writes missing thumbnails, without the PC.
  *
  * Needs: the PC on (`artgen.py --health`), `cwebp` and `dwebp` (libwebp). The skill's script is found at
  * `~/.claude/skills/inet-artgen/artgen.py` (or `$ARTGEN`), run with the skills' venv Python when there is one.
@@ -20,7 +25,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { artFile, templateVariants, type TemplateVariant, type VariantArt } from '../packages/templates/src/variants';
+import { artFile, librarySize, templateVariants, THUMB_WIDTH, thumbFile, webpSize, type TemplateVariant, type VariantArt } from '../packages/templates/src/variants';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PACKAGE = join(ROOT, 'packages/templates');
@@ -31,10 +36,11 @@ interface Options {
   readonly slot?: string;
   readonly force: boolean;
   readonly dryRun: boolean;
+  readonly refit: boolean;
 }
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: tsx scripts/gen-template-art.ts (--type <template> | --all) [--variant <id>] [--slot <slot>] [--force] [--dry-run]`);
+  console.error(`${message}\nUsage: tsx scripts/gen-template-art.ts (--type <template> | --all) [--variant <id>] [--slot <slot>] [--force] [--dry-run] [--refit]`);
   process.exit(2);
 }
 
@@ -45,6 +51,7 @@ function parseArgs(argv: readonly string[]): Options {
   let slot: string | undefined;
   let force = false;
   let dryRun = false;
+  let refit = false;
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     const value = (): string => {
@@ -59,10 +66,11 @@ function parseArgs(argv: readonly string[]): Options {
     else if (arg === '--slot') slot = value();
     else if (arg === '--force') force = true;
     else if (arg === '--dry-run') dryRun = true;
+    else if (arg === '--refit') refit = true;
     else usage(`unknown argument: ${arg}`);
   }
   if (!all && types.length === 0) usage('say which templates: --type <template> or --all');
-  return { types: all ? 'all' : types, variant, slot, force, dryRun };
+  return { types: all ? 'all' : types, variant, slot, force, dryRun, refit };
 }
 
 interface Job {
@@ -73,12 +81,16 @@ interface Job {
   readonly output: string;
 }
 
-function plan(options: Options): Job[] {
+function chosenVariants(options: Options): TemplateVariant[] {
   const variants = templateVariants().filter(
     (v) => (options.types === 'all' || options.types.includes(v.template)) && (!options.variant || v.id === options.variant),
   );
   if (variants.length === 0) usage('no variant matches');
-  return variants.flatMap((variant) =>
+  return variants;
+}
+
+function plan(options: Options): Job[] {
+  return chosenVariants(options).flatMap((variant) =>
     variant.art
       .map((art, index) => ({ variant, index, art, output: join(PACKAGE, artFile(variant, art.slot)) }))
       .filter((job) => (!options.slot || job.art.slot === options.slot) && (options.force || !existsSync(job.output))),
@@ -141,7 +153,57 @@ function recordSeed(job: Job, seed: number): void {
   writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`);
 }
 
-function librarySize(): number {
+/** Encodes `input` (PNG or WebP) as the library picture of `art`, at its library size. */
+function encodeLibrary(input: string, art: VariantArt, output: string): void {
+  const { width, height } = librarySize(art);
+  const transparent = art.model === 'zimage-transparent' ? ['-alpha_q', '100'] : [];
+  run('cwebp', ['-quiet', '-q', '88', ...transparent, '-resize', String(width), String(height), input, '-o', output], 120_000);
+}
+
+/** Writes the variant's picker thumbnail from its first picture: THUMB_WIDTH wide, height in proportion. */
+function writeThumb(variant: TemplateVariant): void {
+  const [first] = variant.art;
+  if (!first) throw new Error(`${variant.template}/${variant.id}: no art`);
+  const output = join(PACKAGE, thumbFile(variant));
+  mkdirSync(dirname(output), { recursive: true });
+  run('cwebp', ['-quiet', '-q', '75', '-resize', String(THUMB_WIDTH), '0', join(PACKAGE, artFile(variant, first.slot)), '-o', output], 60_000);
+}
+
+function sizeOf(file: string): { width: number; height: number } | null {
+  return existsSync(file) ? webpSize(readFileSync(file)) : null;
+}
+
+/** Re-encodes the chosen pictures not kept at their library size (in place), and writes thumbnails missing or wrong. */
+function refit(options: Options): void {
+  let resized = 0;
+  let thumbs = 0;
+  for (const variant of chosenVariants(options)) {
+    for (const art of variant.art) {
+      const file = join(PACKAGE, artFile(variant, art.slot));
+      const size = sizeOf(file);
+      if (!size) {
+        console.log(`${artFile(variant, art.slot)}: not drawn yet, skipped`);
+        continue;
+      }
+      const want = librarySize(art);
+      if (size.width === want.width && size.height === want.height) continue;
+      const tmp = `${file}.tmp.webp`;
+      encodeLibrary(file, art, tmp);
+      writeFileSync(file, readFileSync(tmp));
+      rmSync(tmp);
+      resized += 1;
+      console.log(`${artFile(variant, art.slot)}: ${size.width}x${size.height} -> ${want.width}x${want.height}`);
+    }
+    const first = variant.art[0];
+    if (first && sizeOf(join(PACKAGE, artFile(variant, first.slot))) && sizeOf(join(PACKAGE, thumbFile(variant)))?.width !== THUMB_WIDTH) {
+      writeThumb(variant);
+      thumbs += 1;
+    }
+  }
+  console.log(`${resized} picture(s) resized, ${thumbs} thumbnail(s) written. Library: ${(libraryBytes() / 1024 / 1024).toFixed(1)} MB.`);
+}
+
+function libraryBytes(): number {
   const walk = (dir: string): number =>
     existsSync(dir) ? readdirSync(dir).reduce((sum, name) => sum + (statSync(join(dir, name)).isDirectory() ? walk(join(dir, name)) : statSync(join(dir, name)).size), 0) : 0;
   return walk(join(PACKAGE, 'library'));
@@ -149,6 +211,11 @@ function librarySize(): number {
 
 function main(): void {
   const options = parseArgs(process.argv.slice(2));
+  if (options.refit) {
+    run('cwebp', ['-version'], 10_000);
+    refit(options);
+    return;
+  }
   const jobs = plan(options);
   if (jobs.length === 0) {
     console.log('Nothing to draw: every picture exists (use --force to draw again).');
@@ -186,15 +253,15 @@ function main(): void {
       const file = result.files?.[0];
       if (!result.ok || !file || result.seed === undefined) throw new Error(`${job.variant.id} ${job.art.slot}: ${result.error ?? 'artgen gave no file or seed'}`);
       mkdirSync(dirname(job.output), { recursive: true });
-      const transparent = job.art.model === 'zimage-transparent' ? ['-alpha_q', '100'] : [];
-      run('cwebp', ['-quiet', '-q', '88', ...transparent, file, '-o', job.output], 120_000);
+      encodeLibrary(file, job.art, job.output);
+      if (job.index === 0) writeThumb(job.variant);
       recordSeed(job, result.seed);
       drawn += 1;
       console.log(`  drawn in ${result.seconds ?? '?'} s, seed ${result.seed}: ${artFile(job.variant, job.art.slot)}`);
     }
   } finally {
     rmSync(work, { recursive: true, force: true });
-    const mb = librarySize() / 1024 / 1024;
+    const mb = libraryBytes() / 1024 / 1024;
     console.log(`${drawn}/${jobs.length} drawn. Library: ${mb.toFixed(1)} MB (keep under 150 MB in the repo). Look at every picture before committing.`);
   }
 }
