@@ -8,7 +8,17 @@ function project(files: Readonly<Record<string, string>>): ProjectSource {
     read: (path) => Promise.resolve(files[path] ?? null),
     exists: (path) => Promise.resolve(path in files || dirs.has(path)),
     isDir: (path) => Promise.resolve(dirs.has(path)),
+    list: (path) => {
+      const prefix = path === '' ? '' : `${path}/`;
+      return Promise.resolve([...dirs].filter((dir) => dir.startsWith(prefix) && dir !== path && !dir.slice(prefix.length).includes('/')).map((dir) => dir.slice(prefix.length)).sort());
+    },
   };
+}
+
+/** The same project seen as the remote check sees it: single files only, no directory listing. */
+function remote(files: Readonly<Record<string, string>>): ProjectSource {
+  const local = project(files);
+  return { read: (path) => local.read(path), exists: (path) => local.exists(path) };
 }
 
 const pkg = (deps: Record<string, string>, scripts: Record<string, string> = { build: 'x' }, extra: Record<string, unknown> = {}): string =>
@@ -61,6 +71,7 @@ describe('detectProject', () => {
       });
       expect(d.warnings).toEqual(c.expect.warnings ?? []);
       if (c.expect.installDir !== undefined) expect(d.installDir).toBe(c.expect.installDir);
+      expect(d.apps).toEqual([]);
     });
   }
 
@@ -69,5 +80,120 @@ describe('detectProject', () => {
     expect(installArgv('pnpm')).toEqual(['pnpm', 'install', '--frozen-lockfile', '--prefer-offline']);
     expect(installArgv('yarn-berry')).toEqual(['yarn', 'install', '--immutable']);
     expect(installArgv('yarn')).toContain('--frozen-lockfile');
+  });
+});
+
+describe('detectProject in a monorepo', () => {
+  /** Shaped like a pnpm workspace whose site is an Astro app beside a Vite editor and a Worker with no framework. */
+  const pnpmLock = [
+    "lockfileVersion: '9.0'",
+    '',
+    'importers:',
+    '',
+    '  .:',
+    '    devDependencies:',
+    '      eslint:',
+    '        specifier: ^10.0.0',
+    '  apps/editor:',
+    '    dependencies:',
+    '      hono: {specifier: ^4.0.0, version: 4.0.0}',
+    '  apps/mcp-worker:',
+    '    dependencies: {}',
+    '  apps/site:',
+    '    dependencies: {}',
+    '  packages/lesson-core:',
+    '    dependencies: {}',
+    '',
+    'packages:',
+    '',
+    '  astro@7.3.5:',
+    '    resolution: {integrity: sha512-x}',
+  ].join('\n');
+  const workspaceRepo: Record<string, string> = {
+    'package.json': pkg({}, { build: 'pnpm -r --if-present build' }, { packageManager: 'pnpm@10.30.3' }),
+    'pnpm-workspace.yaml': "packages:\n  - 'apps/*'\n  - 'packages/*'\n",
+    'pnpm-lock.yaml': pnpmLock,
+    'apps/site/package.json': pkg({ astro: '7', 'lesson-core': 'workspace:*' }, { build: 'pnpm sync-media && astro build', 'sync-media': 'node scripts/sync-lesson-media.ts' }),
+    'apps/site/scripts/sync-lesson-media.ts': '',
+    'apps/editor/package.json': JSON.stringify({ scripts: { build: 'vite build' }, devDependencies: { vite: '8' } }),
+    'apps/mcp-worker/package.json': pkg({ hono: '4' }, { deploy: 'wrangler deploy' }),
+    'packages/lesson-core/package.json': pkg({ zod: '4' }, {}),
+    'content/2026-01-01-bai/bai.md': '',
+  };
+  const suggested = [
+    { dir: 'apps/site', framework: 'astro' },
+    { dir: 'apps/editor', framework: 'vite' },
+  ];
+
+  it('suggests the workspace packages with a framework when the root has none', async () => {
+    const d = await detectProject(project(workspaceRepo), '');
+    expect({ framework: d.framework, pm: d.packageManager, build: d.buildCommand, out: d.outputDir, supported: d.supported, warnings: d.warnings }).toEqual({
+      framework: 'other',
+      pm: 'pnpm',
+      build: 'pnpm run build',
+      out: 'dist',
+      supported: true,
+      warnings: ['unknown-framework'],
+    });
+    expect(d.apps).toEqual(suggested);
+  });
+
+  it('finds the same packages from the lockfile when the source cannot list folders (the remote check)', async () => {
+    expect((await detectProject(remote(workspaceRepo), '')).apps).toEqual(suggested);
+  });
+
+  it('recognizes the chosen app folder, installing at the workspace root', async () => {
+    const d = await detectProject(project(workspaceRepo), 'apps/site');
+    expect({ framework: d.framework, pm: d.packageManager, installDir: d.installDir, lockfile: d.lockfile, build: d.buildCommand, out: d.outputDir, supported: d.supported, warnings: d.warnings, apps: d.apps }).toEqual({
+      framework: 'astro',
+      pm: 'pnpm',
+      installDir: '',
+      lockfile: 'pnpm-lock.yaml',
+      build: 'pnpm run build',
+      out: 'dist',
+      supported: true,
+      warnings: [],
+      apps: [],
+    });
+  });
+
+  it('reads package.json `workspaces` (npm), from listings or from package-lock.json', async () => {
+    const files: Record<string, string> = {
+      'package.json': pkg({}, {}, { workspaces: ['packages/*', '!packages/ignored', 'docs'] }),
+      'package-lock.json': JSON.stringify(
+        { packages: { '': {}, docs: {}, 'node_modules/next': {}, 'packages/web': {}, 'packages/ui': {}, 'packages/web/node_modules/vite': {} } },
+        null,
+        2,
+      ),
+      'docs/package.json': pkg({ '@docusaurus/core': '3' }),
+      'packages/web/package.json': pkg({ next: '15' }),
+      'packages/ui/package.json': pkg({ react: '19' }),
+      'node_modules/next/package.json': pkg({ next: '15' }),
+    };
+    const expected = [
+      { dir: 'docs', framework: 'docusaurus' },
+      { dir: 'packages/web', framework: 'next' },
+    ];
+    const local = await detectProject(project(files), '');
+    expect(local.warnings).toEqual(['no-build-script']);
+    expect(local.apps).toEqual(expected);
+    expect((await detectProject(remote(files), '')).apps).toEqual(expected);
+  });
+
+  it('reads Yarn 1 `workspaces.packages` and the `@workspace:` entries of a Yarn 2+ lockfile', async () => {
+    const files: Record<string, string> = {
+      'package.json': pkg({}, { build: 'turbo run build' }, { workspaces: { packages: ['sites/**'] } }),
+      'yarn.lock': '__metadata:\n  version: 8\n\n"blog@workspace:sites/blog/app":\n  version: 0.0.0-use.local\n',
+      'sites/blog/app/package.json': pkg({ vitepress: '1' }),
+    };
+    expect((await detectProject(project(files), '')).apps).toEqual([{ dir: 'sites/blog/app', framework: 'vitepress' }]);
+    expect((await detectProject(remote(files), '')).apps).toEqual([{ dir: 'sites/blog/app', framework: 'vitepress' }]);
+  });
+
+  it('suggests nothing without a workspace, and never looks outside the declared globs', async () => {
+    const files: Record<string, string> = { 'package.json': pkg({ webpack: '5' }), 'package-lock.json': '{}', 'apps/site/package.json': pkg({ astro: '7' }) };
+    expect((await detectProject(project(files), '')).apps).toEqual([]);
+    const tooBroad = { ...files, 'pnpm-workspace.yaml': "packages: ['../outside/*', '/etc/*', 'apps/**/deep/**/x', '!apps/*']" };
+    expect((await detectProject(project(tooBroad), '')).apps).toEqual([]);
   });
 });

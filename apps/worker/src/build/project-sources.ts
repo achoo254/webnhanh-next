@@ -4,7 +4,7 @@
  * and a `package.json` pointing at /etc/shadow must read as missing.
  */
 import { constants, type Stats } from 'node:fs';
-import { lstat, open } from 'node:fs/promises';
+import { lstat, open, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { ProjectSource } from './detect';
 import { readZipListing } from './fetch-source';
@@ -12,6 +12,10 @@ import { checkRelativeDir } from './settings';
 
 /** Configuration files and lockfiles worth reading are far below this; a lockfile is only checked for a marker. */
 export const MAX_READ_BYTES = 2 * 1024 * 1024;
+/** Subdirectories one listing gives at most (a workspace's `apps/` has a handful). */
+export const MAX_LIST_ENTRIES = 200;
+
+const sortedNames = (names: Iterable<string>): string[] => [...names].sort().slice(0, MAX_LIST_ENTRIES);
 
 /** The absolute path of `rel` inside `root`, or null when `rel` is not a plain relative path. */
 function inside(root: string, rel: string): string | null {
@@ -59,6 +63,13 @@ export function localSource(root: string): ProjectSource {
     async isDir(rel) {
       return (await lstatNoFollow(root, rel))?.isDirectory() === true;
     },
+    async list(rel) {
+      const dir = rel === '' ? root : (await lstatNoFollow(root, rel))?.isDirectory() ? inside(root, rel) : null;
+      if (dir === null) return [];
+      // Entries are not followed: a symlink to a directory is a symlink here, never a directory.
+      const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+      return sortedNames(entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name));
+    },
   };
 }
 
@@ -75,6 +86,11 @@ export async function zipSource(file: string): Promise<ProjectSource & { close()
     read: (rel) => (listing.names.has(rel) ? listing.read(rel, MAX_READ_BYTES) : Promise.resolve(null)),
     exists: (rel) => Promise.resolve(listing.names.has(rel) || dirs.has(rel)),
     isDir: (rel) => Promise.resolve(dirs.has(rel)),
+    list: (rel) => {
+      const prefix = rel === '' ? '' : `${rel}/`;
+      const children = [...dirs].filter((dir) => dir.startsWith(prefix) && dir.length > prefix.length && !dir.slice(prefix.length).includes('/'));
+      return Promise.resolve(sortedNames(children.map((dir) => dir.slice(prefix.length))));
+    },
     close: () => listing.close(),
   };
 }

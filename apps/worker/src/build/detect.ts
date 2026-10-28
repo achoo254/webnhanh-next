@@ -2,9 +2,11 @@
  * Recognizes a project from its files without running any of its code: the package manager (from the lockfile), the
  * framework (from package.json), and so the build command and output directory to suggest. The same rules run on the
  * server when a repo link is pasted (files fetched over HTTPS, or read from the uploaded zip) and in the builder on
- * the fetched source before every build.
+ * the fetched source before every build. When the chosen folder is a monorepo's workspace root with no framework of
+ * its own, the workspace's packages that have one are listed for the developer to pick (never picked for them).
  */
 import { joinRel } from './settings';
+import { packageJsonWorkspaces, workspaceDirs } from './workspace-apps';
 
 /** Files of a project, wherever they are. `read` gives null for a missing (or unreadable, or too big) file. */
 export interface ProjectSource {
@@ -12,6 +14,8 @@ export interface ProjectSource {
   exists(path: string): Promise<boolean>;
   /** Directories, when the source can tell (a fetched checkout); the remote check cannot list them. */
   isDir?(path: string): Promise<boolean>;
+  /** Names of the subdirectories of `path` (never a symlink), sorted; empty when it is not a directory. */
+  list?(path: string): Promise<readonly string[]>;
 }
 
 export const FRAMEWORKS = ['static', 'vite', 'astro', 'next', 'cra', 'sveltekit', 'nuxt', 'docusaurus', 'vitepress', 'hugo', 'other'] as const;
@@ -43,6 +47,13 @@ const BLOCKING: ReadonlySet<DetectionWarning> = new Set([
   'no-build-script',
 ]);
 
+/** A package of the monorepo with a recognized framework: a folder the developer may choose as the app's. */
+export interface AppSuggestion {
+  /** Relative to the repo. */
+  readonly dir: string;
+  readonly framework: Framework;
+}
+
 export interface Detection {
   readonly framework: Framework;
   /** Null for plain HTML: published as it is, nothing installed or built. */
@@ -56,6 +67,8 @@ export interface Detection {
   readonly outputDir: string;
   readonly supported: boolean;
   readonly warnings: readonly DetectionWarning[];
+  /** Only when the folder has no framework but declares workspaces: its packages that have one, best first. */
+  readonly apps: readonly AppSuggestion[];
 }
 
 const LOCKFILES: readonly { file: string; pm: PackageManager }[] = [
@@ -102,6 +115,7 @@ interface PackageJson {
   readonly deps: ReadonlySet<string>;
   readonly scripts: Readonly<Record<string, string>>;
   readonly packageManager: string | null;
+  readonly workspaces: readonly string[];
 }
 
 function parsePackageJson(text: string): PackageJson | null {
@@ -126,7 +140,47 @@ function parsePackageJson(text: string): PackageJson | null {
     deps: new Set([...names('dependencies'), ...names('devDependencies')]),
     scripts,
     packageManager: typeof record.packageManager === 'string' ? record.packageManager : null,
+    workspaces: packageJsonWorkspaces(record.workspaces),
   };
+}
+
+type KnownFramework = Exclude<Framework, 'static' | 'hugo' | 'other'>;
+
+/** The framework a package depends on, checked in this order (a Next app often has Vite somewhere too). */
+function frameworkOf(deps: ReadonlySet<string>): KnownFramework | null {
+  if (deps.has('next')) return 'next';
+  if (deps.has('nuxt')) return 'nuxt';
+  if (deps.has('@sveltejs/kit')) return 'sveltekit';
+  if (deps.has('astro')) return 'astro';
+  if (deps.has('@docusaurus/core')) return 'docusaurus';
+  if (deps.has('vitepress')) return 'vitepress';
+  if (deps.has('react-scripts')) return 'cra';
+  if (deps.has('vite')) return 'vite';
+  return null;
+}
+
+/**
+ * The order apps are suggested in: site generators first, then app frameworks; Vite last, as a monorepo's Vite
+ * package is as often a tool or an editor as the site.
+ */
+const SUGGESTION_ORDER: readonly KnownFramework[] = ['astro', 'docusaurus', 'vitepress', 'next', 'nuxt', 'sveltekit', 'cra', 'vite'];
+const MAX_SUGGESTIONS = 10;
+
+/** The workspace's packages with a recognized framework, best first, then by folder. */
+async function workspaceApps(source: ProjectSource, rootDir: string, pkg: PackageJson, lockfile: string | null): Promise<AppSuggestion[]> {
+  const dirs = await workspaceDirs(source, { rootDir, workspaces: pkg.workspaces, lockfile });
+  const found = await Promise.all(
+    dirs.map(async (dir) => {
+      const text = await source.read(joinRel(dir, 'package.json'));
+      const parsed = text === null ? null : parsePackageJson(text);
+      const framework = parsed ? frameworkOf(parsed.deps) : null;
+      return framework ? { dir, framework } : null;
+    }),
+  );
+  return found
+    .filter((app): app is { dir: string; framework: KnownFramework } => app !== null)
+    .sort((a, b) => SUGGESTION_ORDER.indexOf(a.framework) - SUGGESTION_ORDER.indexOf(b.framework) || (a.dir < b.dir ? -1 : a.dir > b.dir ? 1 : 0))
+    .slice(0, MAX_SUGGESTIONS);
 }
 
 async function packageManagerOf(source: ProjectSource, rootDir: string, pkg: PackageJson): Promise<{ pm: PackageManager; installDir: string; lockfile: string | null }> {
@@ -146,8 +200,8 @@ async function packageManagerOf(source: ProjectSource, rootDir: string, pkg: Pac
   return { pm, installDir: rootDir, lockfile: null };
 }
 
-function result(partial: Omit<Detection, 'supported'>): Detection {
-  return { ...partial, supported: !partial.warnings.some((w) => BLOCKING.has(w)) };
+function result(partial: Omit<Detection, 'supported' | 'apps'> & { readonly apps?: readonly AppSuggestion[] }): Detection {
+  return { ...partial, apps: partial.apps ?? [], supported: !partial.warnings.some((w) => BLOCKING.has(w)) };
 }
 
 const CONFIG_EXTENSIONS = ['js', 'mjs', 'cjs', 'ts', 'mts'] as const;
@@ -176,55 +230,64 @@ export async function detectProject(source: ProjectSource, rootDir: string): Pro
     return result({ ...base, framework, buildCommand: run('build'), outputDir, warnings });
   };
 
-  if (pkg.deps.has('next')) {
-    let exported = false;
-    for (const name of configNames('next.config')) {
-      const text = await source.read(joinRel(rootDir, name));
-      if (text !== null && /output\s*:\s*['"`]export['"`]/.test(text)) exported = true;
-    }
-    if (!exported) warnings.push('next-needs-export');
-    if (source.isDir) {
-      for (const dir of ['pages/api', 'src/pages/api', 'app/api', 'src/app/api']) {
-        if (await source.isDir(joinRel(rootDir, dir))) {
-          warnings.push('next-api-routes');
-          break;
+  switch (frameworkOf(pkg.deps)) {
+    case 'next': {
+      let exported = false;
+      for (const name of configNames('next.config')) {
+        const text = await source.read(joinRel(rootDir, name));
+        if (text !== null && /output\s*:\s*['"`]export['"`]/.test(text)) exported = true;
+      }
+      if (!exported) warnings.push('next-needs-export');
+      if (source.isDir) {
+        for (const dir of ['pages/api', 'src/pages/api', 'app/api', 'src/app/api']) {
+          if (await source.isDir(joinRel(rootDir, dir))) {
+            warnings.push('next-api-routes');
+            break;
+          }
         }
       }
+      return needsBuildScript('next', 'out');
     }
-    return needsBuildScript('next', 'out');
-  }
-  if (pkg.deps.has('nuxt')) {
-    if (pkg.scripts.generate) return result({ ...base, framework: 'nuxt', buildCommand: run('generate'), outputDir: '.output/public', warnings });
-    warnings.push('nuxt-needs-generate');
-    return result({ ...base, framework: 'nuxt', buildCommand: 'npx nuxt generate', outputDir: '.output/public', warnings });
-  }
-  if (pkg.deps.has('@sveltejs/kit')) {
-    let isStatic = pkg.deps.has('@sveltejs/adapter-static');
-    for (const name of configNames('svelte.config')) {
-      const text = await source.read(joinRel(rootDir, name));
-      if (text !== null && text.includes('adapter-static')) isStatic = true;
+    case 'nuxt':
+      if (pkg.scripts.generate) return result({ ...base, framework: 'nuxt', buildCommand: run('generate'), outputDir: '.output/public', warnings });
+      warnings.push('nuxt-needs-generate');
+      return result({ ...base, framework: 'nuxt', buildCommand: 'npx nuxt generate', outputDir: '.output/public', warnings });
+    case 'sveltekit': {
+      let isStatic = pkg.deps.has('@sveltejs/adapter-static');
+      for (const name of configNames('svelte.config')) {
+        const text = await source.read(joinRel(rootDir, name));
+        if (text !== null && text.includes('adapter-static')) isStatic = true;
+      }
+      if (!isStatic) warnings.push('sveltekit-needs-static');
+      return needsBuildScript('sveltekit', 'build');
     }
-    if (!isStatic) warnings.push('sveltekit-needs-static');
-    return needsBuildScript('sveltekit', 'build');
+    case 'astro':
+      return needsBuildScript('astro', 'dist');
+    case 'docusaurus':
+      return needsBuildScript('docusaurus', 'build');
+    case 'vitepress': {
+      const inDocs = (await firstExisting(source, joinRel(rootDir, 'docs/.vitepress'), configNames('config'))) !== null;
+      const script = pkg.scripts['docs:build'] ? 'docs:build' : 'build';
+      if (!pkg.scripts[script]) warnings.push('no-build-script');
+      return result({ ...base, framework: 'vitepress', buildCommand: run(script), outputDir: inDocs ? 'docs/.vitepress/dist' : '.vitepress/dist', warnings });
+    }
+    case 'cra':
+      return needsBuildScript('cra', 'build');
+    case 'vite':
+      return needsBuildScript('vite', 'dist');
+    case null:
+      break;
   }
-  if (pkg.deps.has('astro')) return needsBuildScript('astro', 'dist');
-  if (pkg.deps.has('@docusaurus/core')) return needsBuildScript('docusaurus', 'build');
-  if (pkg.deps.has('vitepress')) {
-    const inDocs = (await firstExisting(source, joinRel(rootDir, 'docs/.vitepress'), configNames('config'))) !== null;
-    const script = pkg.scripts['docs:build'] ? 'docs:build' : 'build';
-    if (!pkg.scripts[script]) warnings.push('no-build-script');
-    return result({ ...base, framework: 'vitepress', buildCommand: run(script), outputDir: inDocs ? 'docs/.vitepress/dist' : '.vitepress/dist', warnings });
-  }
-  if (pkg.deps.has('react-scripts')) return needsBuildScript('cra', 'build');
-  if (pkg.deps.has('vite')) return needsBuildScript('vite', 'dist');
   if (pkg.scripts.build) {
     warnings.push('unknown-framework');
-    return result({ ...base, framework: 'other', buildCommand: run('build'), outputDir: 'dist', warnings });
+    const apps = await workspaceApps(source, rootDir, pkg, lockfile);
+    return result({ ...base, framework: 'other', buildCommand: run('build'), outputDir: 'dist', warnings, apps });
   }
   // A package.json for tooling only, beside a finished page: published as it is.
   if (await source.exists(joinRel(rootDir, 'index.html'))) {
     return result({ framework: 'static', packageManager: null, installDir: rootDir, lockfile: null, buildCommand: null, outputDir: '', warnings: [] });
   }
   warnings.push('no-build-script');
-  return result({ ...base, framework: 'other', buildCommand: run('build'), outputDir: 'dist', warnings });
+  const apps = await workspaceApps(source, rootDir, pkg, lockfile);
+  return result({ ...base, framework: 'other', buildCommand: run('build'), outputDir: 'dist', warnings, apps });
 }

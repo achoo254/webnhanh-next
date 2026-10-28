@@ -15,7 +15,9 @@ cửa hàng" (thực đơn theo nhóm, giờ mở cửa, đặt bàn) và "Hồ 
 app, bấm Đăng, theo dõi từng bước và nhận link) và **nhận đơn**: website đăng ra có form đặt hàng (chạy cả khi trình
 duyệt tắt JavaScript), chủ website xem đơn trong app (số đơn mới trên danh sách website, đánh dấu đã xử lý) và được báo
 qua thông báo trên máy (Web Push) và tin nhắn bot trong app Chat; link dán vào Zalo, Facebook có ảnh xem trước; và **deploy cho lập trình viên**: dán link repo GitHub/GitLab công khai
-(kiểm trước vài giây, không chạy code: framework, lệnh build, thư mục output, sửa được trước lần build đầu) hoặc tải
+(kiểm trước vài giây, không chạy code: framework, lệnh build, thư mục output, sửa được trước lần build đầu; monorepo mà
+thư mục đã chọn không có framework thì liệt kê các package khai trong workspace có framework để chọn một chạm làm thư mục
+app, `apps/worker/src/build/workspace-apps.ts`) hoặc tải
 zip mã nguồn; build trong Docker giới hạn trên máy chủ (`webnhanh-builder`), màn hình chờ có các bước kèm đồng hồ thật,
 ước lượng từ các lần build trước, "Báo tôi khi xong", log trực tiếp; push lên nhánh đã chọn (webhook có chữ ký) là tự
 build lại; lịch sử build. Trang `/credits` ghi nguồn phông chữ (OFL) và ảnh. **Chống lạm dụng**: ai cũng báo cáo được
