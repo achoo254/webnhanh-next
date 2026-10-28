@@ -216,6 +216,14 @@ mới là một bản phát hành mới (giữ 3 bản), nên với thiệp cư�
 nhất, không phải lần đăng trước của chủ trang. Quay lại bản app trước: bản cũ đọc xác nhận tham dự như đơn hàng (thiếu
 địa chỉ, sản phẩm) trong hộp đơn; chỉ ảnh hưởng chủ thiệp cưới.
 
+## Kiểm sau khi có kiểu mẫu (biến thể)
+
+Không migration, không biến env mới: nháp là JSON, trường `ornaments` của thiệp Tết và thiệp cưới là tuỳ chọn. Ảnh của
+kiểu mẫu đi cùng mã trong `packages/templates/library/` (deploy chép cả `packages`). Trong app: `/new`, chọn "Thiệp chúc
+Tết", chọn một kiểu, tạo, xem trước thấy ảnh và hoạ tiết của kiểu đó, đăng, mở trang. Quay lại bản app trước: schema cũ (strict) không
+đọc được nháp có `ornaments`, nên thiệp Tết và thiệp cưới tạo từ kiểu không sửa, không đăng được cho tới khi lên lại bản
+này; site khác không ảnh hưởng.
+
 ## Chống lạm dụng
 
 Có từ bản thêm migration `0006_abuse-reports-admin` (chỉ thêm: bảng `abuse_reports`, `admin_actions`; cột
