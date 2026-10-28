@@ -3,14 +3,31 @@ import { useI18n, type MessageKey } from '../i18n';
 import { chatLinkUrl, getNotificationSettings, unlinkChat, type NotificationSettings } from '../orders-api';
 import { disablePush, enablePush, pushState, type PushState } from '../push';
 
-const PUSH_HINTS: Readonly<Record<Exclude<PushState, 'off'>, MessageKey>> = {
-  on: 'notify.push.on',
+/** The panel's words for a shop's orders or a wedding's replies (the channels themselves are the account's, shared). */
+interface NotifyWords {
+  readonly title: MessageKey;
+  readonly inApp: MessageKey;
+  readonly pushOn: MessageKey;
+  readonly chatLink: MessageKey;
+  readonly chatLinked: MessageKey;
+}
+
+const ORDER_WORDS: NotifyWords = { title: 'notify.title', inApp: 'notify.inApp', pushOn: 'notify.push.on', chatLink: 'notify.chat.link', chatLinked: 'notify.chat.linked' };
+const RSVP_WORDS: NotifyWords = {
+  title: 'notify.rsvp.title',
+  inApp: 'notify.rsvp.inApp',
+  pushOn: 'notify.rsvp.push.on',
+  chatLink: 'notify.rsvp.chat.link',
+  chatLinked: 'notify.rsvp.chat.linked',
+};
+
+const PUSH_HINTS: Readonly<Record<Exclude<PushState, 'off' | 'on'>, MessageKey>> = {
   denied: 'notify.push.denied',
   unsupported: 'notify.push.unsupported',
   'needs-home-screen': 'notify.push.homeScreen',
 };
 
-function PushRow({ publicKey }: { readonly publicKey: string }): ReactNode {
+function PushRow({ publicKey, words }: { readonly publicKey: string; readonly words: NotifyWords }): ReactNode {
   const { t } = useI18n();
   const [state, setState] = useState<PushState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -46,7 +63,7 @@ function PushRow({ publicKey }: { readonly publicKey: string }): ReactNode {
     <div className="notify-row" data-id="notify-push">
       <div className="notify-text">
         <strong>{t('notify.push.label')}</strong>
-        {state !== 'off' ? <p className="hint">{t(PUSH_HINTS[state])}</p> : null}
+        {state !== 'off' ? <p className="hint">{t(state === 'on' ? words.pushOn : PUSH_HINTS[state])}</p> : null}
         {failed ? (
           <p className="field-error" role="alert">
             {t('notify.failed')}
@@ -62,7 +79,7 @@ function PushRow({ publicKey }: { readonly publicKey: string }): ReactNode {
   );
 }
 
-function ChatRow({ linked, onChange }: { readonly linked: boolean; readonly onChange: () => void }): ReactNode {
+function ChatRow({ linked, onChange, words }: { readonly linked: boolean; readonly onChange: () => void; readonly words: NotifyWords }): ReactNode {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -81,7 +98,7 @@ function ChatRow({ linked, onChange }: { readonly linked: boolean; readonly onCh
     <div className="notify-row" data-id="notify-chat">
       <div className="notify-text">
         <strong>{t('notify.chat.label')}</strong>
-        <p className="hint">{t(linked ? 'notify.chat.linked' : 'notify.chat.hint')}</p>
+        <p className="hint">{t(linked ? words.chatLinked : 'notify.chat.hint')}</p>
         {failed ? (
           <p className="field-error" role="alert">
             {t('notify.failed')}
@@ -113,7 +130,7 @@ function ChatRow({ linked, onChange }: { readonly linked: boolean; readonly onCh
           onClick={() => void run(async () => window.location.assign(await chatLinkUrl()))}
           data-id="notify-chat-link"
         >
-          {t('notify.chat.link')}
+          {t(words.chatLink)}
         </button>
       )}
     </div>
@@ -121,11 +138,13 @@ function ChatRow({ linked, onChange }: { readonly linked: boolean; readonly onCh
 }
 
 /**
- * How the owner hears about new orders: always in the app; Web Push on this device and the Chat bot when the server
- * has them (a channel the server lacks is not shown at all).
+ * How the owner hears about new orders (or, on a wedding's inbox, replies): always in the app; Web Push on this device
+ * and the Chat bot when the server has them (a channel the server lacks is not shown at all). The channels are the
+ * account's, for every page.
  */
-export function NotificationSettingsPanel(): ReactNode {
+export function NotificationSettingsPanel({ replies = false }: { readonly replies?: boolean }): ReactNode {
   const { t } = useI18n();
+  const words = replies ? RSVP_WORDS : ORDER_WORDS;
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
   const load = useCallback(() => {
     getNotificationSettings()
@@ -144,11 +163,11 @@ export function NotificationSettingsPanel(): ReactNode {
   return (
     <section className="panel" aria-labelledby="notify-heading" data-id="notify">
       <h2 id="notify-heading" className="panel-title">
-        {t('notify.title')}
+        {t(words.title)}
       </h2>
-      <p className="hint">{t('notify.inApp')}</p>
-      {settings?.push ? <PushRow publicKey={settings.push.publicKey} /> : null}
-      {settings?.chat ? <ChatRow linked={settings.chat.linked} onChange={load} /> : null}
+      <p className="hint">{t(words.inApp)}</p>
+      {settings?.push ? <PushRow publicKey={settings.push.publicKey} words={words} /> : null}
+      {settings?.chat ? <ChatRow linked={settings.chat.linked} onChange={load} words={words} /> : null}
     </section>
   );
 }

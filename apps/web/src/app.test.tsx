@@ -66,6 +66,15 @@ describe('web app', () => {
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
   });
 
+  it('names the templates\' fonts with their licence and who owns the pictures, to anyone', async () => {
+    stubMe(401, { error: 'sign-in-required' });
+    renderAt('/credits');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Nguồn phông chữ và ảnh' })).toBeTruthy();
+    const fonts = [...document.querySelectorAll('[data-id="credits-fonts"] li')].map((item) => item.textContent);
+    expect(fonts).toEqual(['Bricolage Grotesque', 'Be Vietnam Pro', 'Newsreader', 'Baloo 2', 'Nunito', 'Inter'].map((family) => `${family} (SIL Open Font License 1.1)`));
+    expect(screen.getByText(/Ảnh thuộc về hoandat.com, giữ mọi quyền/)).toBeTruthy();
+  });
+
   it('speaks English when the shared choice is English', async () => {
     document.cookie = 'hd_lang=en; Path=/';
     stubMe(401, { error: 'sign-in-required' });

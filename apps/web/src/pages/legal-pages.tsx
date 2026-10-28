@@ -1,3 +1,4 @@
+import { STYLE_FONTS } from '@webnhanh/templates/shop-fonts';
 import type { ReactNode } from 'react';
 import { brand, SITES_DOMAIN } from '../brand';
 import { useI18n } from '../i18n';
@@ -95,6 +96,77 @@ export function TermsPage(): ReactNode {
           <p>A website that breaks these terms may be removed at once, without notice.</p>
           <h2>The service</h2>
           <p>{name} is being built and may change; it is provided as is, with no promise that it is always available.</p>
+        </>
+      )}
+    </LegalPage>
+  );
+}
+
+/**
+ * Every typeface a template page or its share picture uses: the looks' faces (from the templates' own list) and Inter,
+ * the share picture's face (`CARD_FONTS` of the templates).
+ */
+const FONT_FAMILIES = [...new Set([...Object.values(STYLE_FONTS).flatMap((fonts) => [fonts.display.family, ...fonts.body.map((face) => face.family)]), 'Inter'])];
+
+/** Where the fonts and pictures of the templates come from, and under which terms (packages/templates/CREDITS.md). */
+export function CreditsPage(): ReactNode {
+  const { t, locale } = useI18n();
+  const name = brand.appName;
+  const domain = brand.primaryTenant.domain;
+  const fonts = (
+    <ul data-id="credits-fonts">
+      {FONT_FAMILIES.map((family) => (
+        <li key={family}>
+          {family} <span className="hint">(SIL Open Font License 1.1)</span>
+        </li>
+      ))}
+    </ul>
+  );
+  return (
+    <LegalPage title={t('credits.title')} dataId="credits">
+      {locale === 'vi' ? (
+        <>
+          <p>Phông chữ, ảnh và hoạ tiết trong các mẫu website của {name} đến từ đâu.</p>
+          <h2>Phông chữ</h2>
+          <p>
+            Các phông dưới đây là phông của Google Fonts, đóng gói bởi Fontsource, dùng theo giấy phép SIL Open Font License 1.1. Mỗi website mang
+            theo phông của mình (chỉ bộ chữ Latin và tiếng Việt), không tải phông từ máy chủ khác.
+          </p>
+          {fonts}
+          <h2>Ảnh</h2>
+          <p>
+            Ảnh mẫu và ảnh của các mẫu được vẽ bằng AI cho các app của {domain}, trên máy của chính {domain}, bằng các mô hình mã nguồn mở
+            (Qwen-Image, Z-Image, FLUX.2 klein, giấy phép Apache-2.0; BiRefNet, giấy phép MIT, để tách nền). Ảnh thuộc về {domain}, giữ mọi
+            quyền (không phải CC0). Không ảnh nào có chữ: mọi chữ trên website là chữ bạn sửa được.
+          </p>
+          <p>Ảnh bạn tải lên vẫn là của bạn.</p>
+          <h2>Hoạ tiết và chữ mẫu</h2>
+          <p>
+            Đèn lồng, hoa mai, cành lá và các hoạ tiết khác được vẽ riêng cho {name} bằng SVG và CSS. Lời chúc Tết và chữ mẫu được viết riêng
+            cho {name}, không chép từ thơ, bài hát hay văn bản đã xuất bản nào.
+          </p>
+        </>
+      ) : (
+        <>
+          <p>Where the fonts, pictures and decorations of the {name} templates come from.</p>
+          <h2>Fonts</h2>
+          <p>
+            These are Google Fonts typefaces, packaged by Fontsource, used under the SIL Open Font License 1.1. Every website carries its own
+            font files (Latin and Vietnamese only) and loads no font from anyone else.
+          </p>
+          {fonts}
+          <h2>Pictures</h2>
+          <p>
+            The sample and template pictures are AI-generated for the {domain} apps on {domain}&apos;s own machine with open models (Qwen-Image,
+            Z-Image, FLUX.2 klein under Apache-2.0; BiRefNet under MIT for background removal). They are owned by {domain}, all rights reserved
+            (not CC0). None contains text: every word on a website is one you can change.
+          </p>
+          <p>Photos you upload stay yours.</p>
+          <h2>Decorations and sample text</h2>
+          <p>
+            The lanterns, apricot blossoms, sprigs and other decorations are drawn for {name} in SVG and CSS. The Tết greetings and sample
+            texts are written for {name}, not copied from any poem, song or published text.
+          </p>
         </>
       )}
     </LegalPage>

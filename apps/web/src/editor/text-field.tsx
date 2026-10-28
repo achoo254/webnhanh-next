@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from 'react';
 
-/** A labelled text input or textarea with an optional hint and error, wired for screen readers. */
+/** A labelled text, date or time input, or a textarea, with an optional hint and error, wired for screen readers. */
 export function TextField({
   label,
   value,
@@ -11,6 +11,7 @@ export function TextField({
   error,
   multiline = false,
   inputMode,
+  type = 'text',
   dataId,
 }: {
   readonly label: string;
@@ -21,7 +22,9 @@ export function TextField({
   readonly hint?: string;
   readonly error?: string | null;
   readonly multiline?: boolean;
-  readonly inputMode?: 'text' | 'tel' | 'url';
+  readonly inputMode?: 'text' | 'tel' | 'url' | 'email';
+  /** `date` and `time` give the phone's own pickers (`YYYY-MM-DD`, `HH:MM`). */
+  readonly type?: 'text' | 'date' | 'time';
   readonly dataId: string;
 }): ReactNode {
   const id = useId();
@@ -44,7 +47,7 @@ export function TextField({
       {multiline ? (
         <textarea {...common} className="input textarea" rows={3} onChange={(event) => onChange(event.target.value)} />
       ) : (
-        <input {...common} className="input" inputMode={inputMode} onChange={(event) => onChange(event.target.value)} />
+        <input {...common} className="input" type={type} inputMode={inputMode} onChange={(event) => onChange(event.target.value)} />
       )}
       {note ? (
         <p id={noteId} className={error ? 'field-error' : 'hint'}>

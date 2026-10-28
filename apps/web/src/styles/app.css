@@ -305,7 +305,7 @@ label.pill:has(+ input:focus-visible) {
   color: var(--c-text);
 }
 button.bento-card {
-  min-height: 300px;
+  min-height: 180px;
   cursor: pointer;
 }
 button.bento-card[aria-pressed="true"] {
@@ -322,8 +322,25 @@ button.bento-card:focus-visible {
   height: 100%;
   object-fit: cover;
 }
-.bento-soon {
-  background: color-mix(in srgb, var(--c-primary) 14%, var(--c-surface));
+.bento-tall button.bento-card {
+  min-height: 300px;
+}
+/* The profile template has no sample photo yet: a drawn avatar stands for it. */
+.bento-avatar {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  translate: -50% 0;
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: var(--c-surface);
+  color: var(--c-primary-solid);
+  font-size: 26px;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
 }
 .bento-card .badge {
   position: absolute;
@@ -597,6 +614,93 @@ button.bento-card:focus-visible {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+/* Lists of the newer templates: a café's menu sections (each a list of dishes), hours, a wedding's photos. */
+.sections-edit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-5);
+}
+.section-edit {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-subtle);
+  border-radius: var(--radius-lg);
+}
+.hours-edit {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.hours-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  gap: var(--space-2) var(--space-3);
+}
+.hours-row > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.gallery-edit {
+  display: grid;
+  gap: var(--space-3);
+}
+
+/* A Tết card's ready greetings, picked like chips. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-full);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+.chip:has(input:checked) {
+  border-color: var(--c-primary-solid);
+  background: color-mix(in srgb, var(--c-primary) 14%, var(--c-surface));
+}
+.chip:has(input:focus-visible) {
+  box-shadow: var(--shadow-focus-primary);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  cursor: pointer;
+}
+.toggle input {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--c-primary-solid);
+}
+.toggle .field-label {
+  margin: 0;
 }
 
 .swatches {
@@ -897,6 +1001,21 @@ button.bento-card:focus-visible {
 }
 .order-card-done {
   opacity: 0.75;
+}
+/* A wedding's replies, counted. */
+.rsvp-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rsvp-summary li {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--c-primary) 12%, var(--c-surface));
+  font-weight: 700;
 }
 .order-card-head {
   display: flex;

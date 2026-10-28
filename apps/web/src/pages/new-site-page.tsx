@@ -1,6 +1,9 @@
 import { checkSiteName } from '@webnhanh/db/site-name';
-import { SHOP_TEMPLATE } from '@webnhanh/templates';
+import type { TemplateId } from '@webnhanh/templates';
+import cafeCover from '@webnhanh/templates/samples/cafe-cover.webp';
 import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
+import tetPhoto from '@webnhanh/templates/samples/tet-photo.webp';
+import weddingCover from '@webnhanh/templates/samples/wedding-cover.webp';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { SITES_DOMAIN } from '../brand';
@@ -9,12 +12,13 @@ import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { createSite } from '../sites-api';
 
-/** Templates still being made: shown so people know what is coming, never clickable. */
-const COMING: readonly { id: string; label: MessageKey }[] = [
-  { id: 'wedding', label: 'template.wedding' },
-  { id: 'cafe', label: 'template.cafe' },
-  { id: 'profile', label: 'template.profile' },
-  { id: 'tet', label: 'template.tet' },
+/** The templates in the order the page offers them, each with its sample picture (a profile shows a drawn avatar). */
+const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey; picture: string | null }[] = [
+  { id: 'shop', label: 'template.shop', note: 'template.shop.note', picture: shopCover },
+  { id: 'tet', label: 'template.tet', note: 'template.tet.note', picture: tetPhoto },
+  { id: 'wedding', label: 'template.wedding', note: 'template.wedding.note', picture: weddingCover },
+  { id: 'cafe', label: 'template.cafe', note: 'template.cafe.note', picture: cafeCover },
+  { id: 'profile', label: 'template.profile', note: 'template.profile.note', picture: null },
 ];
 
 const NAME_REASONS: Readonly<Record<'format' | 'reserved' | 'sensitive', MessageKey>> = {
@@ -23,7 +27,7 @@ const NAME_REASONS: Readonly<Record<'format' | 'reserved' | 'sensitive', Message
   sensitive: 'name.sensitive',
 };
 
-/** `/new`: choose a template (only the shop is ready), then the page's address. */
+/** `/new`: choose a template, then the page's address. */
 export function NewSitePage(): ReactNode {
   return <SignedInPage>{() => <NewSite />}</SignedInPage>;
 }
@@ -31,7 +35,7 @@ export function NewSitePage(): ReactNode {
 function NewSite(): ReactNode {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [chosen, setChosen] = useState(false);
+  const [chosen, setChosen] = useState<TemplateId | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -43,11 +47,11 @@ function NewSite(): ReactNode {
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
-    if (!check?.ok || busy) return;
+    if (!check?.ok || busy || !chosen) return;
     setBusy(true);
     setError(null);
     try {
-      const site = await createSite(check.name, SHOP_TEMPLATE);
+      const site = await createSite(check.name, chosen);
       navigate(`/sites/${site.id}`);
     } catch (failure) {
       setError(errorMessage(failure));
@@ -63,15 +67,32 @@ function NewSite(): ReactNode {
       <h1 className="page-title">{t('new.title')}</h1>
       <p className="lede">{t('new.lede')}</p>
       <ul className="bento" aria-label={t('new.title')}>
-        <li className="bento-tall">
-          <button type="button" className="bento-card" aria-pressed={chosen} onClick={() => setChosen(true)} data-id="template-shop">
-            <img src={shopCover} alt="" />
-            <span className="bento-label">
-              {t('template.shop')}
-              <small>{t('template.shop.note')}</small>
-            </span>
-          </button>
-        </li>
+        {TEMPLATES.map((template, index) => (
+          <li key={template.id} className={index === 0 ? 'bento-tall' : undefined}>
+            <button
+              type="button"
+              className={`bento-card bento-${template.id}`}
+              aria-pressed={chosen === template.id}
+              onClick={() => {
+                setChosen(template.id);
+                setError(null);
+              }}
+              data-id={`template-${template.id}`}
+            >
+              {template.picture ? (
+                <img src={template.picture} alt="" />
+              ) : (
+                <span className="bento-avatar" aria-hidden="true">
+                  {t('template.profile.initials')}
+                </span>
+              )}
+              <span className="bento-label">
+                {t(template.label)}
+                <small>{t(template.note)}</small>
+              </span>
+            </button>
+          </li>
+        ))}
         <li>
           <Link className="bento-card bento-developer" to="/new/developer" data-id="template-developer">
             <span className="bento-code" aria-hidden="true">
@@ -83,14 +104,6 @@ function NewSite(): ReactNode {
             </span>
           </Link>
         </li>
-        {COMING.map((item) => (
-          <li key={item.id}>
-            <div className={`bento-card bento-soon bento-${item.id}`} aria-disabled="true" data-id={`template-${item.id}`}>
-              <span className="badge badge-draft">{t('new.soon')}</span>
-              <span className="bento-label">{t(item.label)}</span>
-            </div>
-          </li>
-        ))}
       </ul>
 
       {chosen ? (
@@ -129,6 +142,11 @@ function NewSite(): ReactNode {
           </button>
         </form>
       ) : null}
+      <p className="hint">
+        <Link to="/credits" data-id="new-credits">
+          {t('credits.link')}
+        </Link>
+      </p>
     </section>
   );
 }

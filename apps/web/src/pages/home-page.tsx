@@ -12,9 +12,16 @@ function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy
   return site.published ? { key: 'status.published', tone: 'live' } : { key: 'status.draft', tone: 'draft' };
 }
 
+/** What a page's form brings in, by template: orders of a shop, replies to a wedding; other pages have no form. */
+const INBOX: Readonly<Record<string, { readonly link: MessageKey; readonly badge: MessageKey }>> = {
+  shop: { link: 'home.orders', badge: 'home.newOrders' },
+  wedding: { link: 'home.rsvp', badge: 'home.newRsvp' },
+};
+
 function SiteCard({ site }: { readonly site: Site }): ReactNode {
   const { t } = useI18n();
   const status = statusOf(site);
+  const inbox = site.kind === 'template' && site.template ? INBOX[site.template] : undefined;
   return (
     <li className="site-card" data-id={`site-${site.name}`}>
       <div className={site.kind === 'developer' ? 'site-card-media site-card-code' : 'site-card-media'}>
@@ -23,9 +30,9 @@ function SiteCard({ site }: { readonly site: Site }): ReactNode {
       <div className="site-card-body">
         <div className="row">
           <span className={`badge badge-${status.tone}`}>{t(status.key)}</span>
-          {site.newOrders > 0 ? (
+          {inbox && site.newOrders > 0 ? (
             <span className="badge badge-orders" data-id={`site-${site.name}-new-orders`}>
-              {t('home.newOrders', { n: site.newOrders })}
+              {t(inbox.badge, { n: site.newOrders })}
             </span>
           ) : null}
         </div>
@@ -40,9 +47,9 @@ function SiteCard({ site }: { readonly site: Site }): ReactNode {
               {t('home.edit')}
             </Link>
           )}
-          {site.kind !== 'developer' && (site.published || site.newOrders > 0) ? (
+          {inbox && (site.published || site.newOrders > 0) ? (
             <Link className="pill pill-ghost" to={`/sites/${site.id}/orders`} data-id={`site-${site.name}-orders`}>
-              {t('home.orders')}
+              {t(inbox.link)}
             </Link>
           ) : null}
           {site.published ? (

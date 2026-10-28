@@ -6,20 +6,23 @@ import { z } from 'zod';
 import { call } from './api';
 import { parse, sendJson } from './sites-api';
 
-const orderSchema = z.object({
-  id: z.string(),
-  createdAt: z.string(),
-  handledAt: z.string().nullable(),
-  name: z.string(),
-  phone: z.string(),
-  address: z.string(),
-  product: z.string(),
-  quantity: z.number(),
-  note: z.string(),
-});
+const base = { id: z.string(), createdAt: z.string(), handledAt: z.string().nullable(), name: z.string(), phone: z.string(), note: z.string() };
+
+/** An order of a shop page, or a reply to a wedding invitation. */
+const orderSchema = z.discriminatedUnion('kind', [
+  z.object({ ...base, kind: z.literal('order'), address: z.string(), product: z.string(), quantity: z.number() }),
+  z.object({ ...base, kind: z.literal('rsvp'), attending: z.enum(['yes', 'no']), guests: z.number() }),
+]);
 export type Order = z.infer<typeof orderSchema>;
 
-const orderListSchema = z.object({ site: z.object({ name: z.string(), published: z.boolean() }), orders: z.array(orderSchema), more: z.boolean(), open: z.number() });
+const orderListSchema = z.object({
+  site: z.object({ name: z.string(), template: z.string().nullable().default(null), published: z.boolean() }),
+  orders: z.array(orderSchema),
+  more: z.boolean(),
+  open: z.number(),
+  /** A wedding's replies, counted: who is coming (with how many people), who is not. */
+  rsvp: z.object({ yes: z.number(), guests: z.number(), no: z.number() }).nullable().default(null),
+});
 export type OrderList = z.infer<typeof orderListSchema>;
 
 export type OrderView = 'open' | 'all';

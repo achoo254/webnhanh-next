@@ -104,13 +104,14 @@ describe('home with pages', () => {
 });
 
 describe('making a page', () => {
-  it('offers only the shop template, checks the address as typed, and opens the editor', async () => {
+  it('offers every template, checks the address as typed, and opens the editor', async () => {
     on('POST', '/api/sites', () => ({ status: 201, body: { site: site() } }));
     on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
     renderAt('/new');
-    fireEvent.click(await screen.findByRole('button', { name: /Bán hàng nhận đơn/ }));
-    expect(document.querySelector('[data-id="template-wedding"]')?.getAttribute('aria-disabled')).toBe('true');
-    expect(screen.getAllByText('Sắp có')).toHaveLength(4);
+    for (const name of [/Thiệp chúc Tết/, /Thiệp cưới/, /Quán, cửa hàng/, /Hồ sơ cá nhân/]) expect(await screen.findByRole('button', { name })).toBeTruthy();
+    expect(screen.queryByText('Sắp có')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }));
+    expect(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }).getAttribute('aria-pressed')).toBe('true');
 
     const input = screen.getByLabelText('Địa chỉ website');
     fireEvent.change(input, { target: { value: 'vietcombank-hotro' } });
@@ -121,6 +122,16 @@ describe('making a page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
     expect(await screen.findByTitle('Xem trước website')).toBeTruthy();
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'nha-bo', template: 'shop' });
+  });
+
+  it('makes a page of the template picked', async () => {
+    on('POST', '/api/sites', () => ({ status: 201, body: { site: site({ template: 'wedding' }) } }));
+    renderAt('/new');
+    fireEvent.click(await screen.findByRole('button', { name: /Thiệp cưới/ }));
+    expect(screen.getByRole('link', { name: /Phông chữ và ảnh/ }).getAttribute('href')).toBe('/credits');
+    fireEvent.change(screen.getByLabelText('Địa chỉ website'), { target: { value: 'minh-thao' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'minh-thao', template: 'wedding' }));
   });
 
   it('says when the name is taken', async () => {

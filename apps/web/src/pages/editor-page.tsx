@@ -1,4 +1,5 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { parseDraft } from '@webnhanh/templates';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link, Navigate, useParams } from 'react-router';
 import { SiteEditor } from '../editor/site-editor';
 import { errorMessage } from '../error-messages';
@@ -30,9 +31,12 @@ function LoadEditor(): ReactNode {
     };
   }, [siteId]);
 
+  // The draft read as its template's: a draft the app cannot read is shown as an error rather than edited.
+  const value = useMemo(() => (detail ? parseDraft(detail.site.template, detail.draft) : null), [detail]);
+
   // A developer site has no draft: its page is the deploy page.
   if (detail?.site.kind === 'developer') return <Navigate to={`/sites/${detail.site.id}/deploy`} replace />;
-  if (error || (detail && !detail.draft)) {
+  if (error || (detail && !value)) {
     return (
       <section className="home">
         <p className="notice notice-warning" role="alert">
@@ -44,12 +48,12 @@ function LoadEditor(): ReactNode {
       </section>
     );
   }
-  if (!detail?.draft) {
+  if (!detail || !value) {
     return (
       <p className="loading" role="status">
         {t('loading')}
       </p>
     );
   }
-  return <SiteEditor key={detail.site.id} initialSite={detail.site} initialDraft={detail.draft} initialImages={detail.images} />;
+  return <SiteEditor key={detail.site.id} initialSite={detail.site} initialValue={value} initialImages={detail.images} />;
 }

@@ -2,7 +2,7 @@
  * The site API (apps/server/src/sites/site-routes.ts) as the web app uses it. Every response is checked against
  * its shape before the app relies on it.
  */
-import { imageAsset, shopDraftSchema, type ImageAsset, type ShopDraft } from '@webnhanh/templates';
+import { imageAsset, type ImageAsset } from '@webnhanh/templates';
 import { z } from 'zod';
 import { apiError, ApiError, call } from './api';
 
@@ -56,7 +56,8 @@ export type SiteList = z.infer<typeof listSchema>;
 
 const detailSchema = z.object({
   site: siteSchema,
-  draft: shopDraftSchema.nullable(),
+  /** The draft of the site's template, read with `parseDraft(site.template, draft)`; null for a developer site. */
+  draft: z.unknown(),
   images: z.array(imageSchema),
   usedBytes: z.number(),
 });
@@ -86,7 +87,7 @@ export async function getSite(siteId: string): Promise<SiteDetail> {
   return parse(detailSchema, await call(`/api/sites/${encodeURIComponent(siteId)}`));
 }
 
-export async function saveDraft(siteId: string, draft: ShopDraft): Promise<void> {
+export async function saveDraft(siteId: string, draft: unknown): Promise<void> {
   await call(`/api/sites/${encodeURIComponent(siteId)}/draft`, sendJson('PUT', { draft }));
 }
 

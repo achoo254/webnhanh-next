@@ -1,4 +1,4 @@
-import type { ShopIssue } from '@webnhanh/templates';
+import type { IssueCode } from '@webnhanh/templates';
 import { ApiError } from './api';
 import { isMessageKey, type MessageKey } from './i18n';
 
@@ -12,6 +12,7 @@ const BY_CODE: Readonly<Record<string, MessageKey>> = {
   'job-active': 'error.jobActive',
   'rename-limit': 'error.renameLimit',
   'site-not-found': 'error.notFound',
+  'unknown-template': 'error.unknownTemplate',
   'image-type': 'image.type',
   'too-large': 'image.tooLarge',
   'image-too-big': 'image.tooBig',
@@ -42,12 +43,23 @@ export function errorMessage(error: unknown): MessageKey {
   return 'error.generic';
 }
 
-export const ISSUE_MESSAGES: Readonly<Record<ShopIssue['code'], MessageKey>> = {
+/** Why a draft cannot be published yet, for every template, by its issue code. */
+export const ISSUE_MESSAGES: Readonly<Record<IssueCode, MessageKey>> = {
   required: 'issue.required',
   'no-products': 'issue.noProducts',
+  'no-events': 'issue.noEvents',
+  'no-menu': 'issue.noMenu',
+  'no-links': 'issue.noLinks',
+  'no-contact': 'issue.noContact',
   'invalid-zalo': 'issue.zalo',
   'invalid-phone': 'issue.phone',
   'invalid-facebook': 'issue.facebook',
+  'invalid-email': 'issue.email',
+  'invalid-tiktok': 'issue.tiktok',
+  'invalid-instagram': 'issue.instagram',
+  'invalid-youtube': 'issue.youtube',
+  'invalid-url': 'issue.url',
+  'invalid-map': 'issue.map',
 };
 
 /** Why a publish job failed, by its error code. */

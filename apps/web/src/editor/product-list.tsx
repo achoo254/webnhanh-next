@@ -3,16 +3,8 @@ import type { ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { SiteImage } from '../sites-api';
 import { ImageField } from './image-field';
+import { ItemActions, moveItem, newKey } from './list-items';
 import { TextField } from './text-field';
-
-/** A key for a new product: unique in the list, in the shape the draft schema accepts. */
-export function newProductKey(existing: readonly ShopProduct[]): string {
-  const taken = new Set(existing.map((p) => p.key));
-  for (let n = existing.length + 1; ; n += 1) {
-    const key = `p${n}`;
-    if (!taken.has(key)) return key;
-  }
-}
 
 /**
  * The products of the shop: each with its photo, name, price and description, moved with up/down buttons (easier
@@ -38,15 +30,6 @@ export function ProductList({
 }): ReactNode {
   const { t } = useI18n();
   const update = (key: string, patch: Partial<ShopProduct>): void => onChange((list) => list.map((p) => (p.key === key ? { ...p, ...patch } : p)));
-  const move = (key: string, by: -1 | 1): void =>
-    onChange((list) => {
-      const next = [...list];
-      const index = next.findIndex((p) => p.key === key);
-      const [item] = index >= 0 ? next.splice(index, 1) : [];
-      if (!item) return [...list];
-      next.splice(Math.min(Math.max(index + by, 0), next.length), 0, item);
-      return next;
-    });
 
   return (
     <div className="product-list">
@@ -90,23 +73,13 @@ export function ProductList({
               multiline
               dataId={`product-${index}-description`}
             />
-            <div className="product-edit-actions">
-              <button type="button" className="pill pill-ghost pill-small" disabled={index === 0} onClick={() => move(product.key, -1)} data-id={`product-${index}-up`}>
-                {t('editor.product.up')}
-              </button>
-              <button
-                type="button"
-                className="pill pill-ghost pill-small"
-                disabled={index === products.length - 1}
-                onClick={() => move(product.key, 1)}
-                data-id={`product-${index}-down`}
-              >
-                {t('editor.product.down')}
-              </button>
-              <button type="button" className="pill pill-danger pill-small" onClick={() => onChange((list) => list.filter((p) => p.key !== product.key))} data-id={`product-${index}-remove`}>
-                {t('editor.product.remove')}
-              </button>
-            </div>
+            <ItemActions
+              index={index}
+              count={products.length}
+              onMove={(by) => onChange((list) => moveItem(list, product.key, by))}
+              onRemove={() => onChange((list) => list.filter((p) => p.key !== product.key))}
+              dataId={`product-${index}`}
+            />
           </li>
         ))}
       </ol>
@@ -114,7 +87,7 @@ export function ProductList({
         <button
           type="button"
           className="pill pill-dark"
-          onClick={() => onChange((list) => [...list, { key: newProductKey(list), name: '', image: null, description: '', price: '' }])}
+          onClick={() => onChange((list) => [...list, { key: newKey('p', list), name: '', image: null, description: '', price: '' }])}
           data-id="product-add"
         >
           {t('editor.product.add')}

@@ -3,7 +3,7 @@ import { Route, Routes } from 'react-router';
 import { useAccount } from './account';
 import { useI18n } from './i18n';
 import { LandingPage } from './pages/landing-page';
-import { PrivacyPage, TermsPage } from './pages/legal-pages';
+import { CreditsPage, PrivacyPage, TermsPage } from './pages/legal-pages';
 import { LoginPage } from './pages/login-page';
 import { NotFound } from './pages/not-found';
 import { LOGIN_PATH, AppPage } from './public-page';
@@ -49,6 +49,7 @@ export function App(): ReactNode {
         <Route path={LOGIN_PATH} element={<LoginPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

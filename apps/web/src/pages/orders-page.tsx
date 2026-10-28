@@ -7,10 +7,25 @@ import { NotificationSettingsPanel } from '../orders/notification-settings';
 import { listOrders, markOrder, type Order, type OrderList, type OrderView } from '../orders-api';
 import { SignedInPage } from '../signed-in-page';
 
-/** `/sites/:siteId/orders`: the orders visitors sent from a page, and how the owner hears of new ones. */
+/**
+ * `/sites/:siteId/orders`: what visitors sent from a page (a shop's orders, a wedding's replies, worded for each), and
+ * how the owner hears of new ones.
+ */
 export function OrdersPage(): ReactNode {
   return <SignedInPage>{() => <Orders />}</SignedInPage>;
 }
+
+/** The words of the inbox: a shop's orders, or a wedding's replies. */
+interface InboxWords {
+  readonly title: MessageKey;
+  readonly emptyOpen: MessageKey;
+  readonly emptyAll: MessageKey;
+  readonly notPublished: MessageKey;
+  readonly more: MessageKey;
+}
+
+const ORDER_WORDS: InboxWords = { title: 'orders.title', emptyOpen: 'orders.empty.open', emptyAll: 'orders.empty.all', notPublished: 'orders.notPublished', more: 'orders.more' };
+const RSVP_WORDS: InboxWords = { title: 'rsvp.title', emptyOpen: 'rsvp.empty.open', emptyAll: 'rsvp.empty.all', notPublished: 'rsvp.notPublished', more: 'rsvp.more' };
 
 function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: (handled: boolean) => Promise<void> }): ReactNode {
   const { t, locale } = useI18n();
@@ -25,23 +40,35 @@ function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: 
           {when}
         </time>
       </div>
-      <p className="order-card-product">{t('orders.product', { product: order.product, n: order.quantity })}</p>
+      <p className="order-card-product">
+        {order.kind === 'rsvp'
+          ? t(order.attending === 'yes' ? 'rsvp.coming' : 'rsvp.notComing', { n: order.guests })
+          : t('orders.product', { product: order.product, n: order.quantity })}
+      </p>
       <dl className="order-card-details">
-        <dt>{t('orders.phone')}</dt>
-        <dd>
-          <a href={`tel:${order.phone}`}>{order.phone}</a>
-        </dd>
-        <dt>{t('orders.address')}</dt>
-        <dd>{order.address}</dd>
+        {order.phone ? (
+          <>
+            <dt>{t('orders.phone')}</dt>
+            <dd>
+              <a href={`tel:${order.phone}`}>{order.phone}</a>
+            </dd>
+          </>
+        ) : null}
+        {order.kind === 'order' ? (
+          <>
+            <dt>{t('orders.address')}</dt>
+            <dd>{order.address}</dd>
+          </>
+        ) : null}
         {order.note ? (
           <>
-            <dt>{t('orders.note')}</dt>
+            <dt>{t(order.kind === 'rsvp' ? 'rsvp.note' : 'orders.note')}</dt>
             <dd>{order.note}</dd>
           </>
         ) : null}
       </dl>
       <div className="site-card-actions">
-        {handled ? <span className="badge badge-live">{t('orders.handled')}</span> : null}
+        {handled ? <span className="badge badge-live">{t(order.kind === 'rsvp' ? 'rsvp.handled' : 'orders.handled')}</span> : null}
         <button
           type="button"
           className={`pill pill-small ${handled ? 'pill-ghost' : 'pill-dark'}`}
@@ -52,7 +79,7 @@ function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: 
           }}
           data-id={`order-${order.id}-mark`}
         >
-          {t(handled ? 'orders.reopen' : 'orders.markHandled')}
+          {t(handled ? 'orders.reopen' : order.kind === 'rsvp' ? 'rsvp.markHandled' : 'orders.markHandled')}
         </button>
       </div>
     </li>
@@ -120,20 +147,28 @@ function Orders(): ReactNode {
     }
   };
 
+  const words = list?.site.template === 'wedding' ? RSVP_WORDS : ORDER_WORDS;
+
   return (
     <section className="home orders" data-id="orders">
       <Link className="back-link" to="/" data-id="orders-back">
         {t('editor.back')}
       </Link>
-      <h1 className="page-title">{t('orders.title')}</h1>
+      <h1 className="page-title">{list ? t(words.title) : t('orders.inbox')}</h1>
       {list ? <p className="home-account">{siteHost(list.site.name)}</p> : null}
+      {list?.rsvp ? (
+        <ul className="rsvp-summary" data-id="rsvp-summary">
+          <li>{t('rsvp.summary.yes', { n: list.rsvp.yes, guests: list.rsvp.guests })}</li>
+          <li>{t('rsvp.summary.no', { n: list.rsvp.no })}</li>
+        </ul>
+      ) : null}
       {error ? (
         <p className="notice notice-warning" role="alert">
           {t(error)}
         </p>
       ) : null}
-      {list && !list.site.published ? <p className="notice notice-info">{t('orders.notPublished')}</p> : null}
-      <div className="tabs" role="group" aria-label={t('orders.title')}>
+      {list && !list.site.published ? <p className="notice notice-info">{t(words.notPublished)}</p> : null}
+      <div className="tabs" role="group" aria-label={t(words.title)}>
         {(['open', 'all'] as const).map((tab) => (
           <button key={tab} type="button" className="tab" aria-pressed={view === tab} onClick={() => switchView(tab)} data-id={`orders-tab-${tab}`}>
             {tab === 'open' && list ? t('orders.view.openCount', { n: list.open }) : t(tab === 'open' ? 'orders.view.open' : 'orders.view.all')}
@@ -145,7 +180,7 @@ function Orders(): ReactNode {
           {t('loading')}
         </p>
       ) : null}
-      {list && list.orders.length === 0 ? <p className="hint">{t(view === 'open' ? 'orders.empty.open' : 'orders.empty.all')}</p> : null}
+      {list && list.orders.length === 0 ? <p className="hint">{t(view === 'open' ? words.emptyOpen : words.emptyAll)}</p> : null}
       {list && list.orders.length > 0 ? (
         <ul className="order-list" data-id="orders-list">
           {list.orders.map((order) => (
@@ -155,10 +190,10 @@ function Orders(): ReactNode {
       ) : null}
       {list?.more ? (
         <button type="button" className="pill pill-ghost" onClick={() => void more()} disabled={loadingMore} data-id="orders-more">
-          {t('orders.more')}
+          {t(words.more)}
         </button>
       ) : null}
-      <NotificationSettingsPanel />
+      <NotificationSettingsPanel replies={list?.site.template === 'wedding'} />
     </section>
   );
 }
