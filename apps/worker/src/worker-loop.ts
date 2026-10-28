@@ -1,14 +1,19 @@
-import { claimNextJob, failStuckJobs, markJobDone, markJobFailed } from '@webnhanh/db';
+import { claimNextJob, failJob, failStuckJobs, markJobDone, markJobFailed } from '@webnhanh/db';
+import { runBuildPublish } from './build-publish';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
 
-export type WorkerDeps = PublishDeps;
+export type WorkerDeps = PublishDeps & {
+  /** Where webnhanh-builder stages finished builds; unset: built jobs fail here (no builder on this server). */
+  readonly buildOutputDir?: string;
+};
 
 export type JobOutcome = 'idle' | 'done' | 'failed';
 
 /**
- * One turn of the worker: fails jobs stuck in `running`, then claims the oldest queued job and runs it. A publish
- * takes seconds, so a stopping worker finishes the job in hand instead of putting it back.
+ * One turn of the worker: fails jobs stuck in `running`, then claims the oldest queued job of its lane (template
+ * publishes, and developer builds the builder handed back) and publishes it. A publish takes seconds, so a stopping
+ * worker finishes the job in hand instead of putting it back.
  */
 export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
   const stuck = await failStuckJobs(deps.db, deps.now());
@@ -17,7 +22,11 @@ export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
   if (!job) return 'idle';
   deps.log.info(`job ${job.id} ${job.type} for site ${job.siteId}`);
   try {
-    if (job.type !== 'publish') throw new JobError('publish-failed', `no runner for ${job.type} jobs yet`);
+    if (job.type === 'build') {
+      const releaseId = await runBuildPublish(deps, job);
+      deps.log.info(`build ${job.id} published: release ${releaseId}`);
+      return 'done';
+    }
     const releaseId = await runPublish(deps, job);
     if (!(await markJobDone(deps.db, job.id, releaseId, deps.now()))) deps.log.warn(`job ${job.id} finished after it was marked failed`);
     deps.log.info(`job ${job.id} done: release ${releaseId}`);
@@ -25,7 +34,9 @@ export async function processNextJob(deps: WorkerDeps): Promise<JobOutcome> {
   } catch (error) {
     const code = error instanceof JobError ? error.code : 'publish-failed';
     deps.log.warn(`job ${job.id} failed: ${error instanceof Error ? error.message : String(error)}`);
-    await markJobFailed(deps.db, job.id, code, deps.now());
+    // A build's owner may have asked to hear how it ended.
+    if (job.type === 'build') await failJob(deps.db, job.id, code, [], deps.now());
+    else await markJobFailed(deps.db, job.id, code, deps.now());
     return 'failed';
   }
 }

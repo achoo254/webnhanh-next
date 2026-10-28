@@ -17,6 +17,8 @@ const Env = z.object({
   CHROME_PATH: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
   /** ffmpeg, to make the share picture a JPEG. */
   FFMPEG_PATH: z.preprocess(emptyIsUnset, z.string().min(1).default('ffmpeg')),
+  /** Finished developer builds staged by webnhanh-builder; unset: no builder on this server. */
+  BUILD_OUTPUT_DIR: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
   POLL_MS: z.coerce.number().int().min(200).max(60_000).default(1_000),
   SITE_MAX_MB: z.coerce.number().int().min(1).max(500).default(DEFAULT_SITE_MAX_MB),
 });
@@ -29,6 +31,7 @@ export interface WorkerConfig {
   readonly formSecret: string;
   readonly chromePath: string | undefined;
   readonly ffmpegPath: string;
+  readonly buildOutputDir: string | undefined;
   readonly pollMs: number;
   readonly siteMaxBytes: number;
 }
@@ -46,6 +49,7 @@ export function loadWorkerConfig(env: Record<string, string | undefined> = proce
     formSecret: e.FORM_SECRET,
     chromePath: e.CHROME_PATH,
     ffmpegPath: e.FFMPEG_PATH,
+    buildOutputDir: e.BUILD_OUTPUT_DIR,
     pollMs: e.POLL_MS,
     siteMaxBytes: e.SITE_MAX_MB * 1024 * 1024,
   };
