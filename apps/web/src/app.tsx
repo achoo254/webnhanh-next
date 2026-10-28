@@ -6,6 +6,7 @@ import { LandingPage } from './pages/landing-page';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/legal-pages';
 import { LoginPage } from './pages/login-page';
 import { NotFound } from './pages/not-found';
+import { ReportPage } from './pages/report-page';
 import { LOGIN_PATH, AppPage } from './public-page';
 
 // The signed-in pages carry the template renderer and the response checks: loaded only once someone signs in, so
@@ -16,6 +17,7 @@ const EditorPage = lazy(() => import('./pages/editor-page').then((m) => ({ defau
 const OrdersPage = lazy(() => import('./pages/orders-page').then((m) => ({ default: m.OrdersPage })));
 const DeployNewPage = lazy(() => import('./pages/deploy-new-page').then((m) => ({ default: m.DeployNewPage })));
 const DeployPage = lazy(() => import('./pages/deploy-page').then((m) => ({ default: m.DeployPage })));
+const AdminPage = lazy(() => import('./pages/admin-page').then((m) => ({ default: m.AdminPage })));
 
 function Loading(): ReactNode {
   const { t } = useI18n();
@@ -50,6 +52,9 @@ export function App(): ReactNode {
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />
         <Route path="/credits" element={<CreditsPage />} />
+        <Route path="/bao-cao" element={<ReportPage />} />
+        <Route path="/report" element={<ReportPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

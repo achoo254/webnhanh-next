@@ -8,6 +8,8 @@ import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
 
 function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy' | 'warn' } {
   if (site.job && (site.job.status === 'queued' || site.job.status === 'running')) return { key: site.kind === 'developer' ? 'buildStatus.running' : 'status.publishing', tone: 'busy' };
+  if (site.status === 'removed') return { key: 'status.removed', tone: 'warn' };
+  if (site.status === 'pending-review') return { key: 'status.pendingReview', tone: 'busy' };
   if (site.job?.status === 'failed') return { key: 'status.failed', tone: 'warn' };
   return site.published ? { key: 'status.published', tone: 'live' } : { key: 'status.draft', tone: 'draft' };
 }
@@ -98,7 +100,20 @@ function Home({ account }: { readonly account: Account }): ReactNode {
       <h1 className="page-title">{t('home.title')}</h1>
       <p className="home-account" data-id="home-account">
         {t('home.account', { date: since })}
+        {account.admin ? (
+          <>
+            {' · '}
+            <Link to="/admin" data-id="home-admin">
+              {t('admin.title')}
+            </Link>
+          </>
+        ) : null}
       </p>
+      {account.locked ? (
+        <p className="notice notice-warning" role="alert" data-id="home-locked">
+          {t('home.locked')}
+        </p>
+      ) : null}
       {failed ? (
         <p className="notice notice-warning" role="alert">
           {t('home.loadFailed')}

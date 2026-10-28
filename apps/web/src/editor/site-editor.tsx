@@ -250,6 +250,7 @@ export function SiteEditor({
           siteId={site.id}
           siteName={site.name}
           published={site.published}
+          pendingReview={site.status === 'pending-review'}
           initialJob={job}
           prepare={prepare}
           onFieldsRefused={refuse}

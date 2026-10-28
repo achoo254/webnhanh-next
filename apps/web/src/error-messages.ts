@@ -35,6 +35,10 @@ const BY_CODE: Readonly<Record<string, MessageKey>> = {
   'zip-invalid': 'fail.zip-invalid',
   'zip-unsafe': 'fail.zip-unsafe',
   'zip-too-large': 'fail.zip-too-large',
+  'account-locked': 'error.accountLocked',
+  'site-removed': 'error.siteRemoved',
+  'report-site-unknown': 'report.error.siteUnknown',
+  'too-fast': 'report.error.tooFast',
 };
 
 export function errorMessage(error: unknown): MessageKey {
@@ -67,6 +71,8 @@ export function jobFailureMessage(code: string | null): MessageKey {
   if (code === 'draft-invalid') return 'publish.failed.draft';
   if (code === 'image-missing') return 'publish.failed.image';
   if (code === 'too-large') return 'publish.failed.tooLarge';
+  if (code === 'account-locked') return 'error.accountLocked';
+  if (code === 'site-removed') return 'error.siteRemoved';
   return 'publish.failed.generic';
 }
 
@@ -91,6 +97,8 @@ const BUILD_FAILURES: Readonly<Record<string, MessageKey>> = {
   'docker-unavailable': 'fail.docker-unavailable',
   'settings-invalid': 'fail.settings-invalid',
   stuck: 'fail.stuck',
+  'account-locked': 'error.accountLocked',
+  'site-removed': 'error.siteRemoved',
 };
 
 export function buildFailureMessage(code: string | null): MessageKey {

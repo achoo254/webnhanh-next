@@ -3,7 +3,7 @@ import { ApiError } from '../api';
 import { siteHost } from '../brand';
 import { errorMessage, jobFailureMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
-import { getJob, publishSite, type Job } from '../sites-api';
+import { getJob, HELD_FOR_REVIEW, publishSite, type Job } from '../sites-api';
 
 /** The worker's steps (apps/worker/src/publish-job.ts), in order, with their labels. */
 const STEPS: readonly { name: string; label: MessageKey }[] = [
@@ -134,6 +134,7 @@ export function PublishPanel({
   siteId,
   siteName,
   published,
+  pendingReview = false,
   initialJob,
   prepare,
   onFieldsRefused,
@@ -142,6 +143,8 @@ export function PublishPanel({
   readonly siteId: string;
   readonly siteName: string;
   readonly published: boolean;
+  /** The site's last release waits for an admin's review. */
+  readonly pendingReview?: boolean;
   readonly initialJob: Job | null;
   readonly prepare: () => Promise<boolean>;
   readonly onFieldsRefused: (fields: readonly string[]) => void;
@@ -155,6 +158,7 @@ export function PublishPanel({
   const running = active(job);
   const section = useRef<HTMLElement>(null);
   // The progress and then the link show at the end of the page: bring them into view as they appear.
+  const held = job?.status === 'done' && job.error === HELD_FOR_REVIEW;
   const shownState = running ? 'running' : job?.status === 'done' && finishedHere ? 'done' : 'idle';
   useEffect(() => {
     if (shownState !== 'idle') section.current?.scrollIntoView?.({ behavior: 'smooth', block: 'end' });
@@ -162,8 +166,8 @@ export function PublishPanel({
 
   const status = job?.status;
   useEffect(() => {
-    if (status === 'done' && finishedHere) onDone();
-  }, [status, finishedHere, onDone]);
+    if (status === 'done' && finishedHere && !held) onDone();
+  }, [status, finishedHere, held, onDone]);
 
   const start = async (): Promise<void> => {
     setError(null);
@@ -190,8 +194,13 @@ export function PublishPanel({
       {job?.status === 'done' && finishedHere ? (
         <>
           <Steps job={job} now={now} />
-          <LiveLink name={siteName} />
+          {held ? null : <LiveLink name={siteName} />}
         </>
+      ) : null}
+      {held || (pendingReview && !(job?.status === 'done' && finishedHere)) ? (
+        <p className="notice notice-info" role="status" data-id="publish-held">
+          {t('review.held')}
+        </p>
       ) : null}
       {job?.status === 'failed' && !error ? (
         <p className="notice notice-warning" role="alert">
@@ -203,7 +212,7 @@ export function PublishPanel({
           {t(error)}
         </p>
       ) : null}
-      {published && !(job?.status === 'done' && finishedHere) ? (
+      {published && !(job?.status === 'done' && finishedHere && !held) ? (
         <p className="hint">
           {t('publish.live')}{' '}
           <a href={`https://${siteHost(siteName)}/`} target="_blank" rel="noopener noreferrer">

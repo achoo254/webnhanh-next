@@ -20,12 +20,18 @@ export function apiError(status: number, body: unknown): ApiError {
 export interface Account {
   readonly id: string;
   readonly createdAt: string;
+  /** The admin tools (`/admin`) are open to this account. */
+  readonly admin: boolean;
+  /** An admin locked the account: nothing of it is published or built. */
+  readonly locked: boolean;
 }
 
-function isAccount(value: unknown): value is Account {
-  if (typeof value !== 'object' || value === null) return false;
+/** The account of a /api/me body; `admin` and `locked` read as false when absent. Null when it is not one. */
+function readAccount(value: unknown): Account | null {
+  if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
-  return typeof v.id === 'string' && typeof v.createdAt === 'string';
+  if (typeof v.id !== 'string' || typeof v.createdAt !== 'string') return null;
+  return { id: v.id, createdAt: v.createdAt, admin: v.admin === true, locked: v.locked === true };
 }
 
 /** A JSON call to the app's server; throws ApiError with the server's code when it refuses. */
@@ -42,8 +48,8 @@ export async function call(path: string, init: RequestInit = {}): Promise<unknow
 export async function getAccount(): Promise<Account | null> {
   try {
     const body = await call('/api/me');
-    const account = typeof body === 'object' && body !== null ? (body as { account?: unknown }).account : undefined;
-    if (!isAccount(account)) throw new ApiError(500, 'bad-response');
+    const account = readAccount(typeof body === 'object' && body !== null ? (body as { account?: unknown }).account : undefined);
+    if (!account) throw new ApiError(500, 'bad-response');
     return account;
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) return null;

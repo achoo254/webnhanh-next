@@ -1,5 +1,6 @@
 import { matchShellLocale, readPreferences, subscribePreferences } from '@achoo254/app-shell';
 import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { ABUSE_EMAIL } from '@webnhanh/db/site-name';
 import { brand, SITES_DOMAIN } from './brand';
 import { DICTIONARIES, type Locale, type MessageKey } from './messages';
 
@@ -9,9 +10,9 @@ const DEFAULT_LOCALE: Locale = 'vi';
 
 export type Translate = (key: MessageKey, params?: Readonly<Record<string, string | number>>) => string;
 
-/** Fills `{name}` placeholders; `{app}`, `{domain}` and `{sites}` always come from the brand. */
+/** Fills `{name}` placeholders; `{app}`, `{domain}`, `{sites}` and `{email}` (the abuse mailbox) always come from the brand. */
 export function format(template: string, params: Readonly<Record<string, string | number>> = {}): string {
-  const all: Readonly<Record<string, string | number>> = { app: brand.appName, domain: brand.primaryTenant.domain, sites: SITES_DOMAIN, ...params };
+  const all: Readonly<Record<string, string | number>> = { app: brand.appName, domain: brand.primaryTenant.domain, sites: SITES_DOMAIN, email: ABUSE_EMAIL, ...params };
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => String(all[name] ?? whole));
 }
 

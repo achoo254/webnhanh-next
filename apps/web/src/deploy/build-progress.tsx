@@ -5,6 +5,7 @@ import { buildFailureMessage, warningMessage } from '../error-messages';
 import { useI18n, type MessageKey, type Translate } from '../i18n';
 import { getNotificationSettings } from '../orders-api';
 import { enablePush, pushState } from '../push';
+import { HELD_FOR_REVIEW } from '../sites-api';
 import { duration, isActive } from './use-build';
 
 /** The builder's and the worker's steps (apps/worker/src/build/build-job.ts), after the wait in the queue. */
@@ -305,7 +306,12 @@ export function BuildProgressView({
               {sentence}
             </p>
           ) : null}
-          {build.status === 'done' ? <Done detail={detail} /> : null}
+          {build.status === 'done' && build.error === HELD_FOR_REVIEW ? (
+            <p className="notice notice-info" role="status" data-id="build-held">
+              {t('review.held')}
+            </p>
+          ) : null}
+          {build.status === 'done' && build.error !== HELD_FOR_REVIEW ? <Done detail={detail} /> : null}
           {build.status === 'failed' ? <Failed build={build} /> : null}
           {build.status === 'skipped' ? (
             <p className="notice notice-info" data-id="build-skipped">

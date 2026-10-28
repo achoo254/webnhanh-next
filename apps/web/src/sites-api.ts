@@ -18,6 +18,9 @@ export type SiteImage = z.infer<typeof imageSchema>;
 const stepSchema = z.object({ name: z.string(), startedAt: z.string(), finishedAt: z.string().optional() });
 export type JobStep = z.infer<typeof stepSchema>;
 
+/** A finished publish or build whose release waits for an admin before it goes live (`error` of a done job). */
+export const HELD_FOR_REVIEW = 'held-for-review';
+
 const jobSchema = z.object({
   id: z.string(),
   siteId: z.string(),

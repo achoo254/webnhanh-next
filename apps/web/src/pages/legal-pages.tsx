@@ -1,5 +1,7 @@
 import { STYLE_FONTS } from '@webnhanh/templates/shop-fonts';
+import { ABUSE_EMAIL } from '@webnhanh/db/site-name';
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { brand, SITES_DOMAIN } from '../brand';
 import { useI18n } from '../i18n';
 import { AppPage } from '../public-page';
@@ -80,6 +82,9 @@ export function TermsPage(): ReactNode {
           </p>
           <h2>Gỡ website</h2>
           <p>Website vi phạm các điều trên có thể bị gỡ ngay, không cần báo trước.</p>
+          <p>
+            Thấy website vi phạm? <Link to="/bao-cao">Báo cáo vi phạm</Link> hoặc gửi email tới {ABUSE_EMAIL}.
+          </p>
           <h2>Dịch vụ</h2>
           <p>{name} đang được làm và có thể thay đổi; dịch vụ được cung cấp như hiện có, không cam kết luôn hoạt động.</p>
         </>
@@ -94,6 +99,9 @@ export function TermsPage(): ReactNode {
           </p>
           <h2>Removal</h2>
           <p>A website that breaks these terms may be removed at once, without notice.</p>
+          <p>
+            Found a website that breaks them? <Link to="/report">Report it</Link> or write to {ABUSE_EMAIL}.
+          </p>
           <h2>The service</h2>
           <p>{name} is being built and may change; it is provided as is, with no promise that it is always available.</p>
         </>
