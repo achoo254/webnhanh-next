@@ -2,6 +2,14 @@
  * Site names become `<name>.hoandat.io.vn` and the directory SITES_DIR/<name>. The nginx `server_name` regex in
  * infra/nginx/hoandat.io.vn.conf accepts the same shape; keep the two in step.
  */
+/** The domain under which every site gets its name. */
+export const SITES_DOMAIN = 'hoandat.io.vn';
+
+/** `https://<name>.hoandat.io.vn`: the origin of a site (its page, and the only origin its form may post from). */
+export function siteOrigin(name: string): string {
+  return `https://${name}.${SITES_DOMAIN}`;
+}
+
 export const SITE_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/;
 
 /** Names kept for the service itself, its subdomains, and the smoke-test site. */

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
 export const accounts = pgTable('accounts', {
@@ -28,6 +28,16 @@ export const sessions = pgTable(
   (t) => [index('sessions_account_idx').on(t.accountId), index('sessions_expires_idx').on(t.expiresAt)],
 );
 
+/** One product a published order form lets visitors choose. */
+export interface OrderFormProduct {
+  key: string;
+  name: string;
+}
+
+export interface OrderFormSpec {
+  products: OrderFormProduct[];
+}
+
 export const SITE_KINDS = ['template', 'developer'] as const;
 export type SiteKind = (typeof SITE_KINDS)[number];
 
@@ -54,6 +64,11 @@ export const sites = pgTable(
      * the draft as it was then; the live site does not change until the next publish.
      */
     draft: jsonb('draft').$type<unknown>(),
+    /**
+     * What the order form of the live page offers, written by each publish; null while no published page takes
+     * orders. Visitors' orders are checked against this, not against the draft being edited.
+     */
+    orderForm: jsonb('order_form').$type<OrderFormSpec>(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
@@ -176,4 +191,124 @@ export const siteNameHolds = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
   },
   (t) => [index('site_name_holds_site_idx').on(t.siteId)],
+);
+
+export const SUBMISSION_KINDS = ['order'] as const;
+export type SubmissionKind = (typeof SUBMISSION_KINDS)[number];
+
+/** An order as stored: what the visitor typed, checked, and the product's name as the page showed it. */
+export interface OrderData {
+  name: string;
+  phone: string;
+  address: string;
+  productKey: string;
+  productName: string;
+  quantity: number;
+  note: string;
+}
+
+/**
+ * What visitors sent through a published page's form (an order of the shop template). The owner sees them in the
+ * app; `handled_at` is set when the owner marks one done. No IP address or other trace of the visitor is kept.
+ */
+export const submissions = pgTable(
+  'submissions',
+  {
+    id: uuid('id').primaryKey(),
+    siteId: uuid('site_id')
+      .notNull()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<SubmissionKind>().notNull(),
+    data: jsonb('data').$type<OrderData>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    handledAt: timestamp('handled_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('submissions_site_idx').on(t.siteId, t.createdAt),
+    index('submissions_open_idx').on(t.siteId).where(sql`${t.handledAt} is null`),
+    check('submissions_kind_check', sql`${t.kind} in ('order')`),
+  ],
+);
+
+/** A browser (one device) that asked for Web Push of new orders. The endpoint is the push service's URL for it. */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: uuid('id').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    endpoint: text('endpoint').notNull().unique(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('push_subscriptions_account_idx').on(t.accountId)],
+);
+
+/** The private chat of the Chat app where an account gets its new orders (one per account). */
+export const chatLinks = pgTable('chat_links', {
+  accountId: uuid('account_id')
+    .primaryKey()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  chatId: bigint('chat_id', { mode: 'number' }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+});
+
+/** How long the one-time code of a "get orders in Chat" link stays usable. */
+export const CHAT_LINK_CODE_MS = 15 * 60 * 1000;
+
+/** One-time codes of the bot's deep link; stored as sha256 like session tokens. */
+export const chatLinkCodes = pgTable(
+  'chat_link_codes',
+  {
+    codeHash: text('code_hash').primaryKey(),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('chat_link_codes_account_idx').on(t.accountId)],
+);
+
+export const NOTIFICATION_CHANNELS = ['push', 'chat'] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
+
+export const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'dropped'] as const;
+export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+/**
+ * The outbox of order notifications: one row per new order and per place it goes (a push subscription, the linked
+ * chat), written in the same transaction as the order. A sender picks due rows, and a failure only moves that row's
+ * next attempt: one channel failing never holds back another, nor the order. `dropped`: the target went away
+ * (subscription expired, chat unlinked).
+ */
+export const notificationDeliveries = pgTable(
+  'notification_deliveries',
+  {
+    id: uuid('id').primaryKey(),
+    submissionId: uuid('submission_id')
+      .notNull()
+      .references(() => submissions.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    channel: text('channel').$type<NotificationChannel>().notNull(),
+    /** The push subscription id, or the chat id. */
+    target: text('target').notNull(),
+    status: text('status').$type<DeliveryStatus>().notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    nextAttemptAt: timestamp('next_attempt_at', { withTimezone: true }).notNull(),
+    /** Stable code of the last failure (never a response body or user data). */
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('notification_deliveries_due_idx').on(t.status, t.nextAttemptAt),
+    index('notification_deliveries_submission_idx').on(t.submissionId),
+    check('notification_deliveries_channel_check', sql`${t.channel} in ('push', 'chat')`),
+    check('notification_deliveries_status_check', sql`${t.status} in ('pending', 'sent', 'failed', 'dropped')`),
+  ],
 );
