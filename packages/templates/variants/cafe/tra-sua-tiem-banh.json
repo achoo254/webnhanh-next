@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "a bright pastel tea shop counter with fruit teas in clear cups and pastries, young friends chatting, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1098064159
     },
     {
       "slot": "item-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "a clear cup of peach orange lemongrass tea with ice, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1694985483
     },
     {
       "slot": "item-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "item-1",
       "prompt": "a strawberry cream tart on a small plate, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1714860382
     }
   ]
 }

@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "a sunny balcony with small potted plants, succulents and handmade ceramic pots on wooden shelves, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1682297403
     },
     {
       "slot": "product-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "a small succulent in a speckled handmade ceramic pot, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 3310670523
     },
     {
       "slot": "product-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "product-1",
       "prompt": "a pothos plant in a terracotta pot, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1252711069
     }
   ]
 }

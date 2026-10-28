@@ -16,7 +16,7 @@
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "a Vietnamese ceramic artist shaping clay on a pottery wheel, hands and face visible, rustic workshop, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1740437382
     }
   ]
 }

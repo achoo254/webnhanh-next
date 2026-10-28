@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "Vietnamese street snacks spread on a wooden table, rice paper salad, chicken floss, tamarind candy in glass jars, top-down, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 97774509
     },
     {
       "slot": "product-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "a clear bag of Vietnamese mixed rice paper salad with quail eggs and herbs, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 2485820404
     },
     {
       "slot": "product-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "product-1",
       "prompt": "a glass jar of shredded lime-leaf chicken jerky, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1149827347
     }
   ]
 }

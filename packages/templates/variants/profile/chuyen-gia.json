@@ -16,7 +16,7 @@
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "professional portrait of a Vietnamese man architect in his thirties, neutral background, soft window light, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1879424603
     }
   ]
 }

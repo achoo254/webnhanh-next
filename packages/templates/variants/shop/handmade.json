@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "handmade crochet toys and yarn balls on a linen tablecloth, crochet hook, warm cosy mood, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 770815028
     },
     {
       "slot": "product-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "a small crocheted bunny plush toy sitting on linen, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 767827979
     },
     {
       "slot": "product-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "product-1",
       "prompt": "a crocheted strawberry keychain, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 3605934649
     }
   ]
 }

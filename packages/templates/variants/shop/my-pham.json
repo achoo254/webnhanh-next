@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "minimal skincare bottles and jars on pale pink stone with fresh flower petals, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 757883283
     },
     {
       "slot": "product-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "an amber glass serum bottle with a dropper beside green tea leaves, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 97417188
     },
     {
       "slot": "product-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "product-1",
       "prompt": "a small frosted jar of turmeric face cream, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 2886449811
     }
   ]
 }

@@ -15,14 +15,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "a small Saigon alley cafe by the window, iced coffee and matcha latte on a wooden table, plants, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 3234844451
     },
     {
       "slot": "item-1",
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "Vietnamese iced milk coffee with a phin filter on a wooden table, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 3554305244
     },
     {
       "slot": "item-2",
@@ -30,7 +30,7 @@
       "size": "1328x1328",
       "ref": "item-1",
       "prompt": "a slice of banana bread with coconut cream on a ceramic plate, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1984270338
     }
   ]
 }

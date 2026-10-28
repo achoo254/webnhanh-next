@@ -15,21 +15,21 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "a cute baby goat in a red and gold ao dai holding a red envelope, yellow apricot blossoms and red lanterns around, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, pastel cream background, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 1374907374
     },
     {
       "slot": "ornament",
       "model": "zimage-transparent",
       "size": "1024x1024",
       "prompt": "a single red paper lantern with gold tassel, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 2996681827
     },
     {
       "slot": "ornament-2",
       "model": "zimage-transparent",
       "size": "1024x1024",
       "prompt": "a single branch of yellow apricot blossoms, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 4283870655
     }
   ]
 }

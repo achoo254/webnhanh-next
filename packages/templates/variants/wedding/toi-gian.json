@@ -16,14 +16,14 @@
       "model": "qwen",
       "size": "1104x1472",
       "prompt": "Vietnamese couple in a minimal white wedding dress and grey suit in a bright white room, lots of negative space at the top, romantic editorial wedding photography, natural light, airy, elegant composition, Vietnamese couple, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 685391613
     },
     {
       "slot": "ornament",
       "model": "zimage-transparent",
       "size": "1024x1024",
       "prompt": "a single thin line drawing of an olive branch, minimal black ink illustration, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 3265067841
     }
   ]
 }

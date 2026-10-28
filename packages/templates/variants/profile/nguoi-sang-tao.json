@@ -16,7 +16,7 @@
       "model": "qwen",
       "size": "1328x1328",
       "prompt": "portrait of a smiling young Vietnamese woman baker in an apron in a sunlit home kitchen, film photography look, Kodak Portra 400, warm natural light, soft grain, candid lifestyle, no text, no letters, no logos, no watermark",
-      "seed": null
+      "seed": 202921370
     }
   ]
 }
