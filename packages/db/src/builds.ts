@@ -10,7 +10,7 @@
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, lte, ne, notInArray, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import type { Db } from './client';
-import { enqueueJob, type Job } from './jobs';
+import { enqueueJob, publishBlock, type Job, type PublishBlock } from './jobs';
 import { chatLinks, developerSites, JOB_LOG_MAX_LINES, jobLogs, jobs, notificationDeliveries, pushSubscriptions, sites, type BuildTrigger } from './schema';
 
 import { BUILD_QUEUE_MAX, BUILDS_PER_DAY } from './build-limits';
@@ -55,7 +55,7 @@ export async function queuedBuildCount(db: Db): Promise<number> {
   return row?.n ?? 0;
 }
 
-export type BuildEnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' | 'daily-limit' | 'queue-full' };
+export type BuildEnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' | 'daily-limit' | 'queue-full' | PublishBlock };
 
 /** Queues a build within the limits. A rename's rebuild is not counted against the day. */
 export async function enqueueBuild(
@@ -63,10 +63,11 @@ export async function enqueueBuild(
   input: { siteId: string; accountId: string; trigger: BuildTrigger; commitSha?: string | null; id?: string },
   now: Date,
 ): Promise<BuildEnqueueResult> {
+  const block = await publishBlock(db, input.siteId);
+  if (block) return { ok: false, reason: block };
   if (input.trigger !== 'rename' && (await buildsToday(db, input.accountId, now)) >= BUILDS_PER_DAY) return { ok: false, reason: 'daily-limit' };
   if ((await queuedBuildCount(db)) >= BUILD_QUEUE_MAX) return { ok: false, reason: 'queue-full' };
-  const queued = await enqueueJob(db, { ...input, type: 'build' }, now);
-  return queued.ok ? queued : { ok: false, reason: 'job-active' };
+  return enqueueJob(db, { ...input, type: 'build' }, now);
 }
 
 /**
@@ -128,7 +129,8 @@ export interface DuePushOutcome {
 
 /**
  * Turns pushes whose wait is over into builds. One whose account has a job running stays until it ends; one that
- * finds the queue full stays until there is room; one past the day's limit is recorded as skipped and dropped.
+ * finds the queue full stays until there is room; one past the day's limit is recorded as skipped and dropped; one of
+ * a locked account or a taken-down site is dropped.
  */
 export async function queueDuePushes(db: Db, now: Date): Promise<DuePushOutcome> {
   const due = await db
@@ -141,12 +143,12 @@ export async function queueDuePushes(db: Db, now: Date): Promise<DuePushOutcome>
   const outcome = { queued: 0, skipped: 0 };
   for (const push of due) {
     const queued = await enqueueBuild(db, { siteId: push.siteId, accountId: push.accountId, trigger: 'push', commitSha: push.commit }, now);
-    if (!queued.ok && queued.reason !== 'daily-limit') continue;
-    if (!queued.ok) {
+    if (!queued.ok && (queued.reason === 'job-active' || queued.reason === 'queue-full')) continue;
+    if (queued.ok) {
+      outcome.queued += 1;
+    } else if (queued.reason === 'daily-limit') {
       await recordSkippedBuild(db, { siteId: push.siteId, accountId: push.accountId, trigger: 'push', commitSha: push.commit, reason: 'daily-limit' }, now);
       outcome.skipped += 1;
-    } else {
-      outcome.queued += 1;
     }
     // Only the push that was due is cleared: one that arrived meanwhile keeps waiting.
     await db

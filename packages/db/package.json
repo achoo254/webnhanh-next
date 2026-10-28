@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./site-name": "./src/site-name.ts",
+    "./admin-codes": "./src/admin-codes.ts",
     "./package.json": "./package.json",
     "./build-limits": "./src/build-limits.ts"
   },

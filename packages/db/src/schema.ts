@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { AbuseCategory, ReviewReason } from './admin-codes';
 import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
@@ -7,6 +8,8 @@ export const accounts = pgTable('accounts', {
   /** `sub` of the ID token from auth.hoandat.com: the only thing Web Nhanh learns about the person. */
   sub: text('sub').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /** Set by an admin: the account can sign in and read its sites, but nothing of it is published or built. */
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
 });
 
 /** A session ends 30 days after sign-in, or after 7 days without use. */
@@ -68,6 +71,26 @@ export type SiteKind = (typeof SITE_KINDS)[number];
 export const SITE_STATUSES = ['draft', 'published', 'pending-review', 'removed'] as const;
 export type SiteStatus = (typeof SITE_STATUSES)[number];
 
+
+/**
+ * A release copied under SITES_DIR but not live (`sites.pending_release_id`), and everything its approval writes: the
+ * releases row, and for a template page its live page and form, for a build the build key.
+ */
+export interface PendingReview {
+  reasons: ReviewReason[];
+  /** What matched, for the admin: `index.html: <input type="password"`, `title: vietcombank`. At most 10. */
+  matches: string[];
+  heldAt: string;
+  jobId: string;
+  source: ReleaseSource;
+  commitSha: string | null;
+  bytes: number;
+  fileCount: number;
+  livePage: LivePage | null;
+  orderForm: OrderFormSpec | null;
+  buildKey: string | null;
+}
+
 /** One site at `<name>.hoandat.io.vn`. The name is the directory under SITES_DIR, checked by `checkSiteName`. */
 export const sites = pgTable(
   'sites',
@@ -95,11 +118,25 @@ export const sites = pgTable(
     orderForm: jsonb('order_form').$type<OrderFormSpec>(),
     /** The live page as last published (`LivePage`); null for developer sites and before the first publish. */
     livePage: jsonb('live_page').$type<LivePage>(),
+    /**
+     * A release waiting for an admin (status `pending-review`): copied under releases/ but not `current`. The release
+     * live before it (if any) stays live and keeps taking orders.
+     */
+    pendingReleaseId: uuid('pending_release_id'),
+    pendingReview: jsonb('pending_review').$type<PendingReview>(),
+    /**
+     * Taken down by an admin (status `removed`): `current` points at the shared "removed" page
+     * (`takedown_release_id`) while `current_release_id` keeps the release that was live, for a restore. Releases are
+     * kept TAKEDOWN_KEEP_MS for review.
+     */
+    takenDownAt: timestamp('taken_down_at', { withTimezone: true }),
+    takedownReleaseId: uuid('takedown_release_id'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
   },
   (t) => [
     index('sites_account_idx').on(t.accountId),
+    index('sites_pending_review_idx').on(t.status).where(sql`${t.status} = 'pending-review'`),
     check('sites_kind_check', sql`${t.kind} in ('template', 'developer')`),
     check('sites_status_check', sql`${t.status} in ('draft', 'published', 'pending-review', 'removed')`),
   ],
@@ -443,11 +480,12 @@ export const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'dropped'] as con
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
 /**
- * The outbox of notifications: one row per new order (`submission_id`) or finished build the owner asked to hear about
- * (`job_id`), and per place it goes (a push subscription, the linked chat), written in the same transaction as the
- * order or the end of the build. A sender picks due rows, and a failure only moves that row's
- * next attempt: one channel failing never holds back another, nor the order. `dropped`: the target went away
- * (subscription expired, chat unlinked).
+ * The outbox of notifications: one row per new order (`submission_id`), finished build the owner asked to hear about
+ * (`job_id`), abuse report (`report_id`, to the admins) or release held for review (`review_site_id`, to the admins),
+ * and per place it goes (a push subscription, the linked chat), written in the same transaction as what it tells of.
+ * A sender picks due rows, and a failure only moves that row's next attempt: one channel failing never holds back
+ * another, nor the order. `dropped`: the target went away (subscription expired, chat unlinked), or what it told of
+ * did (a review already decided).
  */
 export const notificationDeliveries = pgTable(
   'notification_deliveries',
@@ -455,6 +493,8 @@ export const notificationDeliveries = pgTable(
     id: uuid('id').primaryKey(),
     submissionId: uuid('submission_id').references(() => submissions.id, { onDelete: 'cascade' }),
     jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
+    reportId: uuid('report_id').references(() => abuseReports.id, { onDelete: 'cascade' }),
+    reviewSiteId: uuid('review_site_id').references(() => sites.id, { onDelete: 'cascade' }),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
@@ -473,8 +513,75 @@ export const notificationDeliveries = pgTable(
     index('notification_deliveries_due_idx').on(t.status, t.nextAttemptAt),
     index('notification_deliveries_submission_idx').on(t.submissionId),
     index('notification_deliveries_job_idx').on(t.jobId),
-    check('notification_deliveries_subject_check', sql`(${t.submissionId} is null) <> (${t.jobId} is null)`),
+    check('notification_deliveries_subject_check', sql`num_nonnulls(${t.submissionId}, ${t.jobId}, ${t.reportId}, ${t.reviewSiteId}) = 1`),
     check('notification_deliveries_channel_check', sql`${t.channel} in ('push', 'chat')`),
     check('notification_deliveries_status_check', sql`${t.status} in ('pending', 'sent', 'failed', 'dropped')`),
+  ],
+);
+
+
+export const REPORT_STATUSES = ['open', 'resolved', 'dismissed'] as const;
+export type ReportStatus = (typeof REPORT_STATUSES)[number];
+
+/**
+ * Reports of abuse from the public form (`/bao-cao`): no sign-in, so nothing about the sender is kept but what they
+ * chose to give (`contact`); no IP address. The site is kept by name as typed and by id while it exists.
+ */
+export const abuseReports = pgTable(
+  'abuse_reports',
+  {
+    id: uuid('id').primaryKey(),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+    siteName: text('site_name').notNull(),
+    category: text('category').$type<AbuseCategory>().notNull(),
+    details: text('details').notNull(),
+    contact: text('contact'),
+    status: text('status').$type<ReportStatus>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    handledAt: timestamp('handled_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('abuse_reports_status_idx').on(t.status, t.createdAt),
+    index('abuse_reports_site_idx').on(t.siteId),
+    check('abuse_reports_category_check', sql`${t.category} in ('scam', 'malware', 'illegal', 'spam', 'copyright', 'other')`),
+    check('abuse_reports_status_check', sql`${t.status} in ('open', 'resolved', 'dismissed')`),
+  ],
+);
+
+export const ADMIN_ACTIONS = ['takedown', 'restore', 'approve', 'reject', 'lock', 'unlock', 'resolve', 'dismiss'] as const;
+export type AdminAction = (typeof ADMIN_ACTIONS)[number];
+
+/** Admin actions that change files under SITES_DIR: applied by webnhanh-worker, the only writer there. */
+export const WORKER_ADMIN_ACTIONS = ['takedown', 'restore', 'approve', 'reject'] as const satisfies readonly AdminAction[];
+
+export const ADMIN_ACTION_STATUSES = ['queued', 'done', 'failed'] as const;
+export type AdminActionStatus = (typeof ADMIN_ACTION_STATUSES)[number];
+
+/**
+ * The audit log of every admin action, and the queue of those the worker applies (`queued` until it did). Rows are
+ * never deleted, and outlive the site, account or report they name (ids set null, the site's name kept).
+ */
+export const adminActions = pgTable(
+  'admin_actions',
+  {
+    id: uuid('id').primaryKey(),
+    adminAccountId: uuid('admin_account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    action: text('action').$type<AdminAction>().notNull(),
+    siteId: uuid('site_id').references(() => sites.id, { onDelete: 'set null' }),
+    siteName: text('site_name'),
+    accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
+    reportId: uuid('report_id').references(() => abuseReports.id, { onDelete: 'set null' }),
+    note: text('note'),
+    status: text('status').$type<AdminActionStatus>().notNull(),
+    /** Stable code of a worker action that could not be applied. */
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('admin_actions_created_idx').on(t.createdAt),
+    index('admin_actions_queue_idx').on(t.createdAt).where(sql`${t.status} = 'queued'`),
+    check('admin_actions_action_check', sql`${t.action} in ('takedown', 'restore', 'approve', 'reject', 'lock', 'unlock', 'resolve', 'dismiss')`),
+    check('admin_actions_status_check', sql`${t.status} in ('queued', 'done', 'failed')`),
   ],
 );

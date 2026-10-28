@@ -9,7 +9,7 @@
 import { randomUUID } from 'node:crypto';
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Db } from './client';
-import { jobs, type BuildTrigger, type JobStep, type JobType } from './schema';
+import { accounts, jobs, sites, type BuildTrigger, type JobStep, type JobType } from './schema';
 
 export type Job = typeof jobs.$inferSelect;
 
@@ -36,7 +36,22 @@ export function isUniqueViolation(error: unknown): boolean {
   return false;
 }
 
-export type EnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' };
+/** Why nothing of a site may be published or built: its account was locked, or the site taken down, by an admin. */
+export type PublishBlock = 'account-locked' | 'site-removed';
+
+/** The reason the site (or its account) may not be published now, or null. A site that does not exist is not blocked here. */
+export async function publishBlock(db: Db, siteId: string): Promise<PublishBlock | null> {
+  const [row] = await db
+    .select({ status: sites.status, lockedAt: accounts.lockedAt })
+    .from(sites)
+    .innerJoin(accounts, eq(accounts.id, sites.accountId))
+    .where(eq(sites.id, siteId));
+  if (!row) return null;
+  if (row.lockedAt !== null) return 'account-locked';
+  return row.status === 'removed' ? 'site-removed' : null;
+}
+
+export type EnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' | PublishBlock };
 
 export interface EnqueueInput {
   siteId: string;
@@ -48,8 +63,13 @@ export interface EnqueueInput {
   commitSha?: string | null;
 }
 
-/** Queues a job, or refuses when the account already has one waiting or running. */
+/**
+ * Queues a job, or refuses when the account already has one waiting or running, is locked, or the site was taken
+ * down.
+ */
 export async function enqueueJob(db: Db, input: EnqueueInput, now: Date): Promise<EnqueueResult> {
+  const block = await publishBlock(db, input.siteId);
+  if (block) return { ok: false, reason: block };
   try {
     const { id = randomUUID(), ...rest } = input;
     const [job] = await db
@@ -130,11 +150,14 @@ export async function saveJobSteps(db: Db, jobId: string, steps: readonly JobSte
     .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running')));
 }
 
-/** Marks a running job done. False when it is no longer running (failed as stuck meanwhile). */
+/**
+ * Marks a running job done: published (`releaseId`), or held for an admin's review (no release live, `error`
+ * `held-for-review`). False when it is no longer running (failed as stuck meanwhile).
+ */
 export async function markJobDone(db: Db, jobId: string, releaseId: string | null, now: Date): Promise<boolean> {
   const rows = await db
     .update(jobs)
-    .set({ status: 'done', releaseId, finishedAt: now })
+    .set({ status: 'done', releaseId, error: releaseId === null ? 'held-for-review' : null, finishedAt: now })
     .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running')))
     .returning({ id: jobs.id });
   return rows.length > 0;
