@@ -6,14 +6,20 @@ import { authRoutes } from './auth/auth-routes';
 import { requireAllowedOrigin } from './auth/origin-check';
 import type { ServerConfig } from './config';
 import { HttpError } from './http-error';
+import { chatWebhookRoutes } from './notifications/chat-webhook';
+import { notificationRoutes } from './notifications/notification-routes';
+import { formRoutes } from './orders/form-routes';
+import { orderRoutes } from './orders/order-routes';
 import { siteRoutes } from './sites/site-routes';
 
 export interface AppDeps {
   readonly config: ServerConfig;
   readonly db: Db;
+  /** Called after a new order is stored: the notification sender looks for due deliveries at once. */
+  readonly onOrder?: () => void;
 }
 
-export function createApp({ config, db }: AppDeps): Express {
+export function createApp({ config, db, onOrder = () => undefined }: AppDeps): Express {
   const app = express();
   app.disable('x-powered-by');
   // nginx in front (one hop): req.ip is the visitor, for the rate limits.
@@ -27,9 +33,15 @@ export function createApp({ config, db }: AppDeps): Express {
   // Sign-in round trips per IP: generous, because mobile carriers and offices put many people behind one address.
   const signInLimit = rateLimit({ windowMs: 15 * 60_000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false });
   app.use(['/auth/login', '/auth/callback'], signInLimit);
+  // Callers from elsewhere, each with checks of its own: visitors' orders from published sites (CORS by the site's
+  // origin), and the Chat bot's webhook (HMAC). Everything after this takes requests from the app's origin only.
+  app.use(formRoutes(config, db, onOrder));
+  app.use(chatWebhookRoutes(config, db));
   app.use(requireAllowedOrigin(config.allowedOrigins));
   app.use(authRoutes(config, db));
   app.use(siteRoutes(config, db));
+  app.use(orderRoutes(config, db));
+  app.use(notificationRoutes(config, db));
 
   app.use('/api', (_req, _res, next) => next(new HttpError(404, 'not-found')));
 

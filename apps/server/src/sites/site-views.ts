@@ -35,6 +35,8 @@ export interface SiteView {
   /** The draft's cover, for the list of sites. */
   readonly cover: ImageView | null;
   readonly job: JobView | null;
+  /** Orders not yet marked handled (the badge of the list). */
+  readonly newOrders: number;
 }
 
 export function imageView(image: ImageRow): ImageView {
@@ -55,7 +57,7 @@ export function jobView(job: Job): JobView {
   };
 }
 
-export function siteView(site: Site, cover: ImageRow | undefined, job: Job | undefined): SiteView {
+export function siteView(site: Site, cover: ImageRow | undefined, job: Job | undefined, newOrders = 0): SiteView {
   return {
     id: site.id,
     name: site.name,
@@ -66,5 +68,6 @@ export function siteView(site: Site, cover: ImageRow | undefined, job: Job | und
     updatedAt: site.updatedAt.toISOString(),
     cover: cover ? imageView(cover) : null,
     job: job ? jobView(job) : null,
+    newOrders,
   };
 }

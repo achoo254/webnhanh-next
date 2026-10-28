@@ -35,7 +35,47 @@ const Env = z.object({
   SITES_PER_ACCOUNT: z.coerce.number().int().min(1).max(100).default(5),
   /** Size limit of one site in MB (its photos, and each release). */
   SITE_MAX_MB: z.coerce.number().int().min(1).max(500).default(DEFAULT_SITE_MAX_MB),
+  /** Signs and checks the order form token of every published page (the worker reads the same value). */
+  FORM_SECRET: z.preprocess(emptyIsUnset, z.string().min(32).optional()),
+  /** Web Push (VAPID): the key pair and the contact of the sender. All three or none (push off). */
+  VAPID_PUBLIC_KEY: z.preprocess(emptyIsUnset, z.string().regex(/^[A-Za-z0-9_-]{80,100}$/).optional()),
+  VAPID_PRIVATE_KEY: z.preprocess(emptyIsUnset, z.string().regex(/^[A-Za-z0-9_-]{40,50}$/).optional()),
+  VAPID_SUBJECT: z.preprocess(emptyIsUnset, z.string().regex(/^(mailto:\S+@\S+|https:\/\/\S+)$/).optional()),
+  /** The Chat app and its bot that sends new orders. All four or none (the Chat button is hidden). */
+  CHAT_URL: z.preprocess(emptyIsUnset, z.url().optional()),
+  CHAT_BOT_USERNAME: z.preprocess(emptyIsUnset, z.string().regex(/^[A-Za-z0-9_]{3,64}$/).optional()),
+  CHAT_BOT_TOKEN: z.preprocess(emptyIsUnset, z.string().regex(/^\d+:\S{16,}$/).optional()),
+  CHAT_BOT_WEBHOOK_SECRET: z.preprocess(emptyIsUnset, z.string().min(32).optional()),
+  /** Headless Chrome for share pictures, used by the worker inside the dev server only. */
+  CHROME_PATH: z.preprocess(emptyIsUnset, z.string().min(1).optional()),
 });
+
+/** A fixed form secret for dev and tests only; production refuses to start without FORM_SECRET. */
+export const DEV_FORM_SECRET = 'dev-only-form-secret-never-in-production';
+
+export interface PushConfig {
+  readonly publicKey: string;
+  readonly privateKey: string;
+  readonly subject: string;
+}
+
+export interface ChatBotConfig {
+  /** `https://chat.<domain>`: deep links are `<url>/b/<username>`, the Bot API `<url>/bot/v1`. */
+  readonly url: string;
+  readonly username: string;
+  readonly token: string;
+  readonly webhookSecret: string;
+}
+
+/** All of `values` set, or none: a half-configured channel is a mistake worth stopping for. */
+function allOrNone(group: string, values: Readonly<Record<string, string | undefined>>): boolean {
+  const set = Object.entries(values).filter(([, value]) => value !== undefined);
+  if (set.length > 0 && set.length < Object.keys(values).length) {
+    const missing = Object.keys(values).filter((key) => values[key] === undefined);
+    throw new Error(`Invalid server env: ${group} needs ${missing.join(', ')} too`);
+  }
+  return set.length > 0;
+}
 
 export interface AuthConfig {
   readonly issuer: string;
@@ -58,6 +98,14 @@ export interface ServerConfig {
   readonly ffprobePath: string;
   readonly sitesPerAccount: number;
   readonly siteMaxBytes: number;
+  readonly formSecret: string;
+  /** Web Push of new orders; null when the VAPID keys are not set. */
+  readonly push: PushConfig | null;
+  /** New orders in the Chat app; null when the bot is not set up. */
+  readonly chatBot: ChatBotConfig | null;
+  readonly chromePath: string | undefined;
+  /** Orders accepted per visitor IP (10 minutes) and per site (an hour). */
+  readonly orderLimits: { readonly perIp: number; readonly perSite: number };
 }
 
 /** Validates env once at startup; throws with the offending keys so the process fails fast. */
@@ -72,6 +120,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
       !e.AUTH_CLIENT_SECRET && 'AUTH_CLIENT_SECRET',
       !env.PUBLIC_URL && 'PUBLIC_URL',
       !e.UPLOADS_DIR && 'UPLOADS_DIR',
+      !e.FORM_SECRET && 'FORM_SECRET',
     ].filter(Boolean);
     if (missing.length > 0) throw new Error(`Invalid server env: ${missing.join(', ')} required in production`);
   }
@@ -83,6 +132,14 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     throw new Error('Invalid server env: AUTH_ISSUER must be https (http only on loopback outside production)');
   }
   const devOrigins = production ? [] : DEV_WEB_ORIGINS;
+  const push = allOrNone('Web Push', { VAPID_PUBLIC_KEY: e.VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY: e.VAPID_PRIVATE_KEY, VAPID_SUBJECT: e.VAPID_SUBJECT });
+  const chat = allOrNone('the Chat bot', {
+    CHAT_URL: e.CHAT_URL,
+    CHAT_BOT_USERNAME: e.CHAT_BOT_USERNAME,
+    CHAT_BOT_TOKEN: e.CHAT_BOT_TOKEN,
+    CHAT_BOT_WEBHOOK_SECRET: e.CHAT_BOT_WEBHOOK_SECRET,
+  });
+  if (chat && e.CHAT_URL && new URL(e.CHAT_URL).protocol !== 'https:' && production) throw new Error('Invalid server env: CHAT_URL must be https in production');
   return {
     nodeEnv: e.NODE_ENV,
     port: e.PORT,
@@ -97,5 +154,13 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     ffprobePath: e.FFPROBE_PATH,
     sitesPerAccount: e.SITES_PER_ACCOUNT,
     siteMaxBytes: e.SITE_MAX_MB * 1024 * 1024,
+    formSecret: e.FORM_SECRET ?? DEV_FORM_SECRET,
+    push: push && e.VAPID_PUBLIC_KEY && e.VAPID_PRIVATE_KEY && e.VAPID_SUBJECT ? { publicKey: e.VAPID_PUBLIC_KEY, privateKey: e.VAPID_PRIVATE_KEY, subject: e.VAPID_SUBJECT } : null,
+    chatBot:
+      chat && e.CHAT_URL && e.CHAT_BOT_USERNAME && e.CHAT_BOT_TOKEN && e.CHAT_BOT_WEBHOOK_SECRET
+        ? { url: new URL(e.CHAT_URL).origin, username: e.CHAT_BOT_USERNAME, token: e.CHAT_BOT_TOKEN, webhookSecret: e.CHAT_BOT_WEBHOOK_SECRET }
+        : null,
+    chromePath: e.CHROME_PATH,
+    orderLimits: { perIp: 10, perSite: 60 },
   };
 }

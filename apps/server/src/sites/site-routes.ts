@@ -26,6 +26,7 @@ import { rateLimit } from 'express-rate-limit';
 import { accountOf, requireAccount } from '../auth/auth-routes';
 import type { ServerConfig } from '../config';
 import { HttpError } from '../http-error';
+import { openOrderCounts } from '../orders/order-routes';
 import { ImageError, MAX_UPLOAD_BYTES, storeImage, type ImageTools } from './image-processing';
 import { ownedSite } from './site-access';
 import { createTemplateSite, renameSite, validName } from './site-store';
@@ -70,16 +71,17 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     const account = accountOf(res.locals);
     const mine = await db.select().from(sites).where(eq(sites.accountId, account.id)).orderBy(desc(sites.updatedAt));
     const ids = mine.map((site) => site.id);
-    const [latest, images] = await Promise.all([
+    const [latest, images, openOrders] = await Promise.all([
       latestJobsOf(db, ids),
       ids.length > 0 ? db.select().from(siteImages).where(inArray(siteImages.siteId, ids)) : Promise.resolve([]),
+      openOrderCounts(db, ids),
     ]);
     const byId = new Map(images.map((image) => [image.id, image]));
     res.json({
       sites: mine.map((site) => {
         const draft = shopDraftSchema.safeParse(site.draft);
         const coverId = draft.success ? draft.data.cover : null;
-        return siteView(site, coverId ? byId.get(coverId) : undefined, latest.get(site.id));
+        return siteView(site, coverId ? byId.get(coverId) : undefined, latest.get(site.id), openOrders.get(site.id) ?? 0);
       }),
       limits: { sites: config.sitesPerAccount, siteBytes: config.siteMaxBytes },
     });
