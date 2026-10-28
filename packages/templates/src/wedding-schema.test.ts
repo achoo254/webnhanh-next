@@ -32,9 +32,10 @@ describe('wedding draft', () => {
     expect(weddingPublishIssues(sample({ events: [{ ...first, address: 'https://evil.com/maps' }] }))).toEqual([{ field: 'events.0.address', code: 'invalid-map' }]);
   });
 
-  it('needs a contact for replies while replies go through contacts', () => {
-    expect(weddingPublishIssues(sample({ contacts: { zalo: '', phone: '', facebook: '' } }))).toEqual([{ field: 'contacts', code: 'no-contact' }]);
+  it('takes replies through the form, so contacts are optional but must work when typed', () => {
+    expect(weddingPublishIssues(sample({ contacts: { zalo: '', phone: '', facebook: '' } }))).toEqual([]);
     expect(weddingPublishIssues(sample({ rsvp: false, contacts: { zalo: '', phone: '', facebook: '' } }))).toEqual([]);
+    expect(weddingPublishIssues(sample({ contacts: { zalo: 'abc', phone: '', facebook: '' } }))).toEqual([{ field: 'contacts.zalo', code: 'invalid-zalo' }]);
   });
 });
 

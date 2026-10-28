@@ -6,6 +6,7 @@ import type { SamplePhoto } from './schema-parts';
 import { renderCard } from './share-card';
 import {
   DRAFT_SCHEMAS,
+  draftCoverId,
   draftImageIds,
   draftShareCard,
   parseDraft,
@@ -136,6 +137,16 @@ describe('reading stored drafts', () => {
     expect(draftImageIds('wedding', wedding.draft)).toEqual(new Set(templateImageIds(wedding)));
     expect(draftImageIds('cafe', { name: 1 })).toBeNull();
     expect(draftImageIds(null, {})).toBeNull();
+  });
+
+  it('names the photo that stands for each page', () => {
+    for (const template of TEMPLATE_IDS) {
+      const value = sample(template);
+      const cover = draftCoverId(value);
+      if (template === 'profile') expect(cover).toBeNull();
+      else expect(cover).toBe(templateImageIds(value)[0]);
+      expect(draftShareCard(value).photo).toBe(cover);
+    }
   });
 
   it('gives the wedding the reply form, with the order script unchanged and the CSP allowing only it', () => {

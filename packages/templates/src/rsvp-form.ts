@@ -3,7 +3,7 @@
  * order form (`<app>/f/<site>`) with the same token, honeypot and timing fields, and is driven by the same fixed
  * `ORDER_SCRIPT` unchanged (the script only needs a form with id `order`, the `_e` field, a `.order-status` line and a
  * button), so the page's CSP allows it by the same hash. The `kind` field tells the server it is a reply, not an
- * order; until the server reads it, the wedding renderer is given no `rsvpForm` and shows contact links instead.
+ * order. A page rendered without `rsvpForm` (a preview without a site) shows the couple's contact links instead.
  */
 import { z } from 'zod';
 import { normalizePhone } from './contact-links';
@@ -71,6 +71,12 @@ export const rsvpInputSchema = z.object({
 });
 
 export type RsvpInput = z.infer<typeof rsvpInputSchema>;
+
+/** The fields of a refused reply, in form order (for "check: Tên của bạn, Số điện thoại"). */
+export function rsvpIssueFields(error: z.ZodError): RsvpField[] {
+  const named = new Set(error.issues.map((issue) => String(issue.path[0] ?? '')));
+  return (Object.keys(RSVP_LABELS) as RsvpField[]).filter((field) => named.has(field));
+}
 
 /** The reply section's id: the page's "Xác nhận tham dự" buttons go there. */
 export const RSVP_SECTION_ID = 'xac-nhan';

@@ -9,7 +9,6 @@ import {
   contactIssues,
   contactsSchema,
   EMPTY_CONTACTS,
-  hasContact,
   imageId,
   imageRef,
   itemKey,
@@ -93,10 +92,8 @@ export function weddingPublishIssues(draft: WeddingDraft): TemplateIssue[] {
     if (!event.venue.trim() && !event.address.trim()) issues.push({ field: `events.${index}.venue`, code: 'required' });
     if (event.address.trim() && !mapLink(event.address)) issues.push({ field: `events.${index}.address`, code: 'invalid-map' });
   });
-  const contacts = contactIssues(draft.contacts);
-  issues.push(...contacts);
-  // Until replies go through the app's form, a guest replies by these.
-  if (draft.rsvp && contacts.length === 0 && !hasContact(draft.contacts)) issues.push({ field: 'contacts', code: 'no-contact' });
+  // Replies go through the page's form (`rsvpForm`), so contacts are optional; typed ones must work.
+  issues.push(...contactIssues(draft.contacts));
   return issues;
 }
 

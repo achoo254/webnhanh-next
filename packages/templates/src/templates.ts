@@ -110,6 +110,20 @@ export function templateImageIds(value: TemplateDraft): string[] {
   }
 }
 
+/** The photo that stands for the page (the list of sites, the share picture): cover, card photo or avatar. */
+export function draftCoverId(value: TemplateDraft): string | null {
+  switch (value.template) {
+    case 'shop':
+    case 'wedding':
+    case 'cafe':
+      return value.draft.cover;
+    case 'tet':
+      return value.draft.photo;
+    case 'profile':
+      return value.draft.avatar;
+  }
+}
+
 /**
  * The photos a stored draft of any template uses, or null when the draft cannot be read (then nothing of the site
  * may be treated as unused).
