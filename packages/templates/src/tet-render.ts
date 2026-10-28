@@ -6,7 +6,21 @@
 import { escapeHtml } from './html';
 import { LOOK_CONTACT_CSS, LOOK_KIT_CSS, LOOK_TOKENS } from './looks';
 import { BLOSSOM } from './ornaments';
-import { contactItem, contactLinks, contactSection, dockNav, ICONS, img, pageDocument, type Action, type ImageAsset, type PageOptions, type RenderedPage } from './page';
+import {
+  contactItem,
+  contactLinks,
+  contactSection,
+  decorationAssets,
+  decorationImg,
+  dockNav,
+  ICONS,
+  img,
+  pageDocument,
+  type Action,
+  type ImageAsset,
+  type PageOptions,
+  type RenderedPage,
+} from './page';
 import { PALETTES } from './palettes';
 import type { ShareCardContent } from './share-card';
 import { TET_YEAR, type TetDraft } from './tet-schema';
@@ -15,6 +29,17 @@ import { TET_CSS, TET_LOOK_CSS } from './tet-styles';
 /** Two lanterns hanging from the top of the page, on strings of different lengths. */
 const SKY =
   '<div class="tet-sky" aria-hidden="true"><span class="hang hang-1"><span class="lantern"></span></span><span class="hang hang-2"><span class="lantern"></span></span></div>';
+
+/**
+ * The card's decorations: the variant's drawn ornaments when the draft has them (the first in the bottom right corner,
+ * the second, or the first mirrored, in the bottom left; the top corners are the hanging lanterns'), otherwise three
+ * SVG apricot blossoms.
+ */
+function cardDecorations(ids: TetDraft['ornaments'], assets: ReadonlyMap<string, ImageAsset>): string[] {
+  const [first, second] = decorationAssets(ids, assets);
+  if (!first) return [BLOSSOM('bl bl-1'), BLOSSOM('bl bl-2'), BLOSSOM('bl bl-3')];
+  return [decorationImg(first, 'orn orn-1', '104px'), decorationImg(second ?? first, `orn orn-2${second ? '' : ' orn-flip'}`, '104px')];
+}
 
 export function renderTet(draft: TetDraft, assets: ReadonlyMap<string, ImageAsset>, options: PageOptions = {}): RenderedPage {
   const title = draft.title.trim();
@@ -51,9 +76,7 @@ export function renderTet(draft: TetDraft, assets: ReadonlyMap<string, ImageAsse
       SKY,
       '<main class="tet">',
       '<article class="tet-card">',
-      BLOSSOM('bl bl-1'),
-      BLOSSOM('bl bl-2'),
-      BLOSSOM('bl bl-3'),
+      ...cardDecorations(draft.ornaments, assets),
       `<p class="year">${TET_YEAR}</p>`,
       recipient ? `<p class="to">${escapeHtml(recipient)}</p>` : '',
       title ? `<h1>${escapeHtml(title)}</h1>` : '',

@@ -121,7 +121,7 @@ export const CAFE_SAMPLES = {
 const emptyItem = (key: string) => ({ key, name: '', description: '', price: '', image: null });
 
 /** A new page: the sample cover, one menu section with two empty dishes, usual hours rows, texts left to the owner. */
-export function newCafeDraft(samples: { cover: string }): CafeDraft {
+export function newCafeDraft(samples: { cover: string | null }): CafeDraft {
   return {
     name: '',
     description: '',
@@ -137,7 +137,7 @@ export function newCafeDraft(samples: { cover: string }): CafeDraft {
 }
 
 /** A filled-in page, for previews of the template and its variants. */
-export function sampleCafeDraft(samples: { cover: string }): CafeDraft {
+export function sampleCafeDraft(samples: { cover: string | null }): CafeDraft {
   return {
     ...newCafeDraft(samples),
     name: 'Góc Nhỏ Cà Phê',

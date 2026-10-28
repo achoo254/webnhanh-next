@@ -8,7 +8,23 @@ import { escapeHtml } from './html';
 import { LOOK_CONTACT_CSS, LOOK_KIT_CSS, LOOK_TOKENS } from './looks';
 import { ORDER_CSS, type OrderFormOptions } from './order-form';
 import { SPRIG } from './ornaments';
-import { contactItem, contactLinks, contactSection, dockNav, heroActions, ICONS, img, pageDocument, webUrlOrigin, type Action, type ImageAsset, type PageOptions, type RenderedPage } from './page';
+import {
+  contactItem,
+  contactLinks,
+  contactSection,
+  decorationAssets,
+  decorationImg,
+  dockNav,
+  heroActions,
+  ICONS,
+  img,
+  pageDocument,
+  webUrlOrigin,
+  type Action,
+  type ImageAsset,
+  type PageOptions,
+  type RenderedPage,
+} from './page';
 import { PALETTES } from './palettes';
 import { RSVP_CSS, RSVP_SECTION_ID, rsvpFormHtml } from './rsvp-form';
 import type { ShareCardContent } from './share-card';
@@ -86,6 +102,10 @@ export function renderWedding(draft: WeddingDraft, assets: ReadonlyMap<string, I
   const dateLabel = weddingDateLabel(draft.date);
   const countdown = countdownText(daysUntil(draft.date, options.now ?? new Date()));
   const couple = [groom, bride].filter(Boolean);
+  // The variant's drawn ornament above the names and closing the invitation; the SVG sprigs without one.
+  const [ornament, closing] = decorationAssets(draft.ornaments, assets);
+  const topDecoration = ornament ? decorationImg(ornament, 'w-orn w-orn-top', '120px') : SPRIG('sprig sprig-top');
+  const endDecoration = ornament ? decorationImg(closing ?? ornament, 'w-orn w-orn-end', '120px') : SPRIG('sprig sprig-end');
 
   const events = draft.events.map((event) => eventItem(event, draft.date)).filter(Boolean);
   const firstMap = draft.events.map((event) => (event.address.trim() ? mapLink(event.address) : null)).find((link) => link !== null) ?? null;
@@ -133,7 +153,7 @@ export function renderWedding(draft: WeddingDraft, assets: ReadonlyMap<string, I
       `<header class="w-hero${cover ? ' has-cover' : ''}">`,
       cover ? `<div class="frame w-cover">${img(cover, '', '(min-width:720px) 480px, 100vw', true)}</div>` : '',
       '<div class="w-names">',
-      SPRIG('sprig sprig-top'),
+      topDecoration,
       '<p class="w-kicker">Trân trọng báo tin vui</p>',
       names,
       dateLabel ? `<p class="w-date"><time datetime="${escapeHtml(draft.date)}">${dateLabel}</time></p>` : '',
@@ -143,7 +163,7 @@ export function renderWedding(draft: WeddingDraft, assets: ReadonlyMap<string, I
       '</div>',
       '</header>',
       '<main class="wrap">',
-      intro ? `<section class="card w-intro" aria-label="Lời mời"><p>${escapeHtml(intro)}</p>${SPRIG('sprig sprig-end')}</section>` : '',
+      intro ? `<section class="card w-intro" aria-label="Lời mời"><p>${escapeHtml(intro)}</p>${endDecoration}</section>` : '',
       events.length > 0 ? `<section aria-labelledby="ls"><h2 id="ls">Lễ cưới</h2><ul class="events">${events.join('')}</ul></section>` : '',
       gallery.length > 0 ? `<section aria-labelledby="kk"><h2 id="kk">Khoảnh khắc</h2><ul class="gallery">${gallery.join('')}</ul></section>` : '',
       rsvp,

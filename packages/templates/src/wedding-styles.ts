@@ -19,6 +19,9 @@ export const WEDDING_CSS = `.w-hero{display:grid}
 .w-intro{position:relative;text-align:center}
 .w-intro p{font:500 19px/1.7 var(--display);white-space:pre-line;overflow-wrap:anywhere;text-wrap:pretty;max-width:36ch;margin:0 auto}
 .sprig-end{display:block;margin:16px auto 0;transform:scaleX(-1)}
+.w-orn{display:block;width:120px;height:auto}
+.w-orn-top{margin-bottom:-6px}
+.w-orn-end{margin:16px auto 0;transform:scaleX(-1)}
 .events,.gallery{list-style:none;margin:0;padding:0}
 .events{display:grid;gap:18px}
 .event{display:grid;gap:6px;justify-items:center;text-align:center}

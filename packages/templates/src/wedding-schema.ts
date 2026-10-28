@@ -23,7 +23,7 @@ import { mapLink } from './web-links';
 
 export const WEDDING_TEMPLATE = 'wedding';
 
-export const WEDDING_LIMITS = { name: 40, intro: 600, lunarDate: 60, label: 60, venue: 120, address: 200, rsvpNote: 200, events: 4, gallery: 12 } as const;
+export const WEDDING_LIMITS = { name: 40, intro: 600, lunarDate: 60, label: 60, venue: 120, address: 200, rsvpNote: 200, events: 4, gallery: 12, ornaments: 2 } as const;
 
 export const WEDDING_DEFAULT_STYLE: StyleId = 'tinh-te';
 
@@ -77,6 +77,8 @@ export const weddingDraftSchema = z
     contacts: contactsSchema,
     palette: z.enum(ALL_PALETTE_IDS),
     style: z.enum(STYLE_IDS).default(WEDDING_DEFAULT_STYLE),
+    /** Decorations drawn for the template's variant (a floral corner); without them the card draws its own sprigs. */
+    ornaments: z.array(imageId).max(WEDDING_LIMITS.ornaments).optional(),
   })
   .strict()
   .refine((draft) => uniqueKeys(draft.events), 'duplicate-event-key');
@@ -99,7 +101,7 @@ export function weddingPublishIssues(draft: WeddingDraft): TemplateIssue[] {
 
 /** Every photo the draft shows, cover first, each once. */
 export function weddingImageIds(draft: WeddingDraft): string[] {
-  const ids = [draft.cover, ...draft.gallery].filter((id): id is string => id !== null);
+  const ids = [draft.cover, ...draft.gallery, ...(draft.ornaments ?? [])].filter((id): id is string => id !== null);
   return [...new Set(ids)];
 }
 
@@ -108,7 +110,7 @@ export const WEDDING_SAMPLES = {
 } as const satisfies Record<string, SamplePhoto>;
 
 /** A new invitation: the sample cover, the two usual events, every text empty for the couple to write. */
-export function newWeddingDraft(samples: { cover: string }): WeddingDraft {
+export function newWeddingDraft(samples: { cover: string | null }): WeddingDraft {
   return {
     groom: '',
     bride: '',
@@ -130,7 +132,7 @@ export function newWeddingDraft(samples: { cover: string }): WeddingDraft {
 }
 
 /** A filled-in invitation, for previews of the template and its variants. */
-export function sampleWeddingDraft(samples: { cover: string }): WeddingDraft {
+export function sampleWeddingDraft(samples: { cover: string | null }): WeddingDraft {
   return {
     ...newWeddingDraft(samples),
     groom: 'Minh',
@@ -143,7 +145,7 @@ export function sampleWeddingDraft(samples: { cover: string }): WeddingDraft {
       { key: 'e1', label: 'Lễ thành hôn', date: '', time: '09:00', venue: 'Tư gia nhà gái', address: '25 Nguyễn Trãi, Phường Bến Thành, TP. Hồ Chí Minh' },
       { key: 'e2', label: 'Tiệc cưới', date: '', time: '18:00', venue: 'Nhà hàng Hoa Sen, sảnh Ngọc Lan', address: '120 Lê Lợi, Phường Sài Gòn, TP. Hồ Chí Minh' },
     ],
-    gallery: [samples.cover],
+    gallery: samples.cover ? [samples.cover] : [],
     rsvpNote: 'Mong bạn báo trước ngày 1/12 để tụi mình chuẩn bị chu đáo nhé.',
     contacts: { zalo: '0912345678', phone: '0912345678', facebook: '' },
   };

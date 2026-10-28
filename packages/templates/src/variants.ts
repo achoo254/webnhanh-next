@@ -11,7 +11,8 @@
 import { z } from 'zod';
 import { STYLE_IDS } from './looks';
 import { ALL_PALETTE_IDS } from './palettes';
-import { TEMPLATE_IDS } from './templates';
+import { TEMPLATE_IDS, type TemplateId } from './templates';
+import { VARIANT_SLOTS } from './variant-drafts';
 import cafeCaPheFilm from '../variants/cafe/ca-phe-film.json';
 import cafeQuanComNha from '../variants/cafe/quan-com-nha.json';
 import cafeTraSuaTiemBanh from '../variants/cafe/tra-sua-tiem-banh.json';
@@ -75,6 +76,10 @@ export const variantSchema = z
   .superRefine((variant, ctx) => {
     const slots = variant.art.map((art) => art.slot);
     if (new Set(slots).size !== slots.length) ctx.addIssue({ code: 'custom', message: 'duplicate-slot' });
+    // Every picture drawn has its place in the draft (`variantDraft`), and the one standing for the variant is drawn.
+    const known: readonly string[] = VARIANT_SLOTS[variant.template];
+    for (const slot of slots) if (!known.includes(slot)) ctx.addIssue({ code: 'custom', message: `slot-not-in-draft: ${slot}`, path: ['art'] });
+    if (!slots.includes(VARIANT_SLOTS[variant.template][0])) ctx.addIssue({ code: 'custom', message: `missing-slot: ${VARIANT_SLOTS[variant.template][0]}`, path: ['art'] });
     variant.art.forEach((art, index) => {
       if (art.ref !== undefined && !slots.slice(0, index).includes(art.ref)) ctx.addIssue({ code: 'custom', message: `ref-not-drawn-before: ${art.slot}`, path: ['art', index, 'ref'] });
     });
@@ -116,7 +121,18 @@ export function templateVariants(): TemplateVariant[] {
   });
 }
 
-/** Where a variant's picture is kept in the package: `library/<template>/<variant>/<slot>.webp`. */
-export function artFile(variant: Pick<TemplateVariant, 'template' | 'id'>, slot: string): string {
-  return `library/${variant.template}/${variant.id}/${slot}.webp`;
+let checked: readonly TemplateVariant[] | null = null;
+
+/** The variants of `template`, in file order (the first is the one the picker preselects). */
+export function variantsOf(template: TemplateId): TemplateVariant[] {
+  checked ??= templateVariants();
+  return checked.filter((variant) => variant.template === template);
 }
+
+/** The variant `id` of `template`, or null when it has none by that id. */
+export function findVariant(template: TemplateId, id: string): TemplateVariant | null {
+  return variantsOf(template).find((variant) => variant.id === id) ?? null;
+}
+
+export * from './variant-drafts';
+export { webpSize } from './webp-size';

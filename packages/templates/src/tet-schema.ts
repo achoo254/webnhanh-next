@@ -5,14 +5,14 @@
 import { z } from 'zod';
 import { STYLE_IDS, type StyleId } from './looks';
 import type { PaletteId } from './palettes';
-import { contactIssues, contactsSchema, EMPTY_CONTACTS, hasContact, imageRef, line, lines, requireText, type SamplePhoto, type TemplateIssue } from './schema-parts';
+import { contactIssues, contactsSchema, EMPTY_CONTACTS, hasContact, imageId, imageRef, line, lines, requireText, type SamplePhoto, type TemplateIssue } from './schema-parts';
 
 export const TET_TEMPLATE = 'tet';
 
 /** The Tết this card is for (Tết Đinh Mùi falls on 6/2/2027). Shown above the title and on the share picture. */
 export const TET_YEAR = 'Xuân Đinh Mùi 2027';
 
-export const TET_LIMITS = { title: 60, recipient: 80, greeting: 600, sender: 80 } as const;
+export const TET_LIMITS = { title: 60, recipient: 80, greeting: 600, sender: 80, ornaments: 2 } as const;
 
 /** Red and gold first; every Tết palette has a warm `pop` for the gold of lanterns and blossoms. */
 export const TET_PALETTE_IDS = ['lucky', 'rose', 'berry', 'leaf', 'sepia'] as const satisfies readonly PaletteId[];
@@ -32,6 +32,8 @@ export const tetDraftSchema = z
     contacts: contactsSchema,
     palette: z.enum(TET_PALETTE_IDS),
     style: z.enum(STYLE_IDS).default(TET_DEFAULT_STYLE),
+    /** Decorations drawn for the template's variant (a lantern, a blossom branch); without them the card draws its own. */
+    ornaments: z.array(imageId).max(TET_LIMITS.ornaments).optional(),
   })
   .strict();
 
@@ -45,8 +47,10 @@ export function tetPublishIssues(draft: TetDraft): TemplateIssue[] {
   return issues;
 }
 
+/** Every photo the draft shows, the card's photo first, each once. */
 export function tetImageIds(draft: TetDraft): string[] {
-  return draft.photo ? [draft.photo] : [];
+  const ids = [draft.photo, ...(draft.ornaments ?? [])].filter((id): id is string => id !== null);
+  return [...new Set(ids)];
 }
 
 /**
@@ -98,7 +102,7 @@ export const TET_SAMPLES = {
 } as const satisfies Record<string, SamplePhoto>;
 
 /** A new card: the sample photo, the default title and first greeting, the sender left for the owner to write. */
-export function newTetDraft(samples: { photo: string }): TetDraft {
+export function newTetDraft(samples: { photo: string | null }): TetDraft {
   return {
     title: TET_DEFAULT_TITLE,
     recipient: '',
@@ -113,7 +117,7 @@ export function newTetDraft(samples: { photo: string }): TetDraft {
 }
 
 /** A filled-in card, for previews of the template and its variants. */
-export function sampleTetDraft(samples: { photo: string }): TetDraft {
+export function sampleTetDraft(samples: { photo: string | null }): TetDraft {
   return {
     ...newTetDraft(samples),
     recipient: 'Gửi ông bà, cô chú và cả nhà',

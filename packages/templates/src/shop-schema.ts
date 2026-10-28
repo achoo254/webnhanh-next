@@ -85,7 +85,7 @@ export const SHOP_SAMPLES = {
  * A new site's draft: the sample cover and two products with the sample photos, every text empty for the owner to
  * write (the editor shows examples as placeholders; nothing is filled in on their behalf).
  */
-export function newShopDraft(samples: { cover: string; products: readonly string[] }): ShopDraft {
+export function newShopDraft(samples: { cover: string | null; products: readonly (string | null)[] }): ShopDraft {
   return {
     name: '',
     description: '',
@@ -98,7 +98,7 @@ export function newShopDraft(samples: { cover: string; products: readonly string
 }
 
 /** A filled-in shop, for previews of the template and its variants. */
-export function sampleShopDraft(samples: { cover: string; products: readonly string[] }): ShopDraft {
+export function sampleShopDraft(samples: { cover: string | null; products: readonly (string | null)[] }): ShopDraft {
   const [first = null, second = null] = samples.products;
   return {
     ...newShopDraft(samples),

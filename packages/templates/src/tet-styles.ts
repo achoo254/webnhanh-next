@@ -27,6 +27,10 @@ body{position:relative}
 .bl-1{top:-20px;left:-8px;transform:rotate(-14deg)}
 .bl-2{top:42%;right:-14px;width:34px;height:34px;transform:rotate(18deg)}
 .bl-3{bottom:-16px;left:22%;width:30px;height:30px}
+.orn{position:absolute;z-index:1;width:104px;height:auto;pointer-events:none}
+.orn-1{bottom:-30px;right:-12px;transform:rotate(8deg)}
+.orn-2{bottom:-30px;left:-12px;transform:rotate(-10deg)}
+.orn-2.orn-flip{transform:scaleX(-1) rotate(-10deg)}
 .reply-intro{margin:-6px 0 18px;color:var(--muted);text-align:center}
 @media (min-width:720px){.tet{padding-top:120px}.tet-card{padding:48px 40px 40px}.hang-1{left:18%;height:56px}.hang-2{right:20%;height:88px}}`;
 

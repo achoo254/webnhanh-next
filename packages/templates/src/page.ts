@@ -77,6 +77,20 @@ export function img(asset: ImageAsset, alt: string, sizes: string, eager: boolea
   return `<img src="${escapeHtml(assertAssetUrl(middle.url))}" srcset="${escapeHtml(srcset)}" sizes="${sizes}" width="${asset.width}" height="${asset.height}" alt="${escapeHtml(alt)}" decoding="async" ${loading}>`;
 }
 
+/**
+ * A decoration of the template (an ornament drawn for its variant): `alt=""` and hidden from screen readers, loaded
+ * lazily. `className` is the template's own, never user input.
+ */
+export function decorationImg(asset: ImageAsset, className: string, sizes: string): string {
+  const html = img(asset, '', sizes, false);
+  return html ? html.replace('<img ', `<img class="${className}" aria-hidden="true" `) : '';
+}
+
+/** The decoration pictures among `ids` that the page has, in order. */
+export function decorationAssets(ids: readonly string[] | undefined, assets: ReadonlyMap<string, ImageAsset>): ImageAsset[] {
+  return (ids ?? []).map((id) => assets.get(id)).filter((asset): asset is ImageAsset => asset !== undefined);
+}
+
 /** An http(s) address, as given; anything else is refused. */
 export function webUrl(value: string): string {
   const url = new URL(value);
