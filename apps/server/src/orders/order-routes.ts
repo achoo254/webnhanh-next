@@ -1,45 +1,65 @@
 /**
- * The owner's inbox: orders of one site (open ones, or all), and marking one handled or open again. Every route
- * reaches the site through `ownedSite`.
+ * The owner's inbox: what visitors sent from one site (orders of a shop, replies to a wedding invitation), the open
+ * ones or all, and marking one handled or open again. Every route reaches the site through `ownedSite`.
  */
-import { isUuid, submissions, type Db } from '@webnhanh/db';
-import { and, count, desc, eq, inArray, isNull, lt } from 'drizzle-orm';
+import { isUuid, submissionContent, submissions, type Db } from '@webnhanh/db';
+import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import express, { type Router } from 'express';
 import { accountOf, requireAccount } from '../auth/auth-routes';
 import type { ServerConfig } from '../config';
 import { HttpError } from '../http-error';
 import { ownedSite } from '../sites/site-access';
 
-/** Orders per page of the inbox. */
+/** Submissions per page of the inbox. */
 export const ORDERS_PAGE = 50;
 
 type SubmissionRow = typeof submissions.$inferSelect;
 
-export interface OrderView {
+interface SubmissionBase {
   readonly id: string;
   readonly createdAt: string;
   readonly handledAt: string | null;
   readonly name: string;
   readonly phone: string;
-  readonly address: string;
-  readonly product: string;
-  readonly quantity: number;
   readonly note: string;
 }
 
+/** One submission as the inbox shows it, by its kind. */
+export type OrderView =
+  | (SubmissionBase & { readonly kind: 'order'; readonly address: string; readonly product: string; readonly quantity: number })
+  | (SubmissionBase & { readonly kind: 'rsvp'; readonly attending: 'yes' | 'no'; readonly guests: number });
+
 export function orderView(row: SubmissionRow): OrderView {
-  const d = row.data;
-  return {
-    id: row.id,
-    createdAt: row.createdAt.toISOString(),
-    handledAt: row.handledAt?.toISOString() ?? null,
-    name: d.name,
-    phone: d.phone,
-    address: d.address,
-    product: d.productName,
-    quantity: d.quantity,
-    note: d.note,
-  };
+  const base = { id: row.id, createdAt: row.createdAt.toISOString(), handledAt: row.handledAt?.toISOString() ?? null };
+  const content = submissionContent(row);
+  if (content.kind === 'rsvp') {
+    const d = content.data;
+    return { ...base, kind: 'rsvp', name: d.name, phone: d.phone, note: d.note, attending: d.attending, guests: d.guests };
+  }
+  const d = content.data;
+  return { ...base, kind: 'order', name: d.name, phone: d.phone, note: d.note, address: d.address, product: d.productName, quantity: d.quantity };
+}
+
+/** Replies to a wedding invitation, counted: who is coming (and how many people with them), who is not. */
+export interface RsvpSummary {
+  readonly yes: number;
+  readonly guests: number;
+  readonly no: number;
+}
+
+async function rsvpSummary(db: Db, siteId: string): Promise<RsvpSummary> {
+  const rows = await db
+    .select({
+      attending: sql<string>`${submissions.data}->>'attending'`,
+      n: count(),
+      guests: sql<string>`coalesce(sum((${submissions.data}->>'guests')::int), 0)`,
+    })
+    .from(submissions)
+    .where(and(eq(submissions.siteId, siteId), eq(submissions.kind, 'rsvp')))
+    .groupBy(sql`${submissions.data}->>'attending'`);
+  const yes = rows.find((row) => row.attending === 'yes');
+  const no = rows.find((row) => row.attending === 'no');
+  return { yes: Number(yes?.n ?? 0), guests: Number(yes?.guests ?? 0), no: Number(no?.n ?? 0) };
 }
 
 /** Orders not yet marked handled, per site. */
@@ -72,7 +92,14 @@ export function orderRoutes(config: ServerConfig, db: Db): Router {
       .limit(ORDERS_PAGE + 1);
     const open = (await openOrderCounts(db, [site.id])).get(site.id) ?? 0;
     res.set('Cache-Control', 'no-store');
-    res.json({ site: { name: site.name, published: site.currentReleaseId !== null }, orders: rows.slice(0, ORDERS_PAGE).map(orderView), more: rows.length > ORDERS_PAGE, open });
+    const rsvp = site.template === 'wedding' ? await rsvpSummary(db, site.id) : null;
+    res.json({
+      site: { name: site.name, template: site.template, published: site.currentReleaseId !== null },
+      orders: rows.slice(0, ORDERS_PAGE).map(orderView),
+      more: rows.length > ORDERS_PAGE,
+      open,
+      rsvp,
+    });
   });
 
   router.patch('/api/sites/:siteId/orders/:orderId', signedIn, json, async (req, res) => {

@@ -20,7 +20,7 @@ import {
   siteUploadsDir,
   type Db,
 } from '@webnhanh/db';
-import { draftImageIds, shopDraftSchema, shopImageIds, shopPublishIssues } from '@webnhanh/templates';
+import { draftCoverId, parseDraft, publishIssues, templateImageIds } from '@webnhanh/templates';
 import { and, asc, desc, eq, inArray, sum } from 'drizzle-orm';
 import express, { type RequestHandler, type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -80,8 +80,8 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     const byId = new Map(images.map((image) => [image.id, image]));
     res.json({
       sites: mine.map((site) => {
-        const draft = shopDraftSchema.safeParse(site.draft);
-        const coverId = draft.success ? draft.data.cover : null;
+        const draft = parseDraft(site.template, site.draft);
+        const coverId = draft ? draftCoverId(draft) : null;
         return siteView(site, coverId ? byId.get(coverId) : undefined, latest.get(site.id), openOrders.get(site.id) ?? 0);
       }),
       limits: { sites: config.sitesPerAccount, developerSites: DEVELOPER_SITES_PER_ACCOUNT, siteBytes: config.siteMaxBytes },
@@ -105,11 +105,13 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
       db.select().from(siteImages).where(eq(siteImages.siteId, site.id)).orderBy(asc(siteImages.createdAt)),
       latestJobsOf(db, [site.id]),
     ]);
-    const draft = shopDraftSchema.safeParse(site.draft);
-    const cover = draft.success && draft.data.cover ? images.find((image) => image.id === draft.data.cover) : undefined;
+    const draft = parseDraft(site.template, site.draft);
+    const coverId = draft ? draftCoverId(draft) : null;
+    const cover = coverId ? images.find((image) => image.id === coverId) : undefined;
     res.json({
       site: siteView(site, cover, latest.get(site.id)),
-      draft: draft.success ? draft.data : null,
+      // The template's draft as stored (with defaults filled in); null for a developer site or a draft that cannot be read.
+      draft: draft ? draft.draft : null,
       images: images.map(imageView),
       usedBytes: images.reduce((total, image) => total + image.bytes, 0),
     });
@@ -123,16 +125,16 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
   router.put('/api/sites/:siteId/draft', signedIn, noStore, json, async (req, res) => {
     const site = await ownedSite(db, accountOf(res.locals).id, req.params.siteId);
     templateOnly(site);
-    const parsed = shopDraftSchema.safeParse(body(req).draft);
-    if (!parsed.success) throw new HttpError(400, 'invalid-draft');
-    const draft = parsed.data;
+    // Checked against the site's own template: a draft of another template is as invalid as a malformed one.
+    const parsed = parseDraft(site.template, body(req).draft);
+    if (!parsed) throw new HttpError(400, 'invalid-draft');
     const images = await db.select().from(siteImages).where(eq(siteImages.siteId, site.id));
     const known = new Set(images.map((image) => image.id));
-    if (shopImageIds(draft).some((id) => !known.has(id))) throw new HttpError(400, 'unknown-image');
+    const used = new Set(templateImageIds(parsed));
+    if ([...used].some((id) => !known.has(id))) throw new HttpError(400, 'unknown-image');
     const now = new Date();
-    await db.update(sites).set({ draft, updatedAt: now }).where(eq(sites.id, site.id));
+    await db.update(sites).set({ draft: parsed.draft, updatedAt: now }).where(eq(sites.id, site.id));
 
-    const used = draftImageIds(site.template, draft) ?? known;
     const cutoff = now.getTime() - UNUSED_IMAGE_GRACE_MS;
     await deleteSiteImages(
       db,
@@ -198,9 +200,9 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
     const account = accountOf(res.locals);
     const site = await ownedSite(db, account.id, req.params.siteId);
     templateOnly(site);
-    const draft = shopDraftSchema.safeParse(site.draft);
-    if (!draft.success) throw new HttpError(422, 'draft-incomplete', { fields: [] });
-    const issues = shopPublishIssues(draft.data);
+    const draft = parseDraft(site.template, site.draft);
+    if (!draft) throw new HttpError(422, 'draft-incomplete', { fields: [] });
+    const issues = publishIssues(draft);
     if (issues.length > 0) throw new HttpError(422, 'draft-incomplete', { fields: issues.map((issue) => issue.field) });
     const queued = await enqueueJob(db, { siteId: site.id, accountId: account.id, type: 'publish' }, new Date());
     if (!queued.ok) throw new HttpError(409, 'job-active');

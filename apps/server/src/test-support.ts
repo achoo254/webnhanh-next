@@ -77,3 +77,27 @@ export async function publishedShop(app: TestApp, who: { accountId: string }, na
   if (!site) throw new Error('no site');
   return { siteId: site.id, token: signFormToken(app.config.formSecret, site.id, new Date(now.getTime() - 60_000)) };
 }
+
+/**
+ * A published wedding invitation of `who` whose live page takes replies (`rsvp`: false for one that does not), as the
+ * worker leaves it after a publish; returns the site id and a valid form token.
+ */
+export async function publishedWedding(app: TestApp, who: { accountId: string }, name: string, rsvp = true): Promise<{ siteId: string; token: string }> {
+  const now = new Date();
+  const [site] = await app.handle.db
+    .insert(sites)
+    .values({
+      accountId: who.accountId,
+      name,
+      kind: 'template',
+      template: 'wedding',
+      status: 'published',
+      currentReleaseId: randomUUID(),
+      orderForm: rsvp ? { products: [], rsvp: true } : null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .returning();
+  if (!site) throw new Error('no site');
+  return { siteId: site.id, token: signFormToken(app.config.formSecret, site.id, new Date(now.getTime() - 60_000)) };
+}

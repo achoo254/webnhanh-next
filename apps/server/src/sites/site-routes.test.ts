@@ -94,7 +94,7 @@ describe('creating sites', () => {
     const taken = await app.http().post('/api/sites').set('Cookie', stranger.cookie).set('Origin', ORIGIN).send({ name: 'nha-bo', template: 'shop' });
     expect(taken.status).toBe(409);
     expect(taken.body.error).toBe('name-taken');
-    const template = await app.http().post('/api/sites').set('Cookie', owner.cookie).set('Origin', ORIGIN).send({ name: 'thiep', template: 'wedding' });
+    const template = await app.http().post('/api/sites').set('Cookie', owner.cookie).set('Origin', ORIGIN).send({ name: 'thiep', template: 'tiec' });
     expect(template.body.error).toBe('unknown-template');
     await create('tiem-hai');
     const third = await app.http().post('/api/sites').set('Cookie', owner.cookie).set('Origin', ORIGIN).send({ name: 'tiem-ba', template: 'shop' });

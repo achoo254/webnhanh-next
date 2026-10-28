@@ -1,11 +1,11 @@
 /**
- * The notification outbox: `notification_deliveries` rows are written with the order (orders/order-store.ts) or with
- * the end of a build the owner asked to hear about (`queueJobNotices` of @webnhanh/db), and sent from here, each on
- * its own. A failing row only moves its own next attempt (with backoff), so a push
- * service that is down never holds back the Chat message, nor the other way round, and the order itself is stored
- * whatever happens here. A row is leased while it is sent: a crash mid-send retries it after the lease.
+ * The notification outbox: `notification_deliveries` rows are written with an order or a wedding reply
+ * (orders/order-store.ts) or with the end of a build the owner asked to hear about (`queueJobNotices` of @webnhanh/db),
+ * and sent from here, each on its own. A failing row only moves its own next attempt (with backoff), so a push
+ * service that is down never holds back the Chat message, nor the other way round, and the submission itself is
+ * stored whatever happens here. A row is leased while it is sent: a crash mid-send retries it after the lease.
  */
-import { chatLinks, jobs, notificationDeliveries, pushSubscriptions, sites, submissions, type Db } from '@webnhanh/db';
+import { chatLinks, jobs, notificationDeliveries, pushSubscriptions, sites, submissionContent, submissions, type Db } from '@webnhanh/db';
 import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import { buildChatText, buildPushPayload, type BuildNotice } from './build-message';
 import { chatText, pushPayload, randomIdOf, type OrderNotice } from './order-message';
@@ -55,11 +55,11 @@ async function claimDue(db: Db, now: Date): Promise<Delivery[]> {
 
 async function noticeOf(db: Db, submissionId: string): Promise<OrderNotice | null> {
   const [row] = await db
-    .select({ id: submissions.id, siteId: submissions.siteId, data: submissions.data, siteName: sites.name })
+    .select({ id: submissions.id, siteId: submissions.siteId, kind: submissions.kind, data: submissions.data, siteName: sites.name })
     .from(submissions)
     .innerJoin(sites, eq(sites.id, submissions.siteId))
     .where(eq(submissions.id, submissionId));
-  return row ? { submissionId: row.id, siteId: row.siteId, siteName: row.siteName, order: row.data } : null;
+  return row ? { submissionId: row.id, siteId: row.siteId, siteName: row.siteName, content: submissionContent(row) } : null;
 }
 
 async function buildNoticeOf(db: Db, jobId: string): Promise<BuildNotice | null> {

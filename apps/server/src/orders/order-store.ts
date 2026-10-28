@@ -1,10 +1,11 @@
 /**
- * Storing a visitor's order: the order and its notification deliveries (one per push subscription of the owner,
- * one for the owner's linked chat) in one transaction, so an order never exists without the notices it is owed.
- * Channels the server has no keys for get no rows; the in-app inbox needs none (an unhandled order is the badge).
+ * Storing what a visitor sent (an order, or a reply to a wedding invitation) with its notification deliveries (one
+ * per push subscription of the owner, one for the owner's linked chat) in one transaction, so a submission never
+ * exists without the notices it is owed. Channels the server has no keys for get no rows; the in-app inbox needs none
+ * (an unhandled submission is the badge).
  */
 import { randomUUID } from 'node:crypto';
-import { chatLinks, notificationDeliveries, pushSubscriptions, submissions, type Db, type OrderData } from '@webnhanh/db';
+import { chatLinks, notificationDeliveries, pushSubscriptions, submissions, type Db, type SubmissionContent } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 
 export interface OrderChannels {
@@ -12,15 +13,15 @@ export interface OrderChannels {
   readonly chat: boolean;
 }
 
-export async function recordOrder(
+export async function recordSubmission(
   db: Db,
-  input: { siteId: string; accountId: string; order: OrderData },
+  input: { siteId: string; accountId: string; content: SubmissionContent },
   channels: OrderChannels,
   now: Date,
 ): Promise<{ id: string; deliveries: number }> {
   return db.transaction(async (tx) => {
     const id = randomUUID();
-    await tx.insert(submissions).values({ id, siteId: input.siteId, kind: 'order', data: input.order, createdAt: now });
+    await tx.insert(submissions).values({ id, siteId: input.siteId, kind: input.content.kind, data: input.content.data, createdAt: now });
     const devices = channels.push
       ? await tx.select({ id: pushSubscriptions.id }).from(pushSubscriptions).where(eq(pushSubscriptions.accountId, input.accountId))
       : [];

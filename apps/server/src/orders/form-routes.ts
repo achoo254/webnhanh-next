@@ -1,19 +1,21 @@
 /**
- * `POST /f/<site>`: orders from the form of a published page (https://<site>.hoandat.io.vn). Public, so it guards
+ * `POST /f/<site>`: what visitors send from the form of a published page (https://<site>.hoandat.io.vn): an order
+ * from a shop page, or a reply ("Xác nhận tham dự") from a wedding invitation (`kind=rsvp`). Public, so it guards
  * itself: only the site's own origin (CORS, and refused when a browser says it came from elsewhere), the page's
  * signed token, a hidden field bots fill, a minimum time to fill the form (measured by the page's script), rate
- * limits per IP and per site, and the order checked field by field. Unknown, unpublished or renamed-away sites
- * answer 404. Mounted before the app's own Origin check: the visitor's origin is the site, not the app.
+ * limits per IP and per site, and every field checked. A site whose live page has no form of that kind, and unknown,
+ * unpublished or renamed-away sites, answer 404. Mounted before the app's own Origin check: the visitor's origin is
+ * the site, not the app.
  */
-import { SITE_NAME_PATTERN, siteOrigin, sites, verifyFormToken, type Db } from '@webnhanh/db';
-import { ORDER_FIELDS, orderInputSchema, orderIssueFields, type OrderField } from '@webnhanh/templates';
+import { SITE_NAME_PATTERN, siteOrigin, sites, verifyFormToken, type Db, type SubmissionContent } from '@webnhanh/db';
+import { ORDER_FIELDS, orderInputSchema, orderIssueFields, RSVP_FIELDS, RSVP_KIND, rsvpInputSchema, rsvpIssueFields } from '@webnhanh/templates';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import express, { type Request, type RequestHandler, type Response, type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import type { ServerConfig } from '../config';
 import type { Site } from '../sites/site-access';
-import { sendFormOutcome, type FormOutcome } from './form-response';
-import { recordOrder } from './order-store';
+import { sendFormOutcome, type FormField, type FormKind, type FormOutcome } from './form-response';
+import { recordSubmission } from './order-store';
 
 /** Less than this from the first touch of the form to sending it is a bot, or a person asked to look again. */
 export const MIN_FILL_MS = 3_000;
@@ -28,10 +30,57 @@ function field(body: unknown, name: string): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
+/** What the form says it sends (an order unless `kind=rsvp`); the body is parsed before anything answers. */
+function kindOf(req: Request): FormKind {
+  return field(req.body, RSVP_FIELDS.kind) === RSVP_KIND ? 'rsvp' : 'order';
+}
+
+/** The submission checked for its kind, or the fields to fix (an order of a product the page does not offer: `product`). */
+function readSubmission(kind: FormKind, body: unknown, site: Site): { ok: true; content: SubmissionContent } | { ok: false; fields: FormField[] } {
+  if (kind === 'rsvp') {
+    const parsed = rsvpInputSchema.safeParse({
+      kind: field(body, RSVP_FIELDS.kind),
+      name: field(body, RSVP_FIELDS.name) ?? '',
+      phone: field(body, RSVP_FIELDS.phone),
+      attending: field(body, RSVP_FIELDS.attending) ?? '',
+      guests: field(body, RSVP_FIELDS.guests) || undefined,
+      note: field(body, RSVP_FIELDS.note),
+    });
+    if (!parsed.success) return { ok: false, fields: rsvpIssueFields(parsed.error) };
+    const { name, phone, attending, guests, note } = parsed.data;
+    // Someone who is not coming brings nobody.
+    return { ok: true, content: { kind: 'rsvp', data: { name, phone, attending, guests: attending === 'yes' ? guests : 0, note } } };
+  }
+  const parsed = orderInputSchema.safeParse({
+    name: field(body, ORDER_FIELDS.name) ?? '',
+    phone: field(body, ORDER_FIELDS.phone) ?? '',
+    address: field(body, ORDER_FIELDS.address) ?? '',
+    product: field(body, ORDER_FIELDS.product) ?? '',
+    quantity: field(body, ORDER_FIELDS.quantity) ?? '',
+    note: field(body, ORDER_FIELDS.note),
+  });
+  if (!parsed.success) return { ok: false, fields: orderIssueFields(parsed.error) };
+  const input = parsed.data;
+  const product = site.orderForm?.products.find((p) => p.key === input.product);
+  if (!product) return { ok: false, fields: ['product'] };
+  return {
+    ok: true,
+    content: {
+      kind: 'order',
+      data: { name: input.name, phone: input.phone, address: input.address, productKey: product.key, productName: product.name, quantity: input.quantity, note: input.note },
+    },
+  };
+}
+
+/** Whether the live page of `site` has a form for `kind`. */
+function takes(site: Site, kind: FormKind): boolean {
+  return kind === 'rsvp' ? site.orderForm?.rsvp === true : (site.orderForm?.products.length ?? 0) > 0;
+}
+
 export function formRoutes(config: ServerConfig, db: Db, onOrder: () => void): Router {
   const router = express.Router();
   const form = express.urlencoded({ extended: false, limit: '16kb', parameterLimit: 20 });
-  const tooMany: RequestHandler = (req, res) => sendFormOutcome(req, res, 429, 'too-many-requests');
+  const tooMany: RequestHandler = (req, res) => sendFormOutcome(req, res, 429, 'too-many-requests', { kind: kindOf(req) });
 
   const perIp = rateLimit({ windowMs: 10 * 60_000, limit: config.orderLimits.perIp, standardHeaders: 'draft-8', legacyHeaders: false, handler: tooMany });
   const perSite = rateLimit({
@@ -55,9 +104,10 @@ export function formRoutes(config: ServerConfig, db: Db, onOrder: () => void): R
           .from(sites)
           .where(and(eq(sites.name, name), eq(sites.status, 'published'), isNotNull(sites.currentReleaseId), isNotNull(sites.orderForm)))
       : [];
-    if (!site) return sendFormOutcome(req, res, 404, 'not-found');
+    const kind = kindOf(req);
+    if (!site) return sendFormOutcome(req, res, 404, 'not-found', { kind });
     const origin = req.get('origin');
-    if (origin !== undefined && origin !== siteOrigin(site.name)) return sendFormOutcome(req, res, 403, 'forbidden-origin');
+    if (origin !== undefined && origin !== siteOrigin(site.name)) return sendFormOutcome(req, res, 403, 'forbidden-origin', { kind });
     res.set({ 'Access-Control-Allow-Origin': siteOrigin(site.name), Vary: 'Origin' });
     res.locals.orderSite = site;
     next();
@@ -69,44 +119,27 @@ export function formRoutes(config: ServerConfig, db: Db, onOrder: () => void): R
     res.status(204).end();
   });
 
-  router.post('/f/:site', publishedSite, perIp, perSite, form, async (req: Request, res: Response) => {
+  // The body is read first, so that every answer (the rate limits' too) is worded for an order or a reply.
+  router.post('/f/:site', form, publishedSite, perIp, perSite, async (req: Request, res: Response) => {
     const site = siteOf(res);
     const body: unknown = req.body;
-    const reply = (status: number, outcome: FormOutcome, fields?: readonly OrderField[]): void =>
-      sendFormOutcome(req, res, status, outcome, { siteName: site.name, fields });
+    const kind = kindOf(req);
+    const reply = (status: number, outcome: FormOutcome, fields?: readonly FormField[]): void =>
+      sendFormOutcome(req, res, status, outcome, { kind, siteName: site.name, fields });
 
+    if (!takes(site, kind)) return reply(404, 'not-found');
     // A filled trap: thanked like anyone, and nothing is stored, so the bot learns nothing.
     if (field(body, ORDER_FIELDS.honeypot)) return reply(200, 'sent');
     if (!verifyFormToken(config.formSecret, site.id, field(body, ORDER_FIELDS.token), new Date())) return reply(400, 'stale-page');
     const elapsed = field(body, ORDER_FIELDS.elapsed);
     if (elapsed && /^\d{1,9}$/.test(elapsed) && Number(elapsed) < MIN_FILL_MS) return reply(422, 'too-fast');
 
-    const parsed = orderInputSchema.safeParse({
-      name: field(body, ORDER_FIELDS.name) ?? '',
-      phone: field(body, ORDER_FIELDS.phone) ?? '',
-      address: field(body, ORDER_FIELDS.address) ?? '',
-      product: field(body, ORDER_FIELDS.product) ?? '',
-      quantity: field(body, ORDER_FIELDS.quantity) ?? '',
-      note: field(body, ORDER_FIELDS.note),
-    });
-    if (!parsed.success) return reply(422, 'invalid', orderIssueFields(parsed.error));
-    const input = parsed.data;
-    const product = site.orderForm?.products.find((p) => p.key === input.product);
-    if (!product) return reply(422, 'invalid', ['product']);
-
+    const submission = readSubmission(kind, body, site);
+    if (!submission.ok) return reply(422, 'invalid', submission.fields);
     try {
-      await recordOrder(
-      db,
-      {
-        siteId: site.id,
-        accountId: site.accountId,
-        order: { name: input.name, phone: input.phone, address: input.address, productKey: product.key, productName: product.name, quantity: input.quantity, note: input.note },
-      },
-      { push: config.push !== null, chat: config.chatBot !== null },
-      new Date(),
-    );
+      await recordSubmission(db, { siteId: site.id, accountId: site.accountId, content: submission.content }, { push: config.push !== null, chat: config.chatBot !== null }, new Date());
     } catch (error) {
-      console.error('order not stored', error instanceof Error ? error.message : String(error));
+      console.error(`${kind} not stored`, error instanceof Error ? error.message : String(error));
       return reply(500, 'server-error');
     }
     onOrder();

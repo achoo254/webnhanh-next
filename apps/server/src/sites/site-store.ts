@@ -26,12 +26,12 @@ import {
   type DeveloperSource,
   type Job,
 } from '@webnhanh/db';
-import { newShopDraft, SHOP_SAMPLES, SHOP_TEMPLATE } from '@webnhanh/templates';
+import { isTemplateId, TEMPLATE_SAMPLES, templateDraft, type SamplePhoto, type TemplateId } from '@webnhanh/templates';
 import { and, count, eq, gt, ne } from 'drizzle-orm';
 import { HttpError } from '../http-error';
 import type { Site } from './site-access';
 
-/** The template's sample photos, found through its package so the path holds in the bundle too. */
+/** The templates' sample photos, found through their package so the path holds in the bundle too. */
 const SAMPLES_DIR = path.join(path.dirname(createRequire(import.meta.url).resolve('@webnhanh/templates/package.json')), 'samples');
 
 /** Old names one site may hold at once: renaming back and forth must not reserve names by the dozen. */
@@ -56,13 +56,26 @@ async function assertNameFree(db: Db, name: string, now: Date, siteId?: string):
   if (hold && hold.siteId !== siteId) throw new HttpError(409, 'name-taken');
 }
 
-/** Creates a template site with the template's sample photos and an empty draft. */
+/** Every sample photo of `template`, each once, in the order the template lists them. */
+function samplesOf(template: TemplateId): SamplePhoto[] {
+  const byFile = new Map<string, SamplePhoto>();
+  for (const value of Object.values(TEMPLATE_SAMPLES[template])) {
+    for (const photo of Array.isArray(value) ? value : [value]) byFile.set(photo.file, photo);
+  }
+  return [...byFile.values()];
+}
+
+/**
+ * Creates a template site of any template: its sample photos copied in as the site's own (marked `sample`), and the
+ * template's new draft pointing at them. Template sites of every kind share one limit per account.
+ */
 export async function createTemplateSite(
   db: Db,
   input: { accountId: string; name: string; template: string; uploadsDir: string; sitesPerAccount: number },
   now: Date,
 ): Promise<Site> {
-  if (input.template !== SHOP_TEMPLATE) throw new HttpError(400, 'unknown-template');
+  const template = input.template;
+  if (!isTemplateId(template)) throw new HttpError(400, 'unknown-template');
   const [mine] = await db
     .select({ n: count() })
     .from(sites)
@@ -71,7 +84,8 @@ export async function createTemplateSite(
   await assertNameFree(db, input.name, now);
 
   const siteId = randomUUID();
-  const samples = [SHOP_SAMPLES.cover, ...SHOP_SAMPLES.products].map((sample) => ({ ...sample, id: randomUUID() }));
+  const samples = samplesOf(template).map((sample) => ({ ...sample, id: randomUUID() }));
+  const idOf = new Map(samples.map((sample) => [sample.file, sample.id]));
   const dir = siteUploadsDir(input.uploadsDir, siteId);
   try {
     await mkdir(dir, { recursive: true });
@@ -79,27 +93,31 @@ export async function createTemplateSite(
       await copyFile(path.join(SAMPLES_DIR, sample.file), siteImageFile(input.uploadsDir, siteId, sample.id, sample.width));
     }
     const sizes = await Promise.all(samples.map((sample) => stat(siteImageFile(input.uploadsDir, siteId, sample.id, sample.width))));
-    const [cover, ...products] = samples;
-    if (!cover) throw new Error('the template has no sample cover');
-    const draft = newShopDraft({ cover: cover.id, products: products.map((p) => p.id) });
+    const { draft } = templateDraft(template, (photo) => {
+      const id = idOf.get(photo.file);
+      if (!id) throw new Error(`sample ${photo.file} was not copied`);
+      return id;
+    });
     return await db.transaction(async (tx) => {
       const [site] = await tx
         .insert(sites)
-        .values({ id: siteId, accountId: input.accountId, name: input.name, kind: 'template', template: SHOP_TEMPLATE, status: 'draft', draft, createdAt: now, updatedAt: now })
+        .values({ id: siteId, accountId: input.accountId, name: input.name, kind: 'template', template, status: 'draft', draft, createdAt: now, updatedAt: now })
         .returning();
       if (!site) throw new Error('site insert returned no row');
-      await tx.insert(siteImages).values(
-        samples.map((sample, index) => ({
-          id: sample.id,
-          siteId,
-          width: sample.width,
-          height: sample.height,
-          widths: [sample.width],
-          bytes: sizes[index]?.size ?? 0,
-          sample: true,
-          createdAt: now,
-        })),
-      );
+      if (samples.length > 0) {
+        await tx.insert(siteImages).values(
+          samples.map((sample, index) => ({
+            id: sample.id,
+            siteId,
+            width: sample.width,
+            height: sample.height,
+            widths: [sample.width],
+            bytes: sizes[index]?.size ?? 0,
+            sample: true,
+            createdAt: now,
+          })),
+        );
+      }
       return site;
     });
   } catch (error) {
