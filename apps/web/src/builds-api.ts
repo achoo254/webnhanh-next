@@ -68,6 +68,8 @@ const detectionSchema = z.object({
   outputDir: z.string(),
   supported: z.boolean(),
   warnings: z.array(z.string()),
+  /** Packages of a monorepo with a recognized framework, suggested as the app folder; absent from older checks. */
+  apps: z.array(z.object({ dir: z.string(), framework: z.string() })).catch([]),
 });
 export type Detection = z.infer<typeof detectionSchema>;
 

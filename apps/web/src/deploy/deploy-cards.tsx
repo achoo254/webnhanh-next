@@ -53,8 +53,58 @@ export function WaitingTips({ report, detection, firstBuild }: { readonly report
   );
 }
 
-/** What the check recognized: framework, package manager, the plan, and its warnings. */
-export function DetectionSummary({ detection, settings }: { readonly detection: Detection; readonly settings: BuildSettings }): ReactNode {
+/**
+ * The app folders a monorepo check suggests. With `onPick`, each is a button that takes that folder (and checks again);
+ * without, the developer is told where to put it.
+ */
+function AppSuggestions({ apps, onPick, disabled }: { readonly apps: Detection['apps']; readonly onPick?: (dir: string) => void; readonly disabled?: boolean }): ReactNode {
+  const { t } = useI18n();
+  const [only] = apps;
+  if (!only) return null;
+  return (
+    <div className="notice notice-info row" data-id="deploy-apps">
+      <p>{apps.length === 1 ? t('deploy.apps.one', { framework: frameworkName(t, only.framework), dir: only.dir }) : t('deploy.apps.many', { n: apps.length })}</p>
+      {onPick ? (
+        <div className="chips">
+          {apps.map((app) => (
+            <button key={app.dir} type="button" className="pill pill-dark pill-small" onClick={() => onPick(app.dir)} disabled={disabled} data-id={`deploy-app-${app.dir}`}>
+              {t('deploy.apps.use', { dir: app.dir, framework: frameworkName(t, app.framework) })}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <>
+          {apps.length > 1 ? (
+            <ul>
+              {apps.map((app) => (
+                <li key={app.dir}>
+                  <code>{app.dir}</code> ({frameworkName(t, app.framework)})
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <p>{t('deploy.apps.fill')}</p>
+        </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What the check recognized: framework, package manager, the plan, its warnings, and the app folders a monorepo
+ * suggests (`onPickApp` makes them one-click).
+ */
+export function DetectionSummary({
+  detection,
+  settings,
+  onPickApp,
+  pickDisabled,
+}: {
+  readonly detection: Detection;
+  readonly settings: BuildSettings;
+  readonly onPickApp?: (dir: string) => void;
+  readonly pickDisabled?: boolean;
+}): ReactNode {
   const { t } = useI18n();
   const output = settings.outputDir === '' ? t('deploy.root') : settings.outputDir;
   return (
@@ -75,6 +125,7 @@ export function DetectionSummary({ detection, settings }: { readonly detection: 
           </p>
         ) : null;
       })}
+      <AppSuggestions apps={detection.apps} onPick={onPickApp} disabled={pickDisabled} />
     </div>
   );
 }

@@ -70,12 +70,11 @@ function GitForm(): ReactNode {
   const [error, setError] = useState<MessageKey | null>(null);
   const nameCheck = checkSiteName(name);
 
-  const check = async (event: FormEvent): Promise<void> => {
-    event.preventDefault();
+  const runCheck = async (dir: string): Promise<void> => {
     setBusy('check');
     setError(null);
     try {
-      const result = await checkRepo(repoUrl.trim(), branch.trim(), rootDir.trim());
+      const result = await checkRepo(repoUrl.trim(), branch.trim(), dir);
       setChecked(result);
       setBranch(result.repo.branch);
       setSettings(result.settings);
@@ -86,6 +85,17 @@ function GitForm(): ReactNode {
     } finally {
       setBusy(null);
     }
+  };
+
+  const check = (event: FormEvent): void => {
+    event.preventDefault();
+    void runCheck(rootDir.trim());
+  };
+
+  /** A monorepo's suggested app folder: it goes in the field and the repo is checked again for it. */
+  const pickApp = (dir: string): void => {
+    setRootDir(dir);
+    void runCheck(dir);
   };
 
   const create = async (): Promise<void> => {
@@ -111,7 +121,7 @@ function GitForm(): ReactNode {
 
   return (
     <div className="deploy-form">
-      <form className="panel" onSubmit={(event) => void check(event)} noValidate data-id="deploy-git">
+      <form className="panel" onSubmit={check} noValidate data-id="deploy-git">
         <div className="field">
           <label className="field-label" htmlFor={ids.repo}>
             {t('deploy.repo.label')}
@@ -165,7 +175,7 @@ function GitForm(): ReactNode {
             {t('deploy.settings.title')}
           </h2>
           <p className="hint">{t('deploy.commit', { branch: checked.repo.branch, commit: checked.repo.commit.slice(0, 7) })}</p>
-          <DetectionSummary detection={checked.detection} settings={settings} />
+          <DetectionSummary detection={checked.detection} settings={settings} onPickApp={pickApp} pickDisabled={busy !== null} />
           <SettingsFields value={settings} onChange={setSettings} />
           <NameField value={name} onChange={setName} />
           {!checked.detection.supported ? <p className="hint">{t('deploy.unsupported')}</p> : null}

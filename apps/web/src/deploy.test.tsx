@@ -175,6 +175,38 @@ describe('deploying from a repo', () => {
     expect(screen.queryByText('s3cret')).toBeNull();
   });
 
+  it('suggests the app folders of a monorepo and checks again for the one picked', async () => {
+    const atRoot = { ...detection, framework: 'other', warnings: ['unknown-framework'], apps: [{ dir: 'apps/site', framework: 'astro' }, { dir: 'apps/editor', framework: 'vite' }] };
+    const inSite = { ...detection, framework: 'astro', apps: [] };
+    on('POST', '/api/developer/check', (init) => {
+      const { rootDir } = JSON.parse(String(init?.body)) as { rootDir: string };
+      const found = rootDir === 'apps/site' ? inSite : atRoot;
+      return { status: 200, body: { repo: { url: 'https://github.com/acme/lop-2', branch: 'main', commit: 'c'.repeat(40) }, detection: found, settings: { rootDir, buildCommand: 'pnpm run build', outputDir: 'dist' } } };
+    });
+    render(
+      <I18nProvider>
+        <AccountProvider>
+          <MemoryRouter initialEntries={['/new/developer']}>
+            <App />
+          </MemoryRouter>
+        </AccountProvider>
+      </I18nProvider>,
+    );
+    fireEvent.change(await screen.findByLabelText('Link repo công khai'), { target: { value: 'https://github.com/acme/lop-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra repo' }));
+    expect(await screen.findByText('Đây là monorepo, có 2 app nhận ra được framework. Chọn thư mục của app:')).toBeTruthy();
+    expect(screen.getByText(/Chưa nhận ra framework ở thư mục này/)).toBeTruthy();
+    const choices = screen.getAllByRole('button', { name: /^Dùng / }).map((button) => button.textContent);
+    expect(choices).toEqual(['Dùng apps/site (Astro)', 'Dùng apps/editor (Vite)']);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dùng apps/site (Astro)' }));
+    expect(await screen.findByText('Nhận ra: Astro, cài thư viện bằng pnpm')).toBeTruthy();
+    const checks = calls.filter((c) => c.url === '/api/developer/check');
+    expect(checks.map((c) => (c.body as { rootDir: string }).rootDir)).toEqual(['', 'apps/site']);
+    expect(screen.getAllByLabelText('Thư mục của app trong repo').map((input) => (input as HTMLInputElement).value)).toEqual(['apps/site', 'apps/site']);
+    expect(screen.queryByText(/Đây là monorepo/)).toBeNull();
+  });
+
   it('says why a repo cannot be used', async () => {
     on('POST', '/api/developer/check', () => ({ status: 404, body: { error: 'repo-not-found' } }));
     render(
