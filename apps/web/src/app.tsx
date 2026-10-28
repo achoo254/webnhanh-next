@@ -14,6 +14,8 @@ const HomePage = lazy(() => import('./pages/home-page').then((m) => ({ default: 
 const NewSitePage = lazy(() => import('./pages/new-site-page').then((m) => ({ default: m.NewSitePage })));
 const EditorPage = lazy(() => import('./pages/editor-page').then((m) => ({ default: m.EditorPage })));
 const OrdersPage = lazy(() => import('./pages/orders-page').then((m) => ({ default: m.OrdersPage })));
+const DeployNewPage = lazy(() => import('./pages/deploy-new-page').then((m) => ({ default: m.DeployNewPage })));
+const DeployPage = lazy(() => import('./pages/deploy-page').then((m) => ({ default: m.DeployPage })));
 
 function Loading(): ReactNode {
   const { t } = useI18n();
@@ -40,8 +42,10 @@ export function App(): ReactNode {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/new" element={<NewSitePage />} />
+        <Route path="/new/developer" element={<DeployNewPage />} />
         <Route path="/sites/:siteId" element={<EditorPage />} />
         <Route path="/sites/:siteId/orders" element={<OrdersPage />} />
+        <Route path="/sites/:siteId/deploy" element={<DeployPage />} />
         <Route path={LOGIN_PATH} element={<LoginPage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/terms" element={<TermsPage />} />

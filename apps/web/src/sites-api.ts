@@ -34,6 +34,8 @@ export type Job = z.infer<typeof jobSchema>;
 const siteSchema = z.object({
   id: z.string(),
   name: z.string(),
+  /** `template` or `developer`. */
+  kind: z.string().optional().default('template'),
   template: z.string().nullable(),
   status: z.string(),
   published: z.boolean(),
@@ -48,7 +50,7 @@ export type Site = z.infer<typeof siteSchema>;
 
 const listSchema = z.object({
   sites: z.array(siteSchema),
-  limits: z.object({ sites: z.number(), siteBytes: z.number() }),
+  limits: z.object({ sites: z.number(), developerSites: z.number().optional().default(3), siteBytes: z.number() }),
 });
 export type SiteList = z.infer<typeof listSchema>;
 

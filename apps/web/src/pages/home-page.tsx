@@ -7,7 +7,7 @@ import { SignedInPage } from '../signed-in-page';
 import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
 
 function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy' | 'warn' } {
-  if (site.job && (site.job.status === 'queued' || site.job.status === 'running')) return { key: 'status.publishing', tone: 'busy' };
+  if (site.job && (site.job.status === 'queued' || site.job.status === 'running')) return { key: site.kind === 'developer' ? 'buildStatus.running' : 'status.publishing', tone: 'busy' };
   if (site.job?.status === 'failed') return { key: 'status.failed', tone: 'warn' };
   return site.published ? { key: 'status.published', tone: 'live' } : { key: 'status.draft', tone: 'draft' };
 }
@@ -17,7 +17,9 @@ function SiteCard({ site }: { readonly site: Site }): ReactNode {
   const status = statusOf(site);
   return (
     <li className="site-card" data-id={`site-${site.name}`}>
-      <div className="site-card-media">{site.cover ? <img src={thumbUrl(site.id, site.cover, 480)} alt="" loading="lazy" /> : null}</div>
+      <div className={site.kind === 'developer' ? 'site-card-media site-card-code' : 'site-card-media'}>
+        {site.cover ? <img src={thumbUrl(site.id, site.cover, 480)} alt="" loading="lazy" /> : site.kind === 'developer' ? <span aria-hidden="true">{'</>'}</span> : null}
+      </div>
       <div className="site-card-body">
         <div className="row">
           <span className={`badge badge-${status.tone}`}>{t(status.key)}</span>
@@ -29,10 +31,16 @@ function SiteCard({ site }: { readonly site: Site }): ReactNode {
         </div>
         <h2 className="site-card-name">{siteHost(site.name)}</h2>
         <div className="site-card-actions">
-          <Link className="pill pill-dark" to={`/sites/${site.id}`} data-id={`site-${site.name}-edit`}>
-            {t('home.edit')}
-          </Link>
-          {site.published || site.newOrders > 0 ? (
+          {site.kind === 'developer' ? (
+            <Link className="pill pill-dark" to={`/sites/${site.id}/deploy`} data-id={`site-${site.name}-deploy`}>
+              {t('home.manage')}
+            </Link>
+          ) : (
+            <Link className="pill pill-dark" to={`/sites/${site.id}`} data-id={`site-${site.name}-edit`}>
+              {t('home.edit')}
+            </Link>
+          )}
+          {site.kind !== 'developer' && (site.published || site.newOrders > 0) ? (
             <Link className="pill pill-ghost" to={`/sites/${site.id}/orders`} data-id={`site-${site.name}-orders`}>
               {t('home.orders')}
             </Link>
@@ -75,7 +83,8 @@ function Home({ account }: { readonly account: Account }): ReactNode {
     };
   }, []);
   const since = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'long' }).format(new Date(account.createdAt));
-  const atLimit = list !== null && list.sites.length >= list.limits.sites;
+  // The limit of template sites; developer sites have their own (shown on /new/developer).
+  const atLimit = list !== null && list.sites.filter((site) => site.kind !== 'developer').length >= list.limits.sites;
 
   return (
     <section className="home" data-id="home">

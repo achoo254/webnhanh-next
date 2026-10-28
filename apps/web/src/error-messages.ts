@@ -1,6 +1,6 @@
 import type { ShopIssue } from '@webnhanh/templates';
 import { ApiError } from './api';
-import type { MessageKey } from './i18n';
+import { isMessageKey, type MessageKey } from './i18n';
 
 /** The sentence for a refused call, by the server's stable code. */
 const BY_CODE: Readonly<Record<string, MessageKey>> = {
@@ -18,6 +18,22 @@ const BY_CODE: Readonly<Record<string, MessageKey>> = {
   'image-unreadable': 'image.unreadable',
   'site-full': 'image.siteFull',
   network: 'error.network',
+  'too-many-requests': 'error.tooMany',
+  'repo-url': 'deploy.error.repoUrl',
+  'repo-not-found': 'deploy.error.repoNotFound',
+  'branch-not-found': 'deploy.error.branchNotFound',
+  branch: 'deploy.error.branch',
+  'root-dir': 'deploy.error.rootDir',
+  'repo-unreachable': 'deploy.error.unreachable',
+  'build-settings': 'deploy.error.settings',
+  'developer-site-limit': 'deploy.error.siteLimit',
+  'daily-limit': 'deploy.error.dailyLimit',
+  'queue-full': 'deploy.error.queueFull',
+  'zip-missing': 'deploy.error.zipMissing',
+  'zip-off': 'deploy.error.zipOff',
+  'zip-invalid': 'fail.zip-invalid',
+  'zip-unsafe': 'fail.zip-unsafe',
+  'zip-too-large': 'fail.zip-too-large',
 };
 
 export function errorMessage(error: unknown): MessageKey {
@@ -40,4 +56,37 @@ export function jobFailureMessage(code: string | null): MessageKey {
   if (code === 'image-missing') return 'publish.failed.image';
   if (code === 'too-large') return 'publish.failed.tooLarge';
   return 'publish.failed.generic';
+}
+
+/** Why a build failed, by its error code: the cause and what to do about it. */
+const BUILD_FAILURES: Readonly<Record<string, MessageKey>> = {
+  'build-timeout': 'fail.build-timeout',
+  'build-oom': 'fail.build-oom',
+  lockfile: 'fail.lockfile',
+  'install-failed': 'fail.install-failed',
+  'build-failed': 'fail.build-failed',
+  'output-missing': 'fail.output-missing',
+  'output-no-index': 'fail.output-no-index',
+  'output-too-large': 'fail.output-too-large',
+  'too-large': 'fail.output-too-large',
+  'output-unsafe': 'fail.output-unsafe',
+  'fetch-failed': 'fail.fetch-failed',
+  'repo-too-large': 'fail.repo-too-large',
+  'zip-invalid': 'fail.zip-invalid',
+  'zip-unsafe': 'fail.zip-unsafe',
+  'zip-too-large': 'fail.zip-too-large',
+  unsupported: 'fail.unsupported',
+  'docker-unavailable': 'fail.docker-unavailable',
+  'settings-invalid': 'fail.settings-invalid',
+  stuck: 'fail.stuck',
+};
+
+export function buildFailureMessage(code: string | null): MessageKey {
+  return (code !== null ? BUILD_FAILURES[code] : undefined) ?? 'fail.generic';
+}
+
+/** A detection warning (also the notes of an `unsupported` failure) as a sentence; null for an unknown one. */
+export function warningMessage(code: string): MessageKey | null {
+  const key = `warning.${code}`;
+  return isMessageKey(key) ? key : null;
 }

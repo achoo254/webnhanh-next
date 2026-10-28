@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 import { SiteEditor } from '../editor/site-editor';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
@@ -30,6 +30,8 @@ function LoadEditor(): ReactNode {
     };
   }, [siteId]);
 
+  // A developer site has no draft: its page is the deploy page.
+  if (detail?.site.kind === 'developer') return <Navigate to={`/sites/${detail.site.id}/deploy`} replace />;
   if (error || (detail && !detail.draft)) {
     return (
       <section className="home">

@@ -15,6 +15,11 @@ export function format(template: string, params: Readonly<Record<string, string 
   return template.replace(/\{(\w+)\}/g, (whole, name: string) => String(all[name] ?? whole));
 }
 
+/** Whether `key` is one of the app's messages (for keys built from a server code). */
+export function isMessageKey(key: string): key is MessageKey {
+  return Object.hasOwn(DICTIONARIES.vi, key);
+}
+
 export function translator(locale: Locale): Translate {
   return (key, params) => format(DICTIONARIES[locale][key], params);
 }

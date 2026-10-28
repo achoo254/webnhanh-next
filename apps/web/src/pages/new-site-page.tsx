@@ -72,6 +72,17 @@ function NewSite(): ReactNode {
             </span>
           </button>
         </li>
+        <li>
+          <Link className="bento-card bento-developer" to="/new/developer" data-id="template-developer">
+            <span className="bento-code" aria-hidden="true">
+              {'</>'}
+            </span>
+            <span className="bento-label">
+              {t('new.developer')}
+              <small>{t('new.developer.note')}</small>
+            </span>
+          </Link>
+        </li>
         {COMING.map((item) => (
           <li key={item.id}>
             <div className={`bento-card bento-soon bento-${item.id}`} aria-disabled="true" data-id={`template-${item.id}`}>
