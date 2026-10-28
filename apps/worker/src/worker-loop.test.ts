@@ -2,9 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { accounts, enqueueJob, verifyFormToken, jobs, NAME_HOLD_MS, openPglite, releases, siteImageFile, siteImages, siteNameHolds, sites, type DbHandle } from '@trang/db';
-import { currentRelease, publishRelease } from '@trang/publish';
-import type { ShopDraft } from '@trang/templates';
+import { accounts, enqueueJob, verifyFormToken, jobs, NAME_HOLD_MS, openPglite, releases, siteImageFile, siteImages, siteNameHolds, sites, type DbHandle } from '@webnhanh/db';
+import { currentRelease, publishRelease } from '@webnhanh/publish';
+import type { ShopDraft } from '@webnhanh/templates';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cleanup, UNUSED_IMAGE_AGE_MS } from './cleanup';
@@ -21,7 +21,7 @@ const CHROME = process.env.CHROME_PATH;
 
 beforeEach(async () => {
   handle = await openPglite();
-  dir = await mkdtemp(path.join(os.tmpdir(), 'trang-worker-'));
+  dir = await mkdtemp(path.join(os.tmpdir(), 'webnhanh-worker-'));
   deps = {
     db: handle.db,
     sitesDir: path.join(dir, 'sites'),

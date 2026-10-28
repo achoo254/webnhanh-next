@@ -1,6 +1,6 @@
 import type { ShellBrand } from '@achoo254/app-shell';
 import { defineBrand } from '@achoo254/brand';
-import { SITES_DOMAIN } from '@trang/db/site-name';
+import { SITES_DOMAIN } from '@webnhanh/db/site-name';
 import config from '../../../brand.config.json';
 import markUrl from '../../../brand/icon.svg';
 

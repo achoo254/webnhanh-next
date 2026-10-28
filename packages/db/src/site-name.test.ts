@@ -15,7 +15,7 @@ describe('checkSiteName', () => {
     },
   );
 
-  it.each(['www', 'admin', 'kiem-tra', 'API'])('refuses the reserved %j', (name) => {
+  it.each(['www', 'admin', 'kiem-tra', 'API', 'webnhanh'])('refuses the reserved %j', (name) => {
     expect(checkSiteName(name)).toEqual({ ok: false, reason: 'reserved' });
   });
 

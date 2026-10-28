@@ -1,4 +1,4 @@
-import { notificationDeliveries, pushSubscriptions, chatLinks, sites, submissions } from '@trang/db';
+import { notificationDeliveries, pushSubscriptions, chatLinks, sites, submissions } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { publishedShop, startTestApp, type TestApp } from '../test-support';

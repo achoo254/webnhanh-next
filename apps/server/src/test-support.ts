@@ -5,7 +5,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
-import { openPglite, signFormToken, sites, type DbHandle } from '@trang/db';
+import { openPglite, signFormToken, sites, type DbHandle } from '@webnhanh/db';
 import request from 'supertest';
 import { createApp } from './app';
 import { accountForSub, createSession, sessionCookieName } from './auth/session';
@@ -25,7 +25,7 @@ export interface TestApp {
 
 export async function startTestApp(overrides: Partial<ServerConfig> = {}, onOrder?: () => void): Promise<TestApp> {
   // Photos of each test app go to a temp dir of its own, removed on close.
-  const uploadsDir = await mkdtemp(path.join(os.tmpdir(), 'trang-uploads-'));
+  const uploadsDir = await mkdtemp(path.join(os.tmpdir(), 'webnhanh-uploads-'));
   const config: ServerConfig = { ...loadConfig({ NODE_ENV: 'test' }), uploadsDir, ...overrides };
   const handle = await openPglite();
   const server = createApp({ config, db: handle.db, onOrder }).listen(0, '127.0.0.1');

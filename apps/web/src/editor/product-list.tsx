@@ -1,4 +1,4 @@
-import { LIMITS, type ShopProduct } from '@trang/templates';
+import { LIMITS, type ShopProduct } from '@webnhanh/templates';
 import type { ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { SiteImage } from '../sites-api';

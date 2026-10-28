@@ -10,7 +10,7 @@ import { useI18n } from './i18n';
  * auth.hoandat.com), coming back to `returnTo`. Under the card: why the last sign-in came back (`?login=` from the
  * server). No `linkComponent`: /auth/login is a server route, not a page of the router.
  */
-export function TrangSignInCard({
+export function AppSignInCard({
   title,
   description,
   returnTo,

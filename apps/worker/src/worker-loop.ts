@@ -1,4 +1,4 @@
-import { claimNextJob, failStuckJobs, markJobDone, markJobFailed } from '@trang/db';
+import { claimNextJob, failStuckJobs, markJobDone, markJobFailed } from '@webnhanh/db';
 import { cleanup } from './cleanup';
 import { JobError, runPublish, type PublishDeps } from './publish-job';
 

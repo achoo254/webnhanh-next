@@ -1,31 +1,32 @@
 #!/usr/bin/env bash
-# Deploys Trang Của Tôi to the shared server (.65). Run from a dev machine at any path inside the repo.
+# Deploys Web Nhanh to the shared server (.65). Run from a dev machine at any path inside the repo.
 #
 #   SSH_TARGET=<user>@<SERVER_65_IP> SSH_OPTS="-p <SSH_PORT> -i <key>" bash infra/deploy.sh setup
 #   SSH_TARGET=... SSH_OPTS=... bash infra/deploy.sh hosting
 #   SSH_TARGET=... SSH_OPTS=... bash infra/deploy.sh release
 #
-# setup    one-time and idempotent: system user `trang` (nginx joins its group to read the sites and the web app),
-#          /var/www/trang with sites/ (setgid, so everything published inside stays readable by the group),
-#          uploads/ (photos of the editor, never served by nginx) and static/, /etc/trang, the systemd units. It writes no secret: /etc/trang/production.env comes from the
-#          iCloud env folder "ENV production/trang-next/" (see docs/deployment-guide.md). The database is a separate
+# setup    one-time and idempotent: system user `webnhanh` (nginx joins its group to read the sites and the web app),
+#          /var/www/webnhanh with sites/ (setgid, so everything published inside stays readable by the group),
+#          uploads/ (photos of the editor, never served by nginx) and static/, /etc/webnhanh, the systemd units. It writes no secret: /etc/webnhanh/production.env comes from the
+#          iCloud env folder "ENV production/webnhanh-next/" (see docs/deployment-guide.md). The database is a separate
 #          step of that guide.
 # hosting  installs the shared pages (infra/static) and the nginx site for *.hoandat.io.vn: nginx -t first, the
 #          previous config restored if it fails, reload only when the config changed.
 # release  gates and build here, upload, `pnpm install --prod` for the server and the worker on the server, switch
-#          app/ (the previous one kept as app.prev), install changed units and the nginx site of trang.hoandat.com
-#          (nginx -t first), restart trang-server and check /healthz (on failure switch back to app.prev, restart,
-#          exit 1), then restart trang-worker.
+#          app/ (the previous one kept as app.prev), install changed units and the nginx site of webnhanh.hoandat.com
+#          (nginx -t first; it replaces the old trang.hoandat.com.conf, whose name it also serves), restart
+#          webnhanh-server and check /healthz (on failure switch back to app.prev, restart, exit 1), then restart
+#          webnhanh-worker.
 #
-# Rollback of the app: ssh in, `cd /var/www/trang && rm -rf app && mv app.prev app && systemctl restart trang-server
-# trang-worker`.
+# Rollback of the app: ssh in, `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
+# webnhanh-worker`.
 # The database only ever gains migrations that keep the previous release working. Published sites are never
 # touched here.
 set -euo pipefail
 
 : "${SSH_TARGET:?set SSH_TARGET to the ssh target of the server}"
 read -r -a ssh_opts <<<"${SSH_OPTS:-}"
-REMOTE=/var/www/trang
+REMOTE=/var/www/webnhanh
 PORT=4860
 PNPM="npx --yes pnpm@11.9.0"
 export COPYFILE_DISABLE=1
@@ -35,49 +36,56 @@ cd "$(git rev-parse --show-toplevel)"
 remote() { ssh "${ssh_opts[@]}" "$SSH_TARGET" "$@"; }
 
 # Installs nginx/<conf> of the uploaded tree in $1 as /etc/nginx/conf.d/<conf>: nginx -t first, the previous config
-# restored if it fails, reload only when the config changed. Expanded into the remote scripts below.
+# restored if it fails, reload only when the config changed. An optional third argument names a file in conf.d that
+# the new one replaces (it claims the same server_name): it is taken out in the same step, so nginx never sees both,
+# and put back if nginx -t fails. Expanded into the remote scripts below.
 install_nginx_site='install_nginx_site() {
 		src=$1/nginx/$2
 		conf=/etc/nginx/conf.d/$2
-		if cmp -s $src $conf; then
+		retired=
+		[ -n "${3:-}" ] && [ -f /etc/nginx/conf.d/$3 ] && retired=/etc/nginx/conf.d/$3
+		if cmp -s $src $conf && [ -z "$retired" ]; then
 			echo "nginx $2 unchanged"
 			return 0
 		fi
 		[ -f $conf ] && cp $conf $conf.prev
 		cp $src $conf
+		[ -n "$retired" ] && mv $retired $retired.retired
 		if ! nginx -t; then
 			if [ -f $conf.prev ]; then mv $conf.prev $conf; else rm -f $conf; fi
+			[ -n "$retired" ] && mv $retired.retired $retired
 			echo "nginx -t failed: $2 restored, nothing reloaded" >&2
 			exit 1
 		fi
+		[ -n "$retired" ] && rm -f $retired.retired && echo "nginx $3 removed"
 		systemctl reload nginx
 		echo "nginx $2 installed and reloaded"
 	}'
 
 setup() {
 	tar --no-xattrs -czf - infra/systemd | remote "set -euo pipefail
-		rm -rf /tmp/trang-setup && mkdir -p /tmp/trang-setup && tar xzf - --no-same-owner -C /tmp/trang-setup
-		id trang >/dev/null 2>&1 || useradd --system --home-dir $REMOTE --shell /sbin/nologin trang
-		usermod -aG trang nginx
-		mkdir -p $REMOTE/sites $REMOTE/uploads $REMOTE/static /etc/trang
-		chown trang:trang $REMOTE $REMOTE/sites $REMOTE/uploads && chmod 2750 $REMOTE/sites && chmod 750 $REMOTE $REMOTE/uploads
-		chown root:trang $REMOTE/static && chmod 750 $REMOTE/static
-		chown root:trang /etc/trang && chmod 750 /etc/trang
-		install -m 644 /tmp/trang-setup/infra/systemd/* /etc/systemd/system/
+		rm -rf /tmp/webnhanh-setup && mkdir -p /tmp/webnhanh-setup && tar xzf - --no-same-owner -C /tmp/webnhanh-setup
+		id webnhanh >/dev/null 2>&1 || useradd --system --home-dir $REMOTE --shell /sbin/nologin webnhanh
+		usermod -aG webnhanh nginx
+		mkdir -p $REMOTE/sites $REMOTE/uploads $REMOTE/static /etc/webnhanh
+		chown webnhanh:webnhanh $REMOTE $REMOTE/sites $REMOTE/uploads && chmod 2750 $REMOTE/sites && chmod 750 $REMOTE $REMOTE/uploads
+		chown root:webnhanh $REMOTE/static && chmod 750 $REMOTE/static
+		chown root:webnhanh /etc/webnhanh && chmod 750 /etc/webnhanh
+		install -m 644 /tmp/webnhanh-setup/infra/systemd/* /etc/systemd/system/
 		systemctl daemon-reload
-		rm -rf /tmp/trang-setup
-		[ -s /etc/trang/production.env ] || echo 'next: write /etc/trang/production.env (docs/deployment-guide.md)'
+		rm -rf /tmp/webnhanh-setup
+		[ -s /etc/webnhanh/production.env ] || echo 'next: write /etc/webnhanh/production.env (docs/deployment-guide.md)'
 		echo setup done"
 }
 
 hosting() {
 	tar --no-xattrs -czf - infra/static infra/nginx | remote "set -euo pipefail
-		rm -rf /tmp/trang-hosting && mkdir -p /tmp/trang-hosting && tar xzf - --no-same-owner -C /tmp/trang-hosting
-		cd /tmp/trang-hosting/infra
-		install -m 640 -o root -g trang static/* $REMOTE/static/
+		rm -rf /tmp/webnhanh-hosting && mkdir -p /tmp/webnhanh-hosting && tar xzf - --no-same-owner -C /tmp/webnhanh-hosting
+		cd /tmp/webnhanh-hosting/infra
+		install -m 640 -o root -g webnhanh static/* $REMOTE/static/
 		$install_nginx_site
-		install_nginx_site /tmp/trang-hosting/infra hoandat.io.vn.conf
-		rm -rf /tmp/trang-hosting"
+		install_nginx_site /tmp/webnhanh-hosting/infra hoandat.io.vn.conf
+		rm -rf /tmp/webnhanh-hosting"
 }
 
 release() {
@@ -89,20 +97,20 @@ release() {
 	$PNPM build
 
 	echo "== upload"
-	# The release keeps the workspace layout: the bundles find the migrations through @trang/db and the template's
-	# sample photos through @trang/templates.
+	# The release keeps the workspace layout: the bundles find the migrations through @webnhanh/db and the template's
+	# sample photos through @webnhanh/templates.
 	tar --no-xattrs -czf - package.json pnpm-lock.yaml pnpm-workspace.yaml infra packages \
 		apps/server/package.json apps/server/dist apps/worker/package.json apps/worker/dist apps/web/package.json apps/web/dist |
 		remote "set -euo pipefail; rm -rf $REMOTE/incoming; mkdir -p $REMOTE/incoming; tar xzf - --no-same-owner -C $REMOTE/incoming"
 
 	echo "== install, switch, restart"
 	remote "set -euo pipefail
-		[ -s /etc/trang/production.env ] || { echo 'no /etc/trang/production.env: run setup and write it first' >&2; exit 1; }
+		[ -s /etc/webnhanh/production.env ] || { echo 'no /etc/webnhanh/production.env: run setup and write it first' >&2; exit 1; }
 		[ -d $REMOTE/uploads ] || { echo 'no $REMOTE/uploads: run setup first' >&2; exit 1; }
 		export PATH=/opt/node22/bin:\$PATH
 		cd $REMOTE/incoming
-		$PNPM install --prod --frozen-lockfile --filter '@trang/server...' --filter '@trang/worker...' --reporter=silent
-		chown -R root:trang $REMOTE/incoming && chmod -R g+rX,o-rwx $REMOTE/incoming
+		$PNPM install --prod --frozen-lockfile --filter '@webnhanh/server...' --filter '@webnhanh/worker...' --reporter=silent
+		chown -R root:webnhanh $REMOTE/incoming && chmod -R g+rX,o-rwx $REMOTE/incoming
 		cd $REMOTE
 		rm -rf app.prev
 		[ -d app ] && mv app app.prev
@@ -116,7 +124,8 @@ release() {
 		[ \$changed = 1 ] && systemctl daemon-reload
 
 		$install_nginx_site
-		install_nginx_site $REMOTE/app/infra trang.hoandat.com.conf
+		# The app moved from trang.hoandat.com (28/10/2026); the new file serves both names and replaces the old one.
+		install_nginx_site $REMOTE/app/infra webnhanh.hoandat.com.conf trang.hoandat.com.conf
 
 		healthy() {
 			for i in \$(seq 1 20); do
@@ -125,24 +134,24 @@ release() {
 			done
 			return 1
 		}
-		systemctl enable trang-server >/dev/null
-		systemctl restart trang-server
+		systemctl enable webnhanh-server >/dev/null
+		systemctl restart webnhanh-server
 		if ! healthy; then
-			journalctl -u trang-server -n 40 --no-pager
+			journalctl -u webnhanh-server -n 40 --no-pager
 			if [ -d app.prev ]; then
 				echo 'healthz failed: switching back to the previous release' >&2
 				rm -rf app.failed && mv app app.failed && mv app.prev app
-				systemctl restart trang-server
-				systemctl is-enabled --quiet trang-worker && systemctl restart trang-worker
+				systemctl restart webnhanh-server
+				systemctl is-enabled --quiet webnhanh-worker && systemctl restart webnhanh-worker
 				healthy && echo 'previous release is back and healthy' >&2 || echo 'previous release is not healthy either' >&2
 			fi
 			exit 1
 		fi
 		echo healthz ok
-		systemctl enable trang-worker >/dev/null
-		systemctl restart trang-worker
+		systemctl enable webnhanh-worker >/dev/null
+		systemctl restart webnhanh-worker
 		sleep 3
-		systemctl is-active --quiet trang-worker || { journalctl -u trang-worker -n 40 --no-pager; echo 'trang-worker is not running' >&2; exit 1; }
+		systemctl is-active --quiet webnhanh-worker || { journalctl -u webnhanh-worker -n 40 --no-pager; echo 'webnhanh-worker is not running' >&2; exit 1; }
 		echo worker ok"
 }
 

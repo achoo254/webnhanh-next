@@ -2,8 +2,8 @@ import { FeatureList, Hero } from '@achoo254/app-shell';
 import type { ReactNode } from 'react';
 import { brand } from '../brand';
 import { useI18n, type MessageKey } from '../i18n';
-import { TrangPage } from '../public-page';
-import { TrangSignInCard } from '../sign-in';
+import { AppPage } from '../public-page';
+import { AppSignInCard } from '../sign-in';
 
 /** In-page anchors of the landing sections. */
 const ANCHORS = { features: 'features', how: 'how' } as const;
@@ -27,7 +27,7 @@ const STEPS: readonly { id: string; title: MessageKey; body: MessageKey }[] = [
 export function LandingPage(): ReactNode {
   const { t } = useI18n();
   return (
-    <TrangPage
+    <AppPage
       navLinks={[
         { href: `#${ANCHORS.features}`, label: t('nav.features'), dataId: 'landing-nav-features', hideOnPhones: true },
         { href: `#${ANCHORS.how}`, label: t('nav.how'), dataId: 'landing-nav-how', hideOnPhones: true },
@@ -37,7 +37,7 @@ export function LandingPage(): ReactNode {
         eyebrow={brand.appName}
         title={t('hero.title')}
         lede={t('hero.lede')}
-        aside={<TrangSignInCard headingLevel={2} title={t('signIn.title')} description={t('signIn.body')} returnTo="/" />}
+        aside={<AppSignInCard headingLevel={2} title={t('signIn.title')} description={t('signIn.body')} returnTo="/" />}
       />
       <FeatureList
         id={ANCHORS.features}
@@ -57,6 +57,6 @@ export function LandingPage(): ReactNode {
           icon: String(index + 1).padStart(2, '0'),
         }))}
       />
-    </TrangPage>
+    </AppPage>
   );
 }

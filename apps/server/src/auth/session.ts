@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import type { IncomingMessage } from 'node:http';
-import { accounts, SESSION_ABSOLUTE_MS, SESSION_IDLE_MS, sessions, type Db } from '@trang/db';
+import { accounts, SESSION_ABSOLUTE_MS, SESSION_IDLE_MS, sessions, type Db } from '@webnhanh/db';
 import { eq, sql } from 'drizzle-orm';
 import type { CookieOptions, Response } from 'express';
 import type { ServerConfig } from '../config';
@@ -71,7 +71,7 @@ export async function deleteSession(db: Db, token: string): Promise<void> {
  * runs over plain http on localhost, where a Secure cookie would be dropped by some browsers.
  */
 export function sessionCookieName(config: Pick<ServerConfig, 'nodeEnv'>): string {
-  return config.nodeEnv === 'production' ? '__Host-trang_session' : 'trang_session';
+  return config.nodeEnv === 'production' ? '__Host-webnhanh_session' : 'webnhanh_session';
 }
 
 function cookieOptions(config: Pick<ServerConfig, 'nodeEnv'>): CookieOptions {

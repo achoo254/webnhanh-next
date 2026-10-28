@@ -5,8 +5,8 @@
  * limits per IP and per site, and the order checked field by field. Unknown, unpublished or renamed-away sites
  * answer 404. Mounted before the app's own Origin check: the visitor's origin is the site, not the app.
  */
-import { SITE_NAME_PATTERN, siteOrigin, sites, verifyFormToken, type Db } from '@trang/db';
-import { ORDER_FIELDS, orderInputSchema, orderIssueFields, type OrderField } from '@trang/templates';
+import { SITE_NAME_PATTERN, siteOrigin, sites, verifyFormToken, type Db } from '@webnhanh/db';
+import { ORDER_FIELDS, orderInputSchema, orderIssueFields, type OrderField } from '@webnhanh/templates';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import express, { type Request, type RequestHandler, type Response, type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';

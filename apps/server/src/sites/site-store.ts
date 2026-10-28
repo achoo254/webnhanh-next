@@ -19,14 +19,14 @@ import {
   siteUploadsDir,
   type Db,
   type Job,
-} from '@trang/db';
-import { newShopDraft, SHOP_SAMPLES, SHOP_TEMPLATE } from '@trang/templates';
+} from '@webnhanh/db';
+import { newShopDraft, SHOP_SAMPLES, SHOP_TEMPLATE } from '@webnhanh/templates';
 import { and, count, eq, gt, ne } from 'drizzle-orm';
 import { HttpError } from '../http-error';
 import type { Site } from './site-access';
 
 /** The template's sample photos, found through its package so the path holds in the bundle too. */
-const SAMPLES_DIR = path.join(path.dirname(createRequire(import.meta.url).resolve('@trang/templates/package.json')), 'samples');
+const SAMPLES_DIR = path.join(path.dirname(createRequire(import.meta.url).resolve('@webnhanh/templates/package.json')), 'samples');
 
 /** Old names one site may hold at once: renaming back and forth must not reserve names by the dozen. */
 export const MAX_HELD_NAMES = 2;

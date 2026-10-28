@@ -18,7 +18,7 @@ export interface DbHandle {
  * packages/db/drizzle, found through the package's own name so the path stays right when this file is bundled
  * into the server or the worker.
  */
-const MIGRATIONS = path.join(path.dirname(createRequire(import.meta.url).resolve('@trang/db/package.json')), 'drizzle');
+const MIGRATIONS = path.join(path.dirname(createRequire(import.meta.url).resolve('@webnhanh/db/package.json')), 'drizzle');
 
 /** Real Postgres (production). Migrations run on open so the schema always matches the code. */
 export async function openPostgres(connectionString: string, options: { migrate: boolean }): Promise<DbHandle> {

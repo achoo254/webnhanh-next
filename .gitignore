@@ -7,7 +7,7 @@ coverage/
 # Dev database (PGlite) and published sites of a local run.
 .data/
 
-# Environment files hold secrets; production env lives on iCloud "ENV production/trang-next/".
+# Environment files hold secrets; production env lives on iCloud "ENV production/webnhanh-next/".
 .env
 .env.*
 !.env.example

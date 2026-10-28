@@ -6,7 +6,7 @@ body {
 
 :root {
   /* The app's purple-pink-orange gradient, from the shared tokens (violet, plum, amber). */
-  --trang-gradient: linear-gradient(135deg, var(--c-primary-solid) 0%, var(--c-accent) 55%, var(--c-warning) 100%);
+  --webnhanh-gradient: linear-gradient(135deg, var(--c-primary-solid) 0%, var(--c-accent) 55%, var(--c-warning) 100%);
 }
 
 .loading {
@@ -177,7 +177,7 @@ label.pill:has(+ input:focus-visible) {
   font-size: 18px;
   font-weight: 800;
   color: var(--c-on-primary);
-  background: var(--trang-gradient);
+  background: var(--webnhanh-gradient);
   box-shadow: var(--shadow-glow-primary);
 }
 .pill-dark {
@@ -245,7 +245,7 @@ label.pill:has(+ input:focus-visible) {
 }
 .site-card-media {
   aspect-ratio: 16 / 9;
-  background: var(--trang-gradient);
+  background: var(--webnhanh-gradient);
 }
 .site-card-media img {
   display: block;
@@ -299,7 +299,7 @@ label.pill:has(+ input:focus-visible) {
   overflow: hidden;
   border: 0;
   border-radius: var(--radius-xl);
-  background: var(--trang-gradient);
+  background: var(--webnhanh-gradient);
   font: inherit;
   text-align: start;
   color: var(--c-text);
@@ -705,7 +705,7 @@ button.bento-card:focus-visible {
   gap: var(--space-3);
   padding: var(--space-5) var(--space-4);
   border-radius: var(--radius-xl);
-  background: var(--trang-gradient);
+  background: var(--webnhanh-gradient);
   color: var(--c-on-primary);
 }
 .live p {

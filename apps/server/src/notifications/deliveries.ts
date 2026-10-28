@@ -4,7 +4,7 @@
  * service that is down never holds back the Chat message, nor the other way round, and the order itself is stored
  * whatever happens here. A row is leased while it is sent: a crash mid-send retries it after the lease.
  */
-import { chatLinks, notificationDeliveries, pushSubscriptions, sites, submissions, type Db } from '@trang/db';
+import { chatLinks, notificationDeliveries, pushSubscriptions, sites, submissions, type Db } from '@webnhanh/db';
 import { and, asc, eq, inArray, lte } from 'drizzle-orm';
 import { chatText, pushPayload, randomIdOf, type OrderNotice } from './order-message';
 import { DeliveryError, type Senders } from './senders';

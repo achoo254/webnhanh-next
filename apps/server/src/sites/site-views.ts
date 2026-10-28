@@ -1,5 +1,5 @@
 /** What the web app receives for sites, photos and jobs: never the account id or a file path. */
-import type { Job, JobStep, siteImages } from '@trang/db';
+import type { Job, JobStep, siteImages } from '@webnhanh/db';
 import type { Site } from './site-access';
 
 type ImageRow = typeof siteImages.$inferSelect;

@@ -2,7 +2,7 @@
  * The owner's inbox: orders of one site (open ones, or all), and marking one handled or open again. Every route
  * reaches the site through `ownedSite`.
  */
-import { isUuid, submissions, type Db } from '@trang/db';
+import { isUuid, submissions, type Db } from '@webnhanh/db';
 import { and, count, desc, eq, inArray, isNull, lt } from 'drizzle-orm';
 import express, { type Router } from 'express';
 import { accountOf, requireAccount } from '../auth/auth-routes';

@@ -1,11 +1,11 @@
-import { DEFAULT_SITE_MAX_MB } from '@trang/db';
+import { DEFAULT_SITE_MAX_MB } from '@webnhanh/db';
 import { z } from 'zod';
 
 const emptyIsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
 
 const Env = z.object({
   DATABASE_URL: z.url(),
-  /** Published sites, served by nginx (infra/nginx/hoandat.io.vn.conf); written only through @trang/publish. */
+  /** Published sites, served by nginx (infra/nginx/hoandat.io.vn.conf); written only through @webnhanh/publish. */
   SITES_DIR: z.string().min(1),
   /** Uploaded photos, written by the server. */
   UPLOADS_DIR: z.string().min(1),

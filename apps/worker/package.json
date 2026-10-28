@@ -1,5 +1,5 @@
 {
-  "name": "@trang/worker",
+  "name": "@webnhanh/worker",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.2.0",
-    "@trang/db": "workspace:*",
-    "@trang/publish": "workspace:*",
-    "@trang/templates": "workspace:*",
+    "@webnhanh/db": "workspace:*",
+    "@webnhanh/publish": "workspace:*",
+    "@webnhanh/templates": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "zod": "^4.6.7"
   },

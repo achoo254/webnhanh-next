@@ -11,7 +11,7 @@ let work: string;
 let sitesDir: string;
 
 beforeEach(async () => {
-  work = await mkdtemp(path.join(tmpdir(), 'trang-publish-'));
+  work = await mkdtemp(path.join(tmpdir(), 'webnhanh-publish-'));
   sitesDir = path.join(work, 'sites');
 });
 

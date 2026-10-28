@@ -18,8 +18,8 @@ import {
   sites,
   siteUploadsDir,
   type Db,
-} from '@trang/db';
-import { draftImageIds, shopDraftSchema, shopImageIds, shopPublishIssues } from '@trang/templates';
+} from '@webnhanh/db';
+import { draftImageIds, shopDraftSchema, shopImageIds, shopPublishIssues } from '@webnhanh/templates';
 import { and, asc, desc, eq, inArray, sum } from 'drizzle-orm';
 import express, { type RequestHandler, type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';
@@ -53,7 +53,7 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
   const signedIn = requireAccount(config, db);
   const json = express.json({ limit: '64kb' });
   const tools: ImageTools = { ffmpeg: config.ffmpegPath, ffprobe: config.ffprobePath };
-  const tmpDir = path.join(os.tmpdir(), 'trang-uploads');
+  const tmpDir = path.join(os.tmpdir(), 'webnhanh-uploads');
   const noStore: RequestHandler = (_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     next();

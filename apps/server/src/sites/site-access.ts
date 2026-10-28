@@ -1,4 +1,4 @@
-import { isUuid, sites, type Db } from '@trang/db';
+import { isUuid, sites, type Db } from '@webnhanh/db';
 import { and, eq } from 'drizzle-orm';
 import { HttpError } from '../http-error';
 

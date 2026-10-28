@@ -1,6 +1,6 @@
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { accounts, sessions } from '@trang/db';
+import { accounts, sessions } from '@webnhanh/db';
 import express from 'express';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../config';
@@ -30,7 +30,7 @@ async function startFakeIdp(): Promise<FakeIdp> {
   });
   app.post('/token', (req, res) => {
     idp.tokenRequests.push({ authorization: req.headers.authorization, form: req.body as Record<string, string> });
-    const claims = { iss: idp.issuer, aud: 'trang-web', exp: Math.floor(Date.now() / 1000) + 300, nonce: idp.nonce, sub: 'account-42' };
+    const claims = { iss: idp.issuer, aud: 'webnhanh-web', exp: Math.floor(Date.now() / 1000) + 300, nonce: idp.nonce, sub: 'account-42' };
     res.json({ id_token: `${b64({ alg: 'RS256' })}.${b64(claims)}.sig`, token_type: 'Bearer' });
   });
   const server: Server = app.listen(0, '127.0.0.1');
@@ -67,13 +67,13 @@ describe('sign-in with the account service', () => {
 
     expect((await http.get('/api/me')).status).toBe(401);
 
-    const login = await http.get('/auth/login?return=/trang&lang=en');
+    const login = await http.get('/auth/login?return=/webnhanh&lang=en');
     expect(login.status).toBe(302);
     const authorize = new URL(login.headers.location ?? '');
     expect(authorize.origin + authorize.pathname).toBe(`${idp.issuer}/auth`);
     const q = authorize.searchParams;
     expect(Object.fromEntries([...q].filter(([k]) => ['client_id', 'redirect_uri', 'response_type', 'scope', 'code_challenge_method', 'ui_locales'].includes(k)))).toEqual({
-      client_id: 'trang-web',
+      client_id: 'webnhanh-web',
       redirect_uri: `${ORIGIN}/auth/callback`,
       response_type: 'code',
       scope: 'openid',
@@ -83,17 +83,17 @@ describe('sign-in with the account service', () => {
     idp.nonce = q.get('nonce') ?? '';
 
     // A callback with another state is refused (back on the page it started from, with the failure noted).
-    expect((await http.get('/auth/callback?state=wrong&code=c1')).headers.location).toBe('/trang?login=fail');
+    expect((await http.get('/auth/callback?state=wrong&code=c1')).headers.location).toBe('/webnhanh?login=fail');
     expect(idp.tokenRequests).toHaveLength(0);
     // The refused attempt cleared the state cookie: start again.
-    const again = new URL((await http.get('/auth/login?return=/trang&lang=en')).headers.location ?? '');
+    const again = new URL((await http.get('/auth/login?return=/webnhanh&lang=en')).headers.location ?? '');
     idp.nonce = again.searchParams.get('nonce') ?? '';
     const callback = await http.get(`/auth/callback?state=${again.searchParams.get('state') ?? ''}&code=c1`);
     expect(callback.status).toBe(302);
-    expect(callback.headers.location).toBe('/trang');
+    expect(callback.headers.location).toBe('/webnhanh');
 
     const [request] = idp.tokenRequests;
-    expect(request?.authorization).toBe(`Basic ${Buffer.from(`trang-web:${SECRET}`).toString('base64')}`);
+    expect(request?.authorization).toBe(`Basic ${Buffer.from(`webnhanh-web:${SECRET}`).toString('base64')}`);
     expect(request?.form.grant_type).toBe('authorization_code');
     expect(codeChallenge(request?.form.code_verifier ?? '')).toBe(again.searchParams.get('code_challenge'));
 

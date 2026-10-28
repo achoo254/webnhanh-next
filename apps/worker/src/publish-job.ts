@@ -1,6 +1,6 @@
 /**
  * The `publish` job: the site's current draft, rendered with its template, its photos copied beside it, made live
- * through @trang/publish. Each named step is timed in `jobs.steps` for the progress screen.
+ * through @webnhanh/publish. Each named step is timed in `jobs.steps` for the progress screen.
  */
 import { randomUUID } from 'node:crypto';
 import { copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
@@ -21,8 +21,8 @@ import {
   type Db,
   type Job,
   type JobStep,
-} from '@trang/db';
-import { publishRelease, PublishError, removeSite } from '@trang/publish';
+} from '@webnhanh/db';
+import { publishRelease, PublishError, removeSite } from '@webnhanh/publish';
 import {
   imageAsset,
   orderProducts,
@@ -36,7 +36,7 @@ import {
   type ImageAsset,
   type ShareImage,
   type ShopDraft,
-} from '@trang/templates';
+} from '@webnhanh/templates';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 import { captureShareImage, cardFontUrl } from './share-image';
 
@@ -130,7 +130,7 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<string> {
   if (images.length !== ids.length) throw new JobError('image-missing', `${ids.length - images.length} photo(s) not stored`);
 
   const releaseId = randomUUID();
-  const work = path.join(deps.workDir ?? os.tmpdir(), `trang-publish-${releaseId}`);
+  const work = path.join(deps.workDir ?? os.tmpdir(), `webnhanh-publish-${releaseId}`);
   try {
     await clock.begin('render');
     const assets = new Map<string, ImageAsset>(images.map((image) => [image.id, imageAsset(image, (width) => `img/${imageFileName(image.id, width)}`)]));

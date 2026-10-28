@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { DEFAULT_SITE_MAX_MB } from '@trang/db';
+import { DEFAULT_SITE_MAX_MB } from '@webnhanh/db';
 import { z } from 'zod';
 
 const emptyIsUnset = (value: unknown): unknown => (value === '' ? undefined : value);
@@ -21,8 +21,8 @@ const Env = z.object({
   /** Where people open the app (no trailing slash); the sign-in callback is PUBLIC_URL/auth/callback. */
   PUBLIC_URL: z.preprocess(emptyIsUnset, z.url().default('http://localhost:5297')),
   AUTH_ISSUER: z.preprocess(emptyIsUnset, z.url().default('https://auth.hoandat.com')),
-  AUTH_CLIENT_ID: z.preprocess(emptyIsUnset, z.string().min(1).default('trang-web')),
-  /** Secret of the confidential client `trang-web` registered at the IdP. Unset: sign-in is off. */
+  AUTH_CLIENT_ID: z.preprocess(emptyIsUnset, z.string().min(1).default('webnhanh-web')),
+  /** Secret of the confidential client `webnhanh-web` registered at the IdP. Unset: sign-in is off. */
   AUTH_CLIENT_SECRET: z.preprocess(emptyIsUnset, z.string().min(32).optional()),
   /** Postgres; unset: embedded PGlite under .data/ (dev). */
   DATABASE_URL: z.preprocess(emptyIsUnset, z.url().optional()),

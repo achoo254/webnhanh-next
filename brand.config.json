@@ -1,8 +1,8 @@
 {
   "$schema": "./node_modules/@achoo254/brand/brand.config.schema.json",
-  "appName": "Trang Của Tôi",
-  "shortName": "Trang",
-  "description": "Làm một trang web từ mẫu có sẵn rồi đăng ra địa chỉ riêng <tên>.hoandat.io.vn; lập trình viên gắn link git hoặc tải file zip lên là có trang.",
+  "appName": "Web Nhanh",
+  "shortName": "Web Nhanh",
+  "description": "Làm một website từ mẫu có sẵn rồi đăng ra địa chỉ riêng <tên>.hoandat.io.vn; lập trình viên gắn link git hoặc tải file zip lên là có website.",
   "colors": {
     "primary": "#6e56cf",
     "background": "#f9f9fb",
@@ -11,14 +11,14 @@
   "icon": "brand/icon.svg",
   "iconMaskable": "brand/icon-maskable.svg",
   "appIds": {
-    "ios": "com.hoandat.trang"
+    "ios": "com.hoandat.webnhanh"
   },
-  "urlScheme": "com.hoandat.trang",
+  "urlScheme": "com.hoandat.webnhanh",
   "primaryTenant": {
     "domain": "hoandat.com",
     "issuer": "https://auth.hoandat.com"
   },
   "hostTemplates": {
-    "web": "trang.{domain}"
+    "web": "webnhanh.{domain}"
   }
 }

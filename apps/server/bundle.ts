@@ -1,4 +1,4 @@
-// Production bundle: one ESM file. Migrations are found through @trang/db at run time, so the release keeps the
+// Production bundle: one ESM file. Migrations are found through @webnhanh/db at run time, so the release keeps the
 // workspace's node_modules (pnpm install --prod on the server).
 import { build } from 'esbuild';
 

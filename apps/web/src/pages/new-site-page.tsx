@@ -1,6 +1,6 @@
-import { checkSiteName } from '@trang/db/site-name';
-import { SHOP_TEMPLATE } from '@trang/templates';
-import shopCover from '@trang/templates/samples/shop-cover.webp';
+import { checkSiteName } from '@webnhanh/db/site-name';
+import { SHOP_TEMPLATE } from '@webnhanh/templates';
+import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { SITES_DOMAIN } from '../brand';

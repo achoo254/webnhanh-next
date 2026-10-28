@@ -2,7 +2,7 @@
  * The site API (apps/server/src/sites/site-routes.ts) as the web app uses it. Every response is checked against
  * its shape before the app relies on it.
  */
-import { imageAsset, shopDraftSchema, type ImageAsset, type ShopDraft } from '@trang/templates';
+import { imageAsset, shopDraftSchema, type ImageAsset, type ShopDraft } from '@webnhanh/templates';
 import { z } from 'zod';
 import { apiError, ApiError, call } from './api';
 

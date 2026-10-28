@@ -14,7 +14,7 @@ export const LOGIN_PATH = '/login';
  * name, skip link, footer with the language and theme switches, ecosystem and legal links. Signed in, `accountSlot`
  * takes the place of the sign-in pill.
  */
-export function TrangPage({
+export function AppPage({
   children,
   layout = 'flow',
   navLinks,

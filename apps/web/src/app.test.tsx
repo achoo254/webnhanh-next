@@ -46,7 +46,7 @@ describe('web app', () => {
     renderAt('/');
     const cta = await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' });
     expect(cta.getAttribute('href')).toBe('/auth/login?return=%2F&lang=vi');
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Có trang web riêng mà không cần biết làm web');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Có website riêng mà không cần biết làm web');
     expect(document.querySelector('[data-id="theme-switch"]')).not.toBeNull();
     expect(document.querySelector('[data-id="lang-en"]')).not.toBeNull();
   });
@@ -60,8 +60,8 @@ describe('web app', () => {
   it('shows a signed-in account without pages the way to make one, with sign-out', async () => {
     stubMe(200, { account: { id: 'a1', createdAt: '2026-10-28T03:00:00.000Z' } });
     renderAt('/');
-    expect(await screen.findByText('Bạn chưa có trang nào')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Tạo trang mới' }).getAttribute('href')).toBe('/new');
+    expect(await screen.findByText('Bạn chưa có website nào')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Tạo website mới' }).getAttribute('href')).toBe('/new');
     expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
   });
@@ -70,6 +70,6 @@ describe('web app', () => {
     document.cookie = 'hd_lang=en; Path=/';
     stubMe(401, { error: 'sign-in-required' });
     renderAt('/');
-    expect(await screen.findByText('Your own web page, no web skills needed')).toBeTruthy();
+    expect(await screen.findByText('Your own website, no web skills needed')).toBeTruthy();
   });
 });

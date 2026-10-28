@@ -1,4 +1,4 @@
-import type { ShopIssue } from '@trang/templates';
+import type { ShopIssue } from '@webnhanh/templates';
 import { ApiError } from './api';
 import type { MessageKey } from './i18n';
 

@@ -9,7 +9,7 @@
  * The reply rides in the response (`sendMessage` method), so a webhook needs no call back to the Bot API. Handling
  * is idempotent: an update delivered twice finds its code already used and changes nothing.
  */
-import { CHAT_LINK_CODE_MS, chatLinkCodes, chatLinks, type Db } from '@trang/db';
+import { CHAT_LINK_CODE_MS, chatLinkCodes, chatLinks, type Db } from '@webnhanh/db';
 import { and, eq, gt } from 'drizzle-orm';
 import express, { type Router } from 'express';
 import brandConfig from '../../../../brand.config.json';
@@ -34,7 +34,7 @@ export function privateText(update: unknown): PrivateText | null {
   return { chatId: id, text: text.trim() };
 }
 
-const HOW_TO = `Mở ${brandConfig.appName}, vào Đơn hàng của trang rồi bấm "Nhận báo đơn qua Chat" để nhận tin khi có đơn mới.`;
+const HOW_TO = `Mở ${brandConfig.appName}, vào Đơn hàng của website rồi bấm "Nhận báo đơn qua Chat" để nhận tin khi có đơn mới.`;
 
 /** What the bot answers `message`, after doing what it asks. */
 async function handle(db: Db, message: PrivateText, now: Date): Promise<string> {

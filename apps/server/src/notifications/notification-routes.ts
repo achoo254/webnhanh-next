@@ -3,7 +3,7 @@
  * linking the Chat app (a one-time code in the bot's deep link; the bot's webhook completes the link).
  */
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
-import { CHAT_LINK_CODE_MS, chatLinkCodes, chatLinks, pushSubscriptions, type Db } from '@trang/db';
+import { CHAT_LINK_CODE_MS, chatLinkCodes, chatLinks, pushSubscriptions, type Db } from '@webnhanh/db';
 import { and, eq } from 'drizzle-orm';
 import express, { type Router } from 'express';
 import { rateLimit } from 'express-rate-limit';

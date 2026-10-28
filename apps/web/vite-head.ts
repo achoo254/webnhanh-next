@@ -1,7 +1,7 @@
 /*
  * Vite plugins of the web app.
  *
- * trangHead: the head tags from brand.config.json (title, description, Open Graph, favicon from brand/icon.svg, the web
+ * brandHead: the head tags from brand.config.json (title, description, Open Graph, favicon from brand/icon.svg, the web
  * app manifest) and the shared theme script of @achoo254/app-shell, inline before the stylesheet so a dark choice
  * never flashes white. The manifest lets phones install the app, which iPhone and iPad need before they allow Web
  * Push of new orders.
@@ -25,7 +25,7 @@ const MANIFEST = 'manifest.webmanifest';
 const HTML_ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 const escapeHtml = (value: string): string => value.replace(/[&<>"]/g, (c) => HTML_ESCAPES[c] ?? c);
 
-export function trangHead(): Plugin[] {
+export function brandHead(): Plugin[] {
   const brand = loadBrandConfig(REPO_ROOT);
   const icon = (): Buffer => readFileSync(new URL(brand.icon, REPO_ROOT));
   const origin = primaryOrigin(brand);
@@ -57,7 +57,7 @@ export function trangHead(): Plugin[] {
   ].join('\n    ');
   return [
     {
-      name: 'trang-favicon',
+      name: 'webnhanh-favicon',
       configureServer(server) {
         server.middlewares.use((req, res, next) => {
           const path = req.url?.split('?')[0];
@@ -76,7 +76,7 @@ export function trangHead(): Plugin[] {
       },
     },
     {
-      name: 'trang-head',
+      name: 'webnhanh-head',
       transformIndexHtml: {
         order: 'pre',
         handler(html) {

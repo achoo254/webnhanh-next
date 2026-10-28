@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useI18n } from '../i18n';
-import { TrangPage } from '../public-page';
+import { AppPage } from '../public-page';
 
 export function NotFound(): ReactNode {
   const { t } = useI18n();
   return (
-    <TrangPage>
+    <AppPage>
       <section className="prose" data-id="not-found">
         <h1>{t('notFound.title')}</h1>
         <p>
@@ -15,6 +15,6 @@ export function NotFound(): ReactNode {
           </Link>
         </p>
       </section>
-    </TrangPage>
+    </AppPage>
   );
 }

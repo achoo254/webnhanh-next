@@ -4,8 +4,8 @@
  * uses any more (replaced or removed in the editor) once they are a day old. A release keeps its own copies, so a
  * live page never loses a photo to this.
  */
-import { deleteSiteImages, pruneChatLinkCodes, pruneDeliveries, pruneNameHolds, pruneSessions, siteImages, sites, type Db } from '@trang/db';
-import { draftImageIds } from '@trang/templates';
+import { deleteSiteImages, pruneChatLinkCodes, pruneDeliveries, pruneNameHolds, pruneSessions, siteImages, sites, type Db } from '@webnhanh/db';
+import { draftImageIds } from '@webnhanh/templates';
 import { eq, lt } from 'drizzle-orm';
 
 /** A photo is only treated as unused once it is this old: an upload that no save has used yet is kept. */

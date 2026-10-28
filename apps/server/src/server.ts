@@ -1,4 +1,4 @@
-import { openPglite, openPostgres } from '@trang/db';
+import { openPglite, openPostgres } from '@webnhanh/db';
 import brandConfig from '../../../brand.config.json';
 import { createApp } from './app';
 import { DEV_PGLITE_DIR, DEV_SITES_DIR, loadConfig } from './config';
@@ -8,7 +8,7 @@ import { webPushSender } from './notifications/web-push-sender';
 import { canWriteWebp } from './sites/image-processing';
 
 const config = loadConfig();
-// Migrations of @trang/db run on open, so the schema always matches this release.
+// Migrations of @webnhanh/db run on open, so the schema always matches this release.
 const database = config.databaseUrl ? await openPostgres(config.databaseUrl, { migrate: true }) : await openPglite(DEV_PGLITE_DIR);
 console.log(config.databaseUrl ? 'database: Postgres (DATABASE_URL)' : `database: PGlite at ${DEV_PGLITE_DIR}`);
 
@@ -17,10 +17,10 @@ if (!(await canWriteWebp({ ffmpeg: config.ffmpegPath, ffprobe: config.ffprobePat
 }
 
 // Dev runs on PGlite, which only one process can open: the publish worker runs inside the dev server. Production
-// has its own service (trang-worker).
+// has its own service (webnhanh-worker).
 const devWorker = config.databaseUrl
   ? null
-  : await import('@trang/worker').then(({ startWorker }) =>
+  : await import('@webnhanh/worker').then(({ startWorker }) =>
       startWorker({
         db: database.db,
         sitesDir: DEV_SITES_DIR,
@@ -51,7 +51,7 @@ console.log(`order notifications: push ${config.push ? 'on' : 'off (no VAPID key
 const app = createApp({ config, db: database.db, onOrder: deliveries.wake });
 // Loopback only: nginx (production) or the Vite dev server (dev) is in front.
 const server = app.listen(config.port, '127.0.0.1', () => {
-  console.log(`trang server on 127.0.0.1:${config.port} (${config.nodeEnv}); sign-in ${config.auth ? 'on' : 'off (no AUTH_CLIENT_SECRET)'}`);
+  console.log(`webnhanh server on 127.0.0.1:${config.port} (${config.nodeEnv}); sign-in ${config.auth ? 'on' : 'off (no AUTH_CLIENT_SECRET)'}`);
 });
 server.on('error', (error) => {
   console.error(`server failed: ${error.message}`);

@@ -1,16 +1,16 @@
 import type { ReactNode } from 'react';
 import { brand, SITES_DOMAIN } from '../brand';
 import { useI18n } from '../i18n';
-import { TrangPage } from '../public-page';
+import { AppPage } from '../public-page';
 
 function LegalPage({ title, dataId, children }: { readonly title: string; readonly dataId: string; readonly children: ReactNode }): ReactNode {
   return (
-    <TrangPage>
+    <AppPage>
       <article className="prose" data-id={dataId}>
         <h1>{title}</h1>
         {children}
       </article>
-    </TrangPage>
+    </AppPage>
   );
 }
 
@@ -32,9 +32,9 @@ export function PrivacyPage(): ReactNode {
           </p>
           <h2>Lựa chọn giao diện</h2>
           <p>Ngôn ngữ và giao diện sáng/tối bạn chọn được lưu trong cookie <code>hd_lang</code>, <code>hd_theme</code>, dùng chung cho các app của {domain}.</p>
-          <h2>Trang bạn đăng</h2>
+          <h2>Website bạn đăng</h2>
           <p>
-            Trang bạn đăng ở địa chỉ dạng tên-của-bạn.{SITES_DOMAIN} là trang công khai: ai có link đều xem được. Ở các trang đó {name} không
+            Website bạn đăng ở địa chỉ dạng tên-của-bạn.{SITES_DOMAIN} là website công khai: ai có link đều xem được. Ở các website đó {name} không
             đặt cookie nào.
           </p>
           <h2>Không có</h2>
@@ -51,10 +51,10 @@ export function PrivacyPage(): ReactNode {
           </p>
           <h2>Display choices</h2>
           <p>The language and light/dark theme you pick are kept in the <code>hd_lang</code> and <code>hd_theme</code> cookies, shared by the {domain} apps.</p>
-          <h2>Pages you publish</h2>
+          <h2>Websites you publish</h2>
           <p>
-            A page you publish at an address like your-name.{SITES_DOMAIN} is public: anyone with the link can see it. {name} sets no cookie
-            on those pages.
+            A website you publish at an address like your-name.{SITES_DOMAIN} is public: anyone with the link can see it. {name} sets no cookie
+            on those websites.
           </p>
           <h2>None of this</h2>
           <p>No ads, no selling or sharing of data with third parties. Visits are counted anonymously by Cloudflare Web Analytics, without cookies.</p>
@@ -77,8 +77,8 @@ export function TermsPage(): ReactNode {
             Bạn chịu trách nhiệm về chữ, ảnh và mã nguồn bạn đưa lên: bạn phải có quyền dùng chúng. Không đăng nội dung vi phạm pháp luật,
             lừa đảo, giả mạo ngân hàng, cơ quan nhà nước hay thương hiệu khác, xúc phạm hay xâm phạm quyền của người khác.
           </p>
-          <h2>Gỡ trang</h2>
-          <p>Trang vi phạm các điều trên có thể bị gỡ ngay, không cần báo trước.</p>
+          <h2>Gỡ website</h2>
+          <p>Website vi phạm các điều trên có thể bị gỡ ngay, không cần báo trước.</p>
           <h2>Dịch vụ</h2>
           <p>{name} đang được làm và có thể thay đổi; dịch vụ được cung cấp như hiện có, không cam kết luôn hoạt động.</p>
         </>
@@ -92,7 +92,7 @@ export function TermsPage(): ReactNode {
             others&apos; rights.
           </p>
           <h2>Removal</h2>
-          <p>A page that breaks these terms may be removed at once, without notice.</p>
+          <p>A website that breaks these terms may be removed at once, without notice.</p>
           <h2>The service</h2>
           <p>{name} is being built and may change; it is provided as is, with no promise that it is always available.</p>
         </>

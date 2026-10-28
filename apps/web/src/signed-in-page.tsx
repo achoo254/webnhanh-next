@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router';
 import type { Account } from './api';
 import { useAccount } from './account';
 import { useI18n } from './i18n';
-import { LOGIN_PATH, TrangPage } from './public-page';
+import { LOGIN_PATH, AppPage } from './public-page';
 
 function SignOutButton(): ReactNode {
   const { t } = useI18n();
@@ -31,13 +31,13 @@ export function SignedInPage({ children }: { readonly children: (account: Accoun
   const { pathname } = useLocation();
   if (account === undefined) {
     return (
-      <TrangPage>
+      <AppPage>
         <p className="loading" role="status">
           {t('loading')}
         </p>
-      </TrangPage>
+      </AppPage>
     );
   }
   if (account === null) return <Navigate to={`${LOGIN_PATH}?return=${encodeURIComponent(pathname)}`} replace />;
-  return <TrangPage accountSlot={<SignOutButton />}>{children(account)}</TrangPage>;
+  return <AppPage accountSlot={<SignOutButton />}>{children(account)}</AppPage>;
 }

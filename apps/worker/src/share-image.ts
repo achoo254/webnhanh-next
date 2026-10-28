@@ -1,5 +1,5 @@
 /**
- * The share picture of a published page (`og:image`): the card HTML of @trang/templates, photographed by headless
+ * The share picture of a published page (`og:image`): the card HTML of @webnhanh/templates, photographed by headless
  * Chrome at 1200×630, then made a JPEG with ffmpeg (a PNG when ffmpeg cannot). Chrome gets a minimal environment
  * (nothing of the worker's env, which holds the database password), a throwaway profile, and no network: the card
  * loads only the files laid out beside it. Any failure is the caller's to log; the page is published without the
@@ -10,7 +10,7 @@ import { copyFile, mkdir, stat, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { CARD_FONTS, SHARE_CARD_SIZE } from '@trang/templates';
+import { CARD_FONTS, SHARE_CARD_SIZE } from '@webnhanh/templates';
 
 /** Chrome and ffmpeg together get this long; a hung one is killed with its whole process group. */
 export const SHARE_IMAGE_TIMEOUT_MS = 30_000;

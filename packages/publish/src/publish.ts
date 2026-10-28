@@ -1,6 +1,6 @@
 import { cp, lstat, mkdir, readdir, readlink, rename, rm, stat, symlink } from 'node:fs/promises';
 import path from 'node:path';
-import { SITE_NAME_PATTERN } from '@trang/db';
+import { SITE_NAME_PATTERN } from '@webnhanh/db';
 
 /**
  * Layout under SITES_DIR, served by nginx (infra/nginx/hoandat.io.vn.conf):

@@ -2,8 +2,8 @@
  * Answers of the order endpoint, in the visitor's language (the pages are Vietnamese). The page's script asks for
  * JSON and shows `message`; a plain form post (no script) gets a small HTML page with a way back to the shop.
  */
-import { siteOrigin } from '@trang/db';
-import { escapeHtml, ORDER_LABELS, type OrderField } from '@trang/templates';
+import { siteOrigin } from '@webnhanh/db';
+import { escapeHtml, ORDER_LABELS, type OrderField } from '@webnhanh/templates';
 import type { Request, Response } from 'express';
 
 export const FORM_MESSAGES = {

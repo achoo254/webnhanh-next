@@ -1,16 +1,16 @@
-# /etc/systemd/system/trang-server.service — the Trang API (sign-in, sessions, site editing, photo uploads).
+# /etc/systemd/system/webnhanh-server.service — the Web Nhanh API (sign-in, sessions, site editing, photo uploads).
 [Unit]
-Description=Trang API server
+Description=Web Nhanh API server
 After=network-online.target postgresql.service
 Wants=network-online.target postgresql.service
 
 [Service]
-User=trang
-Group=trang
+User=webnhanh
+Group=webnhanh
 # NODE_ENV=production, PORT=4860, PUBLIC_URL, DATABASE_URL, AUTH_*, UPLOADS_DIR, FFMPEG_PATH, FFPROBE_PATH: never in
 # the repo (docs/deployment-guide.md).
-EnvironmentFile=/etc/trang/production.env
-WorkingDirectory=/var/www/trang/app
+EnvironmentFile=/etc/webnhanh/production.env
+WorkingDirectory=/var/www/webnhanh/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/server/dist/server.mjs
 Restart=on-failure
 RestartSec=3
@@ -22,8 +22,8 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-# Uploaded photos; published sites are written by trang-worker only.
-ReadWritePaths=/var/www/trang/uploads
+# Uploaded photos; published sites are written by webnhanh-worker only.
+ReadWritePaths=/var/www/webnhanh/uploads
 
 [Install]
 WantedBy=multi-user.target

@@ -1,7 +1,7 @@
 /**
  * The pure parts of "sign in with a hoandat.com account" (OpenID Connect, Code + PKCE against auth.hoandat.com,
- * confidential client `trang-web`, scope `openid`), ported from tieu-de-next: the signed state cookie and the ID
- * token checks. Trang only needs the account's `sub`. The ID token comes straight from the token endpoint over TLS
+ * confidential client `webnhanh-web`, scope `openid`), ported from tieu-de-next: the signed state cookie and the ID
+ * token checks. Web Nhanh only needs the account's `sub`. The ID token comes straight from the token endpoint over TLS
  * with client authentication, so its signature is not re-checked here (OIDC Core 3.1.3.7, step 6); issuer,
  * audience, expiry and nonce are.
  */

@@ -1,5 +1,5 @@
-// The publish worker (systemd trang-worker): one job at a time from the Postgres queue.
-import { openPostgres } from '@trang/db';
+// The publish worker (systemd webnhanh-worker): one job at a time from the Postgres queue.
+import { openPostgres } from '@webnhanh/db';
 import brandConfig from '../../../brand.config.json';
 import { loadWorkerConfig } from './config';
 import { startWorker } from './worker-loop';
@@ -22,7 +22,7 @@ const worker = startWorker({
   pollMs: config.pollMs,
   log,
 });
-console.log(`trang worker polling every ${config.pollMs} ms; sites in ${config.sitesDir}; share pictures ${config.chromePath ? `by ${config.chromePath}` : 'off (no CHROME_PATH)'}`);
+console.log(`webnhanh worker polling every ${config.pollMs} ms; sites in ${config.sitesDir}; share pictures ${config.chromePath ? `by ${config.chromePath}` : 'off (no CHROME_PATH)'}`);
 
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   // A publish takes seconds: finish the job in hand, then exit (systemd waits TimeoutStopSec).

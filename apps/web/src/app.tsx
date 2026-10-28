@@ -6,7 +6,7 @@ import { LandingPage } from './pages/landing-page';
 import { PrivacyPage, TermsPage } from './pages/legal-pages';
 import { LoginPage } from './pages/login-page';
 import { NotFound } from './pages/not-found';
-import { LOGIN_PATH, TrangPage } from './public-page';
+import { LOGIN_PATH, AppPage } from './public-page';
 
 // The signed-in pages carry the template renderer and the response checks: loaded only once someone signs in, so
 // the landing stays small.
@@ -18,11 +18,11 @@ const OrdersPage = lazy(() => import('./pages/orders-page').then((m) => ({ defau
 function Loading(): ReactNode {
   const { t } = useI18n();
   return (
-    <TrangPage>
+    <AppPage>
       <p className="loading" role="status">
         {t('loading')}
       </p>
-    </TrangPage>
+    </AppPage>
   );
 }
 

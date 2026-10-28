@@ -15,7 +15,7 @@ export const SITE_NAME_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,28})[a-z0-9]$/;
 /** Names kept for the service itself, its subdomains, and the smoke-test site. */
 const RESERVED = new Set([
   'www', 'api', 'app', 'admin', 'auth', 'login', 'mail', 'smtp', 'imap', 'pop', 'ftp', 'ns1', 'ns2', 'cdn',
-  'static', 'assets', 'media', 'status', 'help', 'support', 'docs', 'blog', 'trang', 'hoandat', 'root', 'abuse',
+  'static', 'assets', 'media', 'status', 'help', 'support', 'docs', 'blog', 'trang', 'webnhanh', 'web-nhanh', 'hoandat', 'root', 'abuse',
   'postmaster', 'webmaster', 'security', 'kiem-tra',
 ]);
 

@@ -1,4 +1,4 @@
-import type { ShopDraft } from '@trang/templates';
+import type { ShopDraft } from '@webnhanh/templates';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,11 +91,11 @@ describe('home with pages', () => {
     expect(await screen.findByText('nha-bo.hoandat.io.vn')).toBeTruthy();
     expect(screen.getByText('Đã đăng')).toBeTruthy();
     expect(screen.getByText('Bản nháp')).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Xem trang' }).getAttribute('href')).toBe('https://nha-bo.hoandat.io.vn/');
+    expect(screen.getByRole('link', { name: 'Xem website' }).getAttribute('href')).toBe('https://nha-bo.hoandat.io.vn/');
     expect(screen.getAllByRole('link', { name: 'Sửa' })[0]?.getAttribute('href')).toBe(`/sites/${SITE_ID}`);
     // At the limit: no button to make another page, and why.
-    expect(screen.queryByRole('link', { name: 'Tạo trang mới' })).toBeNull();
-    expect(screen.getByText(/đủ 2 trang/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Tạo website mới' })).toBeNull();
+    expect(screen.getByText(/đủ 2 website/)).toBeTruthy();
   });
 });
 
@@ -108,14 +108,14 @@ describe('making a page', () => {
     expect(document.querySelector('[data-id="template-wedding"]')?.getAttribute('aria-disabled')).toBe('true');
     expect(screen.getAllByText('Sắp có')).toHaveLength(4);
 
-    const input = screen.getByLabelText('Địa chỉ trang');
+    const input = screen.getByLabelText('Địa chỉ website');
     fireEvent.change(input, { target: { value: 'vietcombank-hotro' } });
     expect(screen.getByRole('alert').textContent).toContain('giả mạo');
-    expect((screen.getByRole('button', { name: 'Tạo trang' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Tạo website' }) as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.change(input, { target: { value: 'Nha-Bo' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo trang' }));
-    expect(await screen.findByTitle('Xem trước trang')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
+    expect(await screen.findByTitle('Xem trước website')).toBeTruthy();
     expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'nha-bo', template: 'shop' });
   });
 
@@ -123,8 +123,8 @@ describe('making a page', () => {
     on('POST', '/api/sites', () => ({ status: 409, body: { error: 'name-taken' } }));
     renderAt('/new');
     fireEvent.click(await screen.findByRole('button', { name: /Bán hàng nhận đơn/ }));
-    fireEvent.change(screen.getByLabelText('Địa chỉ trang'), { target: { value: 'nha-bo' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Tạo trang' }));
+    fireEvent.change(screen.getByLabelText('Địa chỉ website'), { target: { value: 'nha-bo' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
     expect((await screen.findByRole('alert')).textContent).toContain('đã có người dùng');
   });
 });
@@ -178,7 +178,7 @@ describe('editor', () => {
     renderAt(`/sites/${SITE_ID}`);
     fireEvent.change(await screen.findByLabelText('Số điện thoại'), { target: { value: '123' } });
     expect(screen.getByText('Chưa đúng số điện thoại Việt Nam.')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Đăng trang' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
     expect((await screen.findByText(/chỗ cần sửa/)).textContent).toBe('Còn 3 chỗ cần sửa trước khi đăng.');
     expect(screen.getAllByText('Cần điền ô này trước khi đăng.')).toHaveLength(2);
     expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
@@ -200,9 +200,9 @@ describe('editor', () => {
         : { status: 200, body: { job: { ...job, status: 'done', startedAt: at(0), finishedAt: at(2.5), steps }, siteName: 'nha-bo' } };
     });
     renderAt(`/sites/${SITE_ID}`);
-    fireEvent.click(await screen.findByRole('button', { name: 'Đăng trang' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
     expect(await screen.findByText('Kiểm tra nội dung', {}, { timeout: 3000 })).toBeTruthy();
-    expect(await screen.findByText('Trang của bạn đã lên mạng', {}, { timeout: 4000 })).toBeTruthy();
+    expect(await screen.findByText('Website của bạn đã lên mạng', {}, { timeout: 4000 })).toBeTruthy();
     expect(screen.getAllByText('0,5 giây', { selector: '.step-time' })).toHaveLength(5);
     expect(document.querySelector('[data-id="publish-url"]')?.textContent).toBe('nha-bo.hoandat.io.vn');
     expect(screen.getByRole('link', { name: 'Xem như khách' }).getAttribute('href')).toBe('https://nha-bo.hoandat.io.vn/');
@@ -225,6 +225,6 @@ describe('editor', () => {
   it('says so when the page is not in the account', async () => {
     on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 404, body: { error: 'site-not-found' } }));
     renderAt(`/sites/${SITE_ID}`);
-    expect((await screen.findByRole('alert')).textContent).toBe('Không tìm thấy trang này trong tài khoản của bạn.');
+    expect((await screen.findByRole('alert')).textContent).toBe('Không tìm thấy website này trong tài khoản của bạn.');
   });
 });

@@ -4,7 +4,7 @@ import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
 export const accounts = pgTable('accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
-  /** `sub` of the ID token from auth.hoandat.com: the only thing Trang learns about the person. */
+  /** `sub` of the ID token from auth.hoandat.com: the only thing Web Nhanh learns about the person. */
   sub: text('sub').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
 });
@@ -13,7 +13,7 @@ export const accounts = pgTable('accounts', {
 export const SESSION_ABSOLUTE_MS = 30 * 24 * 60 * 60 * 1000;
 export const SESSION_IDLE_MS = 7 * 24 * 60 * 60 * 1000;
 
-/** Web sessions of trang.hoandat.com: the id is the sha256 of the cookie token, so a database leak hands out no live session. */
+/** Web sessions of webnhanh.hoandat.com: the id is the sha256 of the cookie token, so a database leak hands out no live session. */
 export const sessions = pgTable(
   'sessions',
   {
@@ -57,7 +57,7 @@ export const sites = pgTable(
     status: text('status').$type<SiteStatus>().notNull(),
     /** The release `current` points to; null until the first publish. */
     currentReleaseId: uuid('current_release_id'),
-    /** Template of a `template` site (`@trang/templates`); null for developer sites. */
+    /** Template of a `template` site (`@webnhanh/templates`); null for developer sites. */
     template: text('template'),
     /**
      * What the owner is editing, checked against the template's draft schema on every save. The last publish rendered

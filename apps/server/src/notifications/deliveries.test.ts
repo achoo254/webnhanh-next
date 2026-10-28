@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { accounts, chatLinks, notificationDeliveries, openPglite, pushSubscriptions, sites, submissions, type DbHandle } from '@trang/db';
+import { accounts, chatLinks, notificationDeliveries, openPglite, pushSubscriptions, sites, submissions, type DbHandle } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { recordOrder } from '../orders/order-store';

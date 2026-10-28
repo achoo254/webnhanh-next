@@ -1,4 +1,4 @@
-import { checkSiteName } from '@trang/db/site-name';
+import { checkSiteName } from '@webnhanh/db/site-name';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { siteHost, SITES_DOMAIN } from '../brand';
 import { errorMessage } from '../error-messages';

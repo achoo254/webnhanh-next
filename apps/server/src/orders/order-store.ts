@@ -4,7 +4,7 @@
  * Channels the server has no keys for get no rows; the in-app inbox needs none (an unhandled order is the badge).
  */
 import { randomUUID } from 'node:crypto';
-import { chatLinks, notificationDeliveries, pushSubscriptions, submissions, type Db, type OrderData } from '@trang/db';
+import { chatLinks, notificationDeliveries, pushSubscriptions, submissions, type Db, type OrderData } from '@webnhanh/db';
 import { eq } from 'drizzle-orm';
 
 export interface OrderChannels {

@@ -1,6 +1,6 @@
 /**
  * The order form of a shop page, and the rules an order must follow. The form is plain HTML that posts to the app
- * (`https://trang.hoandat.com/f/<site>`) and works without script; a small fixed script only sends it with fetch and
+ * (`https://webnhanh.hoandat.com/f/<site>`) and works without script; a small fixed script only sends it with fetch and
  * shows the answer in place. The script never changes with the page, so the page's Content-Security-Policy allows it
  * by one fixed hash (`ORDER_SCRIPT_HASH`, checked by the tests) and nothing else.
  */

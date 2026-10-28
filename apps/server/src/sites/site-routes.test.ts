@@ -2,8 +2,8 @@ import { spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { jobs, siteImages, siteNameHolds, sites } from '@trang/db';
-import type { ShopDraft } from '@trang/templates';
+import { jobs, siteImages, siteNameHolds, sites } from '@webnhanh/db';
+import type { ShopDraft } from '@webnhanh/templates';
 import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ORIGIN, startTestApp, type TestApp } from '../test-support';
@@ -19,7 +19,7 @@ let stranger: { accountId: string; cookie: string };
 
 beforeEach(async () => {
   // A dot in the uploads path, as in dev (.data/uploads): photos must still be served.
-  const uploadsDir = await mkdtemp(path.join(os.tmpdir(), '.trang-uploads-'));
+  const uploadsDir = await mkdtemp(path.join(os.tmpdir(), '.webnhanh-uploads-'));
   app = await startTestApp({ sitesPerAccount: 2, uploadsDir });
   owner = await app.signIn('owner');
   stranger = await app.signIn('stranger');

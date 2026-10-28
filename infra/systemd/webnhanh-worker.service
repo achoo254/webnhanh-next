@@ -1,18 +1,18 @@
-# /etc/systemd/system/trang-worker.service — publishes queued sites one at a time: renders the template, copies the
+# /etc/systemd/system/webnhanh-worker.service — publishes queued sites one at a time: renders the template, copies the
 # photos, photographs the share picture with headless Chrome (CHROME_PATH), makes the release live through
-# @trang/publish. Also deletes expired sessions, name holds, link codes, old notification records and unused photos.
+# @webnhanh/publish. Also deletes expired sessions, name holds, link codes, old notification records and unused photos.
 [Unit]
-Description=Trang publish worker
-After=network-online.target postgresql.service trang-server.service
+Description=Web Nhanh publish worker
+After=network-online.target postgresql.service webnhanh-server.service
 Wants=network-online.target postgresql.service
 
 [Service]
-User=trang
-Group=trang
+User=webnhanh
+Group=webnhanh
 # DATABASE_URL, SITES_DIR, UPLOADS_DIR, PUBLIC_URL, FORM_SECRET, CHROME_PATH, FFMPEG_PATH, SITE_MAX_MB (the shared
 # env file; docs/deployment-guide.md). Chrome and ffmpeg get a minimal environment of their own, never this file.
-EnvironmentFile=/etc/trang/production.env
-WorkingDirectory=/var/www/trang/app
+EnvironmentFile=/etc/webnhanh/production.env
+WorkingDirectory=/var/www/webnhanh/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/main.mjs
 Restart=on-failure
 RestartSec=5
@@ -25,14 +25,14 @@ Nice=10
 TimeoutStopSec=30
 UMask=0027
 # Loopback only: Postgres on 127.0.0.1 is all the worker talks to; Chrome resolves no name either (share-image.ts).
-# Order notifications go out from trang-server, not from here.
+# Order notifications go out from webnhanh-server, not from here.
 IPAddressDeny=any
 IPAddressAllow=localhost
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/www/trang/sites /var/www/trang/uploads
+ReadWritePaths=/var/www/webnhanh/sites /var/www/webnhanh/uploads
 
 [Install]
 WantedBy=multi-user.target

@@ -1,4 +1,4 @@
-import type { Db } from '@trang/db';
+import type { Db } from '@webnhanh/db';
 import express, { type ErrorRequestHandler, type Express } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';

@@ -1,5 +1,5 @@
 {
-  "name": "trang-next",
+  "name": "webnhanh-next",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.9.0",
@@ -7,7 +7,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @trang/server --filter @trang/web dev",
+    "dev": "pnpm --parallel --filter @webnhanh/server --filter @webnhanh/web dev",
     "build": "pnpm -r --if-present build",
     "lint": "eslint . --max-warnings=0 && pnpm check:brand",
     "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r --if-present typecheck",

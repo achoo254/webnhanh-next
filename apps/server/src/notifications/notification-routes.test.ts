@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { chatLinkCodes, chatLinks, pushSubscriptions } from '@trang/db';
+import { chatLinkCodes, chatLinks, pushSubscriptions } from '@webnhanh/db';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ORIGIN, startTestApp, type TestApp } from '../test-support';
 

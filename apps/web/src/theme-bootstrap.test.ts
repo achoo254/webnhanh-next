@@ -8,7 +8,7 @@ import { THEME_BOOTSTRAP_SCRIPT } from './theme-bootstrap';
  * The inline theme script of index.html runs only if the CSP names its hash. A new @achoo254/app-shell version
  * changes the text, so this fails first and prints the hash to put in the nginx site.
  */
-const NGINX_SITE = new URL('../../../infra/nginx/trang.hoandat.com.conf', import.meta.url);
+const NGINX_SITE = new URL('../../../infra/nginx/webnhanh.hoandat.com.conf', import.meta.url);
 
 describe('theme bootstrap script', () => {
   it('is allowed by the CSP hash of the nginx site', () => {

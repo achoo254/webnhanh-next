@@ -1,4 +1,4 @@
-import { LIMITS, PALETTE_IDS, PALETTES, renderShop, shopPublishIssues, type ImageAsset, type ShopDraft, type ShopIssue, type ShopProduct } from '@trang/templates';
+import { LIMITS, PALETTE_IDS, PALETTES, renderShop, shopPublishIssues, type ImageAsset, type ShopDraft, type ShopIssue, type ShopProduct } from '@webnhanh/templates';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { brand } from '../brand';

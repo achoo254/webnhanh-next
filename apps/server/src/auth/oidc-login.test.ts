@@ -29,7 +29,7 @@ describe('sign-in state', () => {
     for (const value of ['/.//evil.com', '//evil.com', '/\\evil.com', '/%2e%2e//evil.com']) {
       const out = withLoginResult(value, 'fail');
       expect(out, value).toBe('/?login=fail');
-      expect(new URL(out, 'https://trang.example').origin).toBe('https://trang.example');
+      expect(new URL(out, 'https://webnhanh.example').origin).toBe('https://webnhanh.example');
     }
   });
 
@@ -39,12 +39,12 @@ describe('sign-in state', () => {
 });
 
 describe('ID token checks', () => {
-  const expect_ = { issuer: 'https://auth.hoandat.com', clientId: 'trang-web', nonce: 'n1' };
-  const good = { iss: expect_.issuer, aud: 'trang-web', exp: 2_000, nonce: 'n1', sub: 'acc-1' };
+  const expect_ = { issuer: 'https://auth.hoandat.com', clientId: 'webnhanh-web', nonce: 'n1' };
+  const good = { iss: expect_.issuer, aud: 'webnhanh-web', exp: 2_000, nonce: 'n1', sub: 'acc-1' };
 
   it('accepts a matching token and returns its sub', () => {
     expect(subFromIdToken(token(good), expect_, 1_000_000)).toBe('acc-1');
-    expect(subFromIdToken(token({ ...good, aud: ['other', 'trang-web'] }), expect_, 1_000_000)).toBe('acc-1');
+    expect(subFromIdToken(token({ ...good, aud: ['other', 'webnhanh-web'] }), expect_, 1_000_000)).toBe('acc-1');
   });
 
   it('refuses wrong issuer, audience, nonce, expired tokens and missing sub', () => {

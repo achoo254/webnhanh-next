@@ -1,12 +1,12 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
-import { REPO_ROOT_PATH, trangHead } from './vite-trang.ts';
+import { REPO_ROOT_PATH, brandHead } from './vite-head.ts';
 
 // The API server listens on 127.0.0.1:5296 in dev; the web dev server proxies to it so cookies stay same-origin.
 const API = 'http://127.0.0.1:5296';
 
 export default defineConfig({
-  plugins: [react(), ...trangHead()],
+  plugins: [react(), ...brandHead()],
   server: {
     host: '127.0.0.1',
     fs: { allow: [REPO_ROOT_PATH] },

@@ -1,5 +1,5 @@
 /** What an owner is told of a new order: the push notification and the Chat message. */
-import { SITES_DOMAIN, type OrderData } from '@trang/db';
+import { SITES_DOMAIN, type OrderData } from '@webnhanh/db';
 
 export interface OrderNotice {
   readonly submissionId: string;

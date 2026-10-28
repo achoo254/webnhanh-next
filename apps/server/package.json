@@ -1,5 +1,5 @@
 {
-  "name": "@trang/server",
+  "name": "@webnhanh/server",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,9 +10,9 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@trang/db": "workspace:*",
-    "@trang/templates": "workspace:*",
-    "@trang/worker": "workspace:*",
+    "@webnhanh/db": "workspace:*",
+    "@webnhanh/templates": "workspace:*",
+    "@webnhanh/worker": "workspace:*",
     "drizzle-orm": "^0.45.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",

@@ -1,7 +1,7 @@
 // Sign-in with a hoandat.com account: /auth/login sends the browser to auth.hoandat.com (Code + PKCE, scope
 // openid), /auth/callback exchanges the code (client_secret_basic), opens a session and comes back to the page the
 // person started from. Off until AUTH_CLIENT_SECRET is set.
-import { pruneSessions, type Db } from '@trang/db';
+import { pruneSessions, type Db } from '@webnhanh/db';
 import express, { type RequestHandler, type Router } from 'express';
 import type { AuthConfig, ServerConfig } from '../config';
 import { HttpError } from '../http-error';
@@ -18,7 +18,7 @@ import {
   type Account,
 } from './session';
 
-const STATE_COOKIE = 'trang_login';
+const STATE_COOKIE = 'webnhanh_login';
 
 interface Discovery {
   readonly issuer: string;
