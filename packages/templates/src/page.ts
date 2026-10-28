@@ -42,6 +42,8 @@ export interface ShareImage {
 export interface PageOptions {
   /** "Made with" line at the foot of the page: the app's name and address. */
   readonly madeWith?: { readonly name: string; readonly url: string };
+  /** Where a visitor reports the page ("Báo cáo vi phạm"), a plain link beside "made with"; published pages have one. */
+  readonly reportUrl?: string;
   /** The page's own address (`og:url`) and its share picture, once it is published. */
   readonly page?: { readonly url: string; readonly image?: ShareImage };
   /**
@@ -216,9 +218,11 @@ export function pageDocument(parts: PageParts): RenderedPage {
   const title = escapeHtml(parts.title);
   const description = parts.description;
   const meta = description ? `<meta name="description" content="${escapeHtml(description.slice(0, 200))}">` : '';
-  const madeWith = options.madeWith
-    ? `<footer class="made"><a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a></footer>`
-    : '';
+  const footerLinks = [
+    options.madeWith ? `<a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a>` : '',
+    options.reportUrl ? `<a href="${escapeHtml(webUrl(options.reportUrl))}" rel="nofollow">Báo cáo vi phạm</a>` : '',
+  ].filter(Boolean);
+  const madeWith = footerLinks.length > 0 ? `<footer class="made">${footerLinks.join(' · ')}</footer>` : '';
   const dock = parts.dock ?? '';
   const stylesheet = [fontCss, baseCss(parts.style, parts.palette), ...parts.css].filter(Boolean).join('\n');
 
