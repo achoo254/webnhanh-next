@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ORDER_SCRIPT_HASH } from './order-form';
 import { imageAsset, renderShop, type ImageAsset } from './shop-render';
 import type { ShopDraft } from './shop-schema';
 
@@ -91,5 +92,45 @@ describe('renderShop', () => {
 
   it('refuses a made-with link that is not http(s)', () => {
     expect(() => renderShop(draft(), assets, { madeWith: { name: 'App', url: 'javascript:alert(1)' } })).toThrow();
+  });
+});
+
+describe('renderShop order form and sharing', () => {
+  const form = { action: 'https://app.example.com/f/nha-bo', token: '1761634800.abc' };
+
+  it('adds the order form with its products, the fixed script and a CSP allowing only it', () => {
+    const { html } = renderShop(
+      draft({ products: [{ key: 'p1', name: 'Bánh tráng', image: P1, description: '', price: '25k' }, { key: 'p2', name: ' ', image: null, description: '', price: '' }] }),
+      assets,
+      { orderForm: form },
+    );
+    expect(html).toContain('<form id="order" class="order-form" method="post" action="https://app.example.com/f/nha-bo"');
+    expect(html).toContain('<option value="p1">Bánh tráng (25k)</option>');
+    expect(html).not.toContain('value="p2"');
+    expect(html).toContain('name="_t" value="1761634800.abc"');
+    expect(html).toContain('name="website" tabindex="-1"');
+    expect(html.match(/<script>/g)).toHaveLength(1);
+    expect(html).toContain(`script-src &#39;${ORDER_SCRIPT_HASH}&#39;; connect-src https://app.example.com; form-action https://app.example.com`);
+  });
+
+  it('has no script, and forbids one, without the form', () => {
+    const { html } = renderShop(draft(), assets);
+    expect(html).not.toContain('<script');
+    expect(html).not.toContain('<form');
+    expect(html).toContain('default-src &#39;none&#39;');
+    expect(html).toContain('form-action &#39;none&#39;');
+  });
+
+  it('describes the page for shared links: og:url, og:image, og:description, twitter:card', () => {
+    const { html } = renderShop(draft({ description: 'Ngon "nhất"' }), assets, {
+      page: { url: 'https://nha-bo.example.vn/', image: { url: 'https://nha-bo.example.vn/og.jpg', width: 1200, height: 630, type: 'image/jpeg' } },
+    });
+    expect(html).toContain('<meta property="og:url" content="https://nha-bo.example.vn/">');
+    expect(html).toContain('<meta property="og:image" content="https://nha-bo.example.vn/og.jpg">');
+    expect(html).toContain('<meta property="og:image:width" content="1200">');
+    expect(html).toContain('<meta property="og:description" content="Ngon &quot;nhất&quot;">');
+    expect(html).toContain('<meta name="twitter:card" content="summary_large_image">');
+    expect(renderShop(draft(), assets).html).toContain('<meta name="twitter:card" content="summary">');
+    expect(() => renderShop(draft(), assets, { page: { url: 'javascript:alert(1)' } })).toThrow();
   });
 });

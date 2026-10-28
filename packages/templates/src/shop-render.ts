@@ -6,6 +6,7 @@
  */
 import { facebookLink, phoneLink, zaloLink, type ContactLink } from './contact-links';
 import { assertAssetUrl, escapeHtml } from './html';
+import { ORDER_CSS, ORDER_SCRIPT_HASH, orderFormHtml, type OrderFormOptions, type OrderProductOption } from './order-form';
 import type { PaletteId, ShopDraft } from './shop-schema';
 
 export interface ImageVariant {
@@ -26,9 +27,37 @@ export function imageAsset(image: { width: number; height: number; widths: reado
   return { width: image.width, height: image.height, variants: widths.map((width) => ({ width, url: url(width) })) };
 }
 
+/** The preview picture of a link shared on Zalo or Facebook (`og:image`), by its absolute URL. */
+export interface ShareImage {
+  readonly url: string;
+  readonly width: number;
+  readonly height: number;
+  readonly type: 'image/jpeg' | 'image/png';
+}
+
 export interface RenderOptions {
   /** "Made with" line at the foot of the page: the app's name and address. */
   readonly madeWith?: { readonly name: string; readonly url: string };
+  /** The order form: where it posts and the page's signed token. Without it the page shows no form. */
+  readonly orderForm?: OrderFormOptions;
+  /** The page's own address (`og:url`) and its share picture, once it is published. */
+  readonly page?: { readonly url: string; readonly image?: ShareImage };
+}
+
+/** The products visitors can order: those with a name, in the page's order. */
+export function orderProducts(draft: ShopDraft): OrderProductOption[] {
+  return draft.products.filter((p) => p.name.trim()).map((p) => ({ key: p.key, name: p.name.trim(), price: p.price.trim() }));
+}
+
+/**
+ * The page's Content-Security-Policy: its own photos, its inline style, the order script by its fixed hash, and
+ * sending only to the form's origin. Never anything else, whatever the owner typed.
+ */
+function contentSecurityPolicy(formOrigin: string | null): string {
+  const parts = ["default-src 'none'", "img-src 'self'", "style-src 'unsafe-inline'", "base-uri 'none'"];
+  if (formOrigin) parts.push(`script-src '${ORDER_SCRIPT_HASH}'`, `connect-src ${formOrigin}`, `form-action ${formOrigin}`);
+  else parts.push("form-action 'none'");
+  return parts.join('; ');
 }
 
 export interface RenderedPage {
@@ -78,7 +107,7 @@ h3{margin:0;font-size:16px;font-weight:800;overflow-wrap:anywhere}
 .contact a{display:flex;align-items:center;justify-content:center;min-height:52px;padding:12px 18px;border-radius:999px;background:var(--accent);color:#fff;font-weight:800;text-decoration:none;text-align:center;overflow-wrap:anywhere}
 .contact a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 footer{padding:18px 14px 28px;text-align:center;font-size:13px;color:var(--muted)}
-@media (min-width:720px){.products{grid-template-columns:repeat(3,1fr)}.contact ul{grid-template-columns:repeat(3,1fr)}}`;
+@media (min-width:720px){.products{grid-template-columns:repeat(3,1fr)}.contact ul{grid-template-columns:repeat(3,1fr)}.hero-text{padding-inline:max(18px,calc(50% - 480px + 18px))}}`;
 }
 
 function img(asset: ImageAsset, alt: string, sizes: string, eager: boolean): string {
@@ -95,6 +124,29 @@ function webUrl(value: string): string {
   const url = new URL(value);
   if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error(`refused url: ${value}`);
   return url.href;
+}
+
+/** The origin of an http(s) address, for the page's CSP. */
+function webUrlOrigin(value: string): string {
+  return new URL(webUrl(value)).origin;
+}
+
+/** Open Graph and Twitter tags: what Zalo, Facebook and others show for a shared link. `title` is escaped already. */
+function shareTags(title: string, description: string, page: RenderOptions['page']): string {
+  const tags = ['<meta property="og:type" content="website">', `<meta property="og:title" content="${title}">`];
+  if (description) tags.push(`<meta property="og:description" content="${escapeHtml(description.slice(0, 200))}">`);
+  if (page) tags.push(`<meta property="og:url" content="${escapeHtml(webUrl(page.url))}">`);
+  const image = page?.image;
+  if (image) {
+    tags.push(
+      `<meta property="og:image" content="${escapeHtml(webUrl(image.url))}">`,
+      `<meta property="og:image:type" content="${image.type}">`,
+      `<meta property="og:image:width" content="${image.width}">`,
+      `<meta property="og:image:height" content="${image.height}">`,
+    );
+  }
+  tags.push(`<meta name="twitter:card" content="${image ? 'summary_large_image' : 'summary'}">`);
+  return tags.join('\n');
 }
 
 function contactItem(link: ContactLink | null, verb: string): string {
@@ -140,17 +192,22 @@ export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAs
     ? `<footer><a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a></footer>`
     : '';
 
+  const orderSection = options.orderForm ? orderFormHtml(orderProducts(draft), options.orderForm) : '';
+  const formOrigin = orderSection && options.orderForm ? webUrlOrigin(options.orderForm.action) : null;
+  const shareMeta = shareTags(title, description, options.page);
+
   const html = [
     '<!doctype html>',
     '<html lang="vi">',
     '<head>',
     '<meta charset="utf-8">',
+    `<meta http-equiv="Content-Security-Policy" content="${escapeHtml(contentSecurityPolicy(formOrigin))}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<title>${title}</title>`,
     meta,
-    `<meta property="og:title" content="${title}">`,
+    shareMeta,
     `<meta name="theme-color" content="${palette.accent}">`,
-    `<style>${css(palette)}</style>`,
+    `<style>${css(palette)}${orderSection ? `\n${ORDER_CSS}` : ''}</style>`,
     '</head>',
     '<body>',
     `<header class="hero${cover ? ' has-cover' : ''}">`,
@@ -161,6 +218,7 @@ export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAs
     '</div></header>',
     '<main>',
     products.length > 0 ? `<section aria-labelledby="sp"><h2 id="sp">Sản phẩm</h2><ul class="products">${products.join('')}</ul></section>` : '',
+    orderSection,
     contacts.length > 0 ? `<section class="contact" aria-labelledby="lh"><h2 id="lh">Liên hệ</h2><ul>${contacts.join('')}</ul></section>` : '',
     '</main>',
     madeWith,
