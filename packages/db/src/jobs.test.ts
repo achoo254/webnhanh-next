@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openPglite, type DbHandle } from './client';
-import { activeJobOf, claimNextJob, enqueueJob, failStuckJobs, JOB_STUCK_AFTER_MS, latestJobsOf, markJobDone, markJobFailed, requeueJob, saveJobSteps } from './jobs';
+import { activeJobOf, BUILD_STUCK_AFTER_MS, claimNextJob, enqueueJob, failStuckJobs, JOB_STUCK_AFTER_MS, latestJobsOf, markJobDone, markJobFailed, markJobReady, requeueJob, saveJobSteps } from './jobs';
 import { accounts, sites } from './schema';
 import { imageFileName, parseImageFileName, siteImageFile } from './site-files';
 
@@ -68,6 +68,39 @@ describe('job queue', () => {
     expect(await failStuckJobs(handle.db, new Date(start.getTime() + JOB_STUCK_AFTER_MS - 1000))).toEqual([]);
     expect(await failStuckJobs(handle.db, new Date(start.getTime() + JOB_STUCK_AFTER_MS + 1000))).toEqual([queued.job.id]);
     expect((await latestJobsOf(handle.db, [c.siteId])).get(c.siteId)?.error).toBe('stuck');
+  });
+});
+
+describe('build and publish lanes', () => {
+  it('gives builds to the builder, then the built job back to the worker with its steps, each judged stuck by its own lane', async () => {
+    const dev = await siteOf('lane-dev', 'lane-dev');
+    const tpl = await siteOf('lane-tpl', 'lane-tpl');
+    const t0 = new Date('2026-10-28T05:00:00Z');
+    const build = await enqueueJob(handle.db, { ...dev, type: 'build', trigger: 'manual' }, t0);
+    const publish = await enqueueJob(handle.db, { ...tpl, type: 'publish' }, new Date(t0.getTime() + 1000));
+    if (!build.ok || !publish.ok) throw new Error('refused');
+
+    // The worker never takes a build that is not built yet; the builder never takes a template publish.
+    expect((await claimNextJob(handle.db, t0, 'publish'))?.id).toBe(publish.job.id);
+    expect(await claimNextJob(handle.db, t0, 'publish')).toBeNull();
+    const building = await claimNextJob(handle.db, t0, 'build');
+    expect(building?.id).toBe(build.job.id);
+    expect(await claimNextJob(handle.db, t0, 'build')).toBeNull();
+
+    // Still building long after a publish would be stuck: only the build lane's limit applies to it.
+    const later = new Date(t0.getTime() + JOB_STUCK_AFTER_MS + 60_000);
+    expect(await failStuckJobs(handle.db, later, 'publish')).toEqual([publish.job.id]);
+    expect(await failStuckJobs(handle.db, later, 'build')).toEqual([]);
+
+    const steps = [{ name: 'fetch', startedAt: t0.toISOString(), finishedAt: t0.toISOString() }, { name: 'publish', startedAt: later.toISOString() }];
+    expect(await markJobReady(handle.db, build.job.id, steps, later)).toBe(true);
+    // Handed back: still the account's one active job, now in the worker's lane, keeping its start and steps.
+    expect((await activeJobOf(handle.db, dev.accountId))?.id).toBe(build.job.id);
+    expect(await claimNextJob(handle.db, later, 'build')).toBeNull();
+    const publishing = await claimNextJob(handle.db, later, 'publish');
+    expect(publishing).toMatchObject({ id: build.job.id, status: 'running', startedAt: t0, steps });
+    expect(await failStuckJobs(handle.db, new Date(later.getTime() + BUILD_STUCK_AFTER_MS), 'build')).toEqual([]);
+    expect(await failStuckJobs(handle.db, new Date(later.getTime() + JOB_STUCK_AFTER_MS + 1), 'publish')).toEqual([build.job.id]);
   });
 });
 

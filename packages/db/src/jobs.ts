@@ -1,17 +1,32 @@
 /**
- * The job queue shared by the server (enqueue, read) and the worker (claim, steps, finish). One job waiting or
- * running per account is enforced by the `jobs_one_active_per_account` index; the worker claims with
- * FOR UPDATE SKIP LOCKED, so a second worker would never take the same job.
+ * The job queue shared by the server (enqueue, read), the worker (publishes) and the builder (builds). One job
+ * waiting or running per account is enforced by the `jobs_one_active_per_account` index; both claim with
+ * FOR UPDATE SKIP LOCKED, so no two processes ever take the same job.
+ *
+ * Two lanes: webnhanh-builder takes `build` jobs that are not built yet; webnhanh-worker takes `publish` jobs and the
+ * build jobs the builder handed back (`ready_at` set, queued again), so only the worker ever writes SITES_DIR.
  */
 import { randomUUID } from 'node:crypto';
-import { and, asc, desc, eq, inArray, lt } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import type { Db } from './client';
-import { jobs, type JobStep, type JobType } from './schema';
+import { jobs, type BuildTrigger, type JobStep, type JobType } from './schema';
 
 export type Job = typeof jobs.$inferSelect;
 
 /** A publish takes seconds; one still running after this was cut off (a crash, a kill) and is failed. */
 export const JOB_STUCK_AFTER_MS = 5 * 60 * 1000;
+/** A build: fetching (up to 2 minutes), Docker (5 minutes in all), collecting the output, with room to spare. */
+export const BUILD_STUCK_AFTER_MS = 15 * 60 * 1000;
+
+/** `publish`: webnhanh-worker. `build`: webnhanh-builder. */
+export type JobLane = 'publish' | 'build';
+
+/** Queued jobs a lane takes. */
+function laneFilter(lane: JobLane) {
+  return lane === 'build'
+    ? and(eq(jobs.type, 'build'), isNull(jobs.readyAt))
+    : or(eq(jobs.type, 'publish'), and(eq(jobs.type, 'build'), isNotNull(jobs.readyAt)));
+}
 
 /** True for a unique-index violation (Postgres 23505), also when drizzle wrapped the driver's error. */
 export function isUniqueViolation(error: unknown): boolean {
@@ -23,16 +38,23 @@ export function isUniqueViolation(error: unknown): boolean {
 
 export type EnqueueResult = { ok: true; job: Job } | { ok: false; reason: 'job-active' };
 
+export interface EnqueueInput {
+  siteId: string;
+  accountId: string;
+  type: JobType;
+  /** A given id (a zip upload names its file after it); a new one otherwise. */
+  id?: string;
+  trigger?: BuildTrigger;
+  commitSha?: string | null;
+}
+
 /** Queues a job, or refuses when the account already has one waiting or running. */
-export async function enqueueJob(
-  db: Db,
-  input: { siteId: string; accountId: string; type: JobType },
-  now: Date,
-): Promise<EnqueueResult> {
+export async function enqueueJob(db: Db, input: EnqueueInput, now: Date): Promise<EnqueueResult> {
   try {
+    const { id = randomUUID(), ...rest } = input;
     const [job] = await db
       .insert(jobs)
-      .values({ id: randomUUID(), ...input, status: 'queued', createdAt: now })
+      .values({ id, ...rest, status: 'queued', createdAt: now })
       .returning();
     if (!job) throw new Error('job insert returned no row');
     return { ok: true, job };
@@ -63,20 +85,41 @@ export async function latestJobsOf(db: Db, siteIds: readonly string[]): Promise<
   return new Map(rows.map((job) => [job.siteId, job]));
 }
 
-/** Takes the oldest queued job and marks it running, or null when the queue is empty. */
-export async function claimNextJob(db: Db, now: Date): Promise<Job | null> {
+/**
+ * Takes the oldest queued job of a lane and marks it running, or null when there is none. A build handed back for
+ * publishing keeps its start time and steps: the person follows one job from the queue to the live site.
+ */
+export async function claimNextJob(db: Db, now: Date, lane: JobLane = 'publish'): Promise<Job | null> {
   return db.transaction(async (tx) => {
     const [next] = await tx
-      .select({ id: jobs.id })
+      .select({ id: jobs.id, readyAt: jobs.readyAt })
       .from(jobs)
-      .where(eq(jobs.status, 'queued'))
+      .where(and(eq(jobs.status, 'queued'), laneFilter(lane)))
       .orderBy(asc(jobs.createdAt), asc(jobs.id))
       .limit(1)
       .for('update', { skipLocked: true });
     if (!next) return null;
-    const [row] = await tx.update(jobs).set({ status: 'running', startedAt: now, steps: [] }).where(eq(jobs.id, next.id)).returning();
+    const handedBack = next.readyAt !== null;
+    const [row] = await tx
+      .update(jobs)
+      .set(handedBack ? { status: 'running', claimedAt: now } : { status: 'running', startedAt: now, claimedAt: now, steps: [] })
+      .where(eq(jobs.id, next.id))
+      .returning();
     return row ?? null;
   });
+}
+
+/**
+ * Gives a built job back to the queue for webnhanh-worker: its output is in the staging directory. False when it is
+ * no longer running (failed as stuck meanwhile).
+ */
+export async function markJobReady(db: Db, jobId: string, steps: readonly JobStep[], now: Date): Promise<boolean> {
+  const rows = await db
+    .update(jobs)
+    .set({ status: 'queued', readyAt: now, steps: [...steps], progress: null })
+    .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running'), isNull(jobs.readyAt)))
+    .returning({ id: jobs.id });
+  return rows.length > 0;
 }
 
 /** Records the steps so far of a running job (the progress screen polls them). */
@@ -105,20 +148,38 @@ export async function markJobFailed(db: Db, jobId: string, error: string, now: D
     .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running')));
 }
 
-/** Puts a running job back in the queue (its worker is stopping); it runs again from the start. */
+/** Puts a running job back in the queue (its process is stopping); it runs again from the start. */
 export async function requeueJob(db: Db, jobId: string): Promise<void> {
   await db
     .update(jobs)
-    .set({ status: 'queued', startedAt: null, steps: [] })
+    .set({ status: 'queued', startedAt: null, claimedAt: null, steps: [], progress: null, readyAt: null })
     .where(and(eq(jobs.id, jobId), eq(jobs.status, 'running')));
 }
 
-/** Fails jobs running longer than JOB_STUCK_AFTER_MS; returns their ids. */
-export async function failStuckJobs(db: Db, now: Date): Promise<string[]> {
+/** Running jobs of a lane: one process per lane, so at its start these were cut off by its last stop. */
+export async function runningJobsOf(db: Db, lane: JobLane): Promise<Job[]> {
+  return db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.status, 'running'), laneFilter(lane)));
+}
+
+/**
+ * Fails the lane's jobs running longer than they ever should (JOB_STUCK_AFTER_MS for a publish, BUILD_STUCK_AFTER_MS
+ * for a build); returns their ids. Each process only judges its own lane: a build is never failed by the worker.
+ */
+export async function failStuckJobs(db: Db, now: Date, lane: JobLane = 'publish'): Promise<string[]> {
+  const limit = lane === 'build' ? BUILD_STUCK_AFTER_MS : JOB_STUCK_AFTER_MS;
   const rows = await db
     .update(jobs)
-    .set({ status: 'failed', error: 'stuck', finishedAt: now })
-    .where(and(eq(jobs.status, 'running'), lt(jobs.startedAt, new Date(now.getTime() - JOB_STUCK_AFTER_MS))))
+    .set({ status: 'failed', error: 'stuck', finishedAt: now, progress: null })
+    .where(
+      and(
+        eq(jobs.status, 'running'),
+        laneFilter(lane),
+        lt(sql`coalesce(${jobs.claimedAt}, ${jobs.startedAt})`, new Date(now.getTime() - limit)),
+      ),
+    )
     .returning({ id: jobs.id });
   return rows.map((row) => row.id);
 }

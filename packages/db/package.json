@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./site-name": "./src/site-name.ts",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./build-limits": "./src/build-limits.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",

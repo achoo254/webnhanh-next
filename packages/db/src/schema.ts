@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { bigint, boolean, check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
+import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
 export const accounts = pgTable('accounts', {
@@ -114,6 +114,39 @@ export interface JobStep {
   name: string;
   startedAt: string;
   finishedAt?: string;
+  /** A build step that did not have to run: `cached` (libraries reused), `not-needed` (plain HTML, nothing to build). */
+  note?: 'cached' | 'not-needed';
+}
+
+/** What started a build: a person in the app, a push to the chosen branch, or a rename (the site moves address). */
+export const BUILD_TRIGGERS = ['manual', 'push', 'rename'] as const;
+export type BuildTrigger = (typeof BUILD_TRIGGERS)[number];
+
+/**
+ * The latest log line of a running build, read as a sentence by the waiting screen: a stable code with numbers (the
+ * web app words it in the reader's language), or the raw line, shortened, when nothing better is known.
+ */
+export interface BuildProgress {
+  code: 'install-packages' | 'install' | 'build-modules' | 'build-pages' | 'build' | 'line';
+  n?: number;
+  total?: number;
+  text?: string;
+}
+
+/** What the check step learned of a build's output, for the tips beside the next wait and the finished screen. */
+export interface BuildReport {
+  title: string | null;
+  hasDescription: boolean;
+  /** Path of the og:image inside the output when it is a local file; null when missing or remote. */
+  ogImage: string | null;
+  hasOgImage: boolean;
+  hasFavicon: boolean;
+  /** The biggest pictures over 500 KB (at most 5). */
+  largeImages: { path: string; bytes: number }[];
+  bytes: number;
+  fileCount: number;
+  /** sha256 of the source (commit or zip) and settings built: the worker stores it as the site's last build. */
+  buildKey: string;
 }
 
 /** The work queue shared by template publishes and developer builds. The worker claims with FOR UPDATE SKIP LOCKED. */
@@ -136,6 +169,25 @@ export const jobs = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
     startedAt: timestamp('started_at', { withTimezone: true }),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
+    /** Builds: what started it. */
+    trigger: text('trigger').$type<BuildTrigger>(),
+    /** Builds: the commit pushed (from the webhook), then the commit actually built. */
+    commitSha: text('commit_sha'),
+    /** Builds: the framework found, for the estimate of the next first build of that framework. */
+    framework: text('framework'),
+    /**
+     * Builds: when webnhanh-builder put the output in the staging directory and gave the job back to the queue for
+     * webnhanh-worker to publish (`queued` again with this set). Null while the build itself is waiting or running.
+     */
+    readyAt: timestamp('ready_at', { withTimezone: true }),
+    /** When a process last took the job: the builder, then the worker for a build's publish step. Stuck checks use it. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** "Báo tôi khi xong": a push notification or Chat message when the job ends. */
+    notify: boolean('notify').notNull().default(false),
+    progress: jsonb('progress').$type<BuildProgress>(),
+    /** Builds that failed: the log lines that show why (at most 20), beside the stable `error` code. */
+    errorLines: jsonb('error_lines').$type<string[]>(),
+    report: jsonb('report').$type<BuildReport>(),
   },
   (t) => [
     index('jobs_queue_idx').on(t.status, t.createdAt),
@@ -143,7 +195,69 @@ export const jobs = pgTable(
     // One job waiting or running per account at a time.
     uniqueIndex('jobs_one_active_per_account').on(t.accountId).where(sql`${t.status} in ('queued', 'running')`),
     check('jobs_type_check', sql`${t.type} in ('publish', 'build')`),
+    check('jobs_trigger_check', sql`${t.trigger} is null or ${t.trigger} in ('manual', 'push', 'rename')`),
     check('jobs_status_check', sql`${t.status} in ('queued', 'running', 'done', 'failed', 'skipped')`),
+  ],
+);
+
+/** Lines of a build log kept per job; a longer log keeps its first lines and says it was cut. */
+export const JOB_LOG_MAX_LINES = 5_000;
+
+/** The output of a build, line by line (ANSI colours and control characters removed), streamed to the owner. */
+export const jobLogs = pgTable(
+  'job_logs',
+  {
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    seq: integer('seq').notNull(),
+    line: text('line').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.jobId, t.seq] })],
+);
+
+export const DEVELOPER_SOURCES = ['git', 'zip'] as const;
+export type DeveloperSource = (typeof DEVELOPER_SOURCES)[number];
+
+/**
+ * How a developer site is built, as the owner confirmed it (editable): the directory of the app inside the repo, the
+ * build command (null: plain HTML, published as it is) and the output directory, both relative to `rootDir`.
+ */
+export interface BuildSettings {
+  rootDir: string;
+  buildCommand: string | null;
+  outputDir: string;
+}
+
+/**
+ * The source of a developer site (kind `developer`): a public GitHub or GitLab repo and its branch, or the last zip
+ * uploaded (BUILD_INBOX_DIR/<site id>.zip). Pushes to the branch, signed with `webhook_secret`, wait in
+ * `pending_push_at`/`pending_commit` (30 seconds, a newer push replacing an older one) before webnhanh-builder queues them.
+ */
+export const developerSites = pgTable(
+  'developer_sites',
+  {
+    siteId: uuid('site_id')
+      .primaryKey()
+      .references(() => sites.id, { onDelete: 'cascade' }),
+    source: text('source').$type<DeveloperSource>().notNull(),
+    repoUrl: text('repo_url'),
+    branch: text('branch'),
+    settings: jsonb('settings').$type<BuildSettings>().notNull(),
+    /** What the last check found (framework, package manager, warnings), shown beside the settings. */
+    detection: jsonb('detection').$type<unknown>(),
+    webhookSecret: text('webhook_secret'),
+    /** sha256 of the commit (or zip) and settings of the last published build: the same again needs no build. */
+    lastBuildKey: text('last_build_key'),
+    pendingPushAt: timestamp('pending_push_at', { withTimezone: true }),
+    pendingCommit: text('pending_commit'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index('developer_sites_pending_idx').on(t.pendingPushAt).where(sql`${t.pendingPushAt} is not null`),
+    check('developer_sites_source_check', sql`${t.source} in ('git', 'zip')`),
   ],
 );
 
@@ -279,8 +393,9 @@ export const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'dropped'] as con
 export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
 
 /**
- * The outbox of order notifications: one row per new order and per place it goes (a push subscription, the linked
- * chat), written in the same transaction as the order. A sender picks due rows, and a failure only moves that row's
+ * The outbox of notifications: one row per new order (`submission_id`) or finished build the owner asked to hear about
+ * (`job_id`), and per place it goes (a push subscription, the linked chat), written in the same transaction as the
+ * order or the end of the build. A sender picks due rows, and a failure only moves that row's
  * next attempt: one channel failing never holds back another, nor the order. `dropped`: the target went away
  * (subscription expired, chat unlinked).
  */
@@ -288,9 +403,8 @@ export const notificationDeliveries = pgTable(
   'notification_deliveries',
   {
     id: uuid('id').primaryKey(),
-    submissionId: uuid('submission_id')
-      .notNull()
-      .references(() => submissions.id, { onDelete: 'cascade' }),
+    submissionId: uuid('submission_id').references(() => submissions.id, { onDelete: 'cascade' }),
+    jobId: uuid('job_id').references(() => jobs.id, { onDelete: 'cascade' }),
     accountId: uuid('account_id')
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
@@ -308,6 +422,8 @@ export const notificationDeliveries = pgTable(
   (t) => [
     index('notification_deliveries_due_idx').on(t.status, t.nextAttemptAt),
     index('notification_deliveries_submission_idx').on(t.submissionId),
+    index('notification_deliveries_job_idx').on(t.jobId),
+    check('notification_deliveries_subject_check', sql`(${t.submissionId} is null) <> (${t.jobId} is null)`),
     check('notification_deliveries_channel_check', sql`${t.channel} in ('push', 'chat')`),
     check('notification_deliveries_status_check', sql`${t.status} in ('pending', 'sent', 'failed', 'dropped')`),
   ],
