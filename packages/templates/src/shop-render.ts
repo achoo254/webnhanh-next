@@ -163,6 +163,9 @@ function contactItem(link: ContactLink | null, verb: string, svg: string): strin
   return `<li><a href="${escapeHtml(link.href)}">${svg}<span class="c-verb">${verb}</span> <span class="c-value">${escapeHtml(link.label)}</span></a></li>`;
 }
 
+/** Copies of the name in the band: enough to cross a 2560 px screen even for a short name (the band hides the rest). */
+const BAND_REPEATS = 24;
+
 /** The page for `draft`. Photos missing from `assets` are left out; so are empty texts and invalid contacts. */
 export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAsset>, options: RenderOptions = {}): RenderedPage {
   const palette = PALETTES[draft.palette];
@@ -232,7 +235,7 @@ export function renderShop(draft: ShopDraft, assets: ReadonlyMap<string, ImageAs
   const madeWith = options.madeWith
     ? `<footer class="made"><a href="${escapeHtml(webUrl(options.madeWith.url))}">Làm bằng ${escapeHtml(options.madeWith.name)}</a></footer>`
     : '';
-  const band = style.nameBand && name ? `<div class="band-wrap" aria-hidden="true"><p class="band">${`${escapeHtml(name)} ✦ `.repeat(8)}</p></div>` : '';
+  const band = style.nameBand && name ? `<div class="band-wrap" aria-hidden="true"><p class="band">${`${escapeHtml(name)} ✦ `.repeat(BAND_REPEATS)}</p></div>` : '';
   const shareMeta = shareTags(title, description, options.page);
   const stylesheet = [fontCss, baseCss(draft.style, palette), orderSection ? ORDER_CSS : '', style.css].filter(Boolean).join('\n');
 

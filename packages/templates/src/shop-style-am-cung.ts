@@ -11,7 +11,7 @@ export const AM_CUNG_CSS = `.s-am-cung{--bg:var(--soft);--surface:#fff;--radius:
 .s-am-cung .hero-photo img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:3px}
 .s-am-cung .doodle{position:absolute;right:-30px;bottom:-14px;width:54px;height:50px;color:var(--accent);transform:rotate(12deg)}
 .s-am-cung .hero-text{display:grid;gap:14px;justify-items:center}
-.s-am-cung h1{font-size:clamp(40px,11.5vw,76px);line-height:1.02;font-weight:700;letter-spacing:-.01em;text-decoration:underline wavy color-mix(in srgb,var(--accent) 65%,transparent);text-decoration-thickness:3px;text-underline-offset:.22em;text-decoration-skip-ink:none}
+.s-am-cung h1{font-size:clamp(40px,11.5vw,76px);line-height:1.02;font-weight:700;letter-spacing:-.01em;text-decoration:underline wavy color-mix(in srgb,var(--accent) 65%,transparent);text-decoration-thickness:3px;text-underline-offset:.32em;text-decoration-skip-ink:auto}
 .s-am-cung .lede{font-size:18px;max-width:32ch;color:var(--muted)}
 .s-am-cung .actions{justify-content:center;margin-top:10px;gap:14px}
 .s-am-cung .btn{padding:12px 26px;border-radius:999px;font-size:17px}

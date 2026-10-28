@@ -16,10 +16,10 @@ export const RUC_RO_CSS = `.s-ruc-ro{--bg:var(--soft);--surface:#fff;--radius:18
 .s-ruc-ro .hero-photo{position:relative;order:-1}
 .s-ruc-ro .hero-photo img{width:100%;aspect-ratio:4/3;object-fit:cover;border:var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow)}
 .s-ruc-ro .burst{position:absolute;right:4px;top:-14px;width:72px;height:72px;color:var(--pop);transform:rotate(14deg)}
-.s-ruc-ro .band-wrap{margin-top:16px}
+.s-ruc-ro .band-wrap{margin-top:16px;padding:calc(1.75vw + 14px) 0}
 .s-ruc-ro .band{margin:0 -24px;transform:rotate(-2deg);background:var(--ink);color:var(--pop);font:800 22px/1 var(--display);letter-spacing:-.01em;padding:12px 0;white-space:nowrap;overflow:hidden}
 .s-ruc-ro main{max-width:1120px;margin:0 auto;padding:20px 12px 56px;display:grid;gap:56px}
-.s-ruc-ro h2{font-size:clamp(32px,9vw,48px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:0 4px 20px;text-decoration:underline wavy var(--accent);text-decoration-thickness:3px;text-underline-offset:10px;text-decoration-skip-ink:none}
+.s-ruc-ro h2{font-size:clamp(32px,9vw,48px);line-height:1.05;letter-spacing:-.03em;font-weight:800;margin:0 4px 20px;text-decoration:underline wavy var(--accent);text-decoration-thickness:3px;text-underline-offset:.32em;text-decoration-skip-ink:auto}
 .s-ruc-ro .products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 14px}
 .s-ruc-ro .product{display:flex;flex-direction:column;background:var(--surface);border:var(--line);border-radius:var(--radius);box-shadow:var(--card-shadow);overflow:hidden;transition:transform .15s,box-shadow .15s}
 .s-ruc-ro .product:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
