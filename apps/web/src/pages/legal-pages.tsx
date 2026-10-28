@@ -143,14 +143,15 @@ export function CreditsPage(): ReactNode {
           {fonts}
           <h2>Ảnh</h2>
           <p>
-            Ảnh mẫu và ảnh của các mẫu được vẽ bằng AI cho các app của {domain}, trên máy của chính {domain}, bằng các mô hình mã nguồn mở
-            (Qwen-Image, Z-Image, FLUX.2 klein, giấy phép Apache-2.0; BiRefNet, giấy phép MIT, để tách nền). Ảnh thuộc về {domain}, giữ mọi
-            quyền (không phải CC0). Không ảnh nào có chữ: mọi chữ trên website là chữ bạn sửa được.
+            Ảnh mẫu, ảnh và hoạ tiết của từng kiểu mẫu được vẽ bằng AI cho các app của {domain}, trên máy của chính {domain}, bằng các mô hình
+            mã nguồn mở (Qwen-Image, Z-Image, FLUX.2 klein, giấy phép Apache-2.0; BiRefNet, giấy phép MIT, để tách nền). Ảnh thuộc về {domain},
+            giữ mọi quyền (không phải CC0). Không ảnh nào có chữ (riêng hoạ tiết thiệp cưới truyền thống có hình chữ Song Hỷ): mọi chữ trên
+            website là chữ bạn sửa được.
           </p>
           <p>Ảnh bạn tải lên vẫn là của bạn.</p>
           <h2>Hoạ tiết và chữ mẫu</h2>
           <p>
-            Đèn lồng, hoa mai, cành lá và các hoạ tiết khác được vẽ riêng cho {name} bằng SVG và CSS. Lời chúc Tết và chữ mẫu được viết riêng
+            Đèn lồng, hoa mai, cành lá và các hoạ tiết khác không thuộc kiểu mẫu nào được vẽ riêng cho {name} bằng SVG và CSS. Lời chúc Tết và chữ mẫu được viết riêng
             cho {name}, không chép từ thơ, bài hát hay văn bản đã xuất bản nào.
           </p>
         </>
@@ -165,14 +166,15 @@ export function CreditsPage(): ReactNode {
           {fonts}
           <h2>Pictures</h2>
           <p>
-            The sample and template pictures are AI-generated for the {domain} apps on {domain}&apos;s own machine with open models (Qwen-Image,
-            Z-Image, FLUX.2 klein under Apache-2.0; BiRefNet under MIT for background removal). They are owned by {domain}, all rights reserved
-            (not CC0). None contains text: every word on a website is one you can change.
+            The sample pictures and the pictures and ornaments of each template look are AI-generated for the {domain} apps on {domain}&apos;s
+            own machine with open models (Qwen-Image, Z-Image, FLUX.2 klein under Apache-2.0; BiRefNet under MIT for background removal). They
+            are owned by {domain}, all rights reserved (not CC0). None contains text (only the traditional wedding ornament shows the
+            double-happiness sign): every word on a website is one you can change.
           </p>
           <p>Photos you upload stay yours.</p>
           <h2>Decorations and sample text</h2>
           <p>
-            The lanterns, apricot blossoms, sprigs and other decorations are drawn for {name} in SVG and CSS. The Tết greetings and sample
+            The lanterns, apricot blossoms, sprigs and other decorations that belong to no template look are drawn for {name} in SVG and CSS. The Tết greetings and sample
             texts are written for {name}, not copied from any poem, song or published text.
           </p>
         </>

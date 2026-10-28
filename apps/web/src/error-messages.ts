@@ -13,6 +13,7 @@ const BY_CODE: Readonly<Record<string, MessageKey>> = {
   'rename-limit': 'error.renameLimit',
   'site-not-found': 'error.notFound',
   'unknown-template': 'error.unknownTemplate',
+  'unknown-variant': 'error.unknownVariant',
   'image-type': 'image.type',
   'too-large': 'image.tooLarge',
   'image-too-big': 'image.tooBig',

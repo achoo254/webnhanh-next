@@ -1,5 +1,5 @@
 import type { ShopDraft } from '@webnhanh/templates';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
@@ -113,6 +113,15 @@ describe('making a page', () => {
     fireEvent.click(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }));
     expect(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }).getAttribute('aria-pressed')).toBe('true');
 
+    // The shop's looks, as a radio group with the first one picked; each has its thumbnail, loaded lazily.
+    const looks = screen.getByRole('group', { name: 'Chọn kiểu' });
+    const radios = within(looks).getAllByRole('radio') as HTMLInputElement[];
+    expect(radios.map((radio) => radio.value)).toEqual(['cay-canh', 'do-an-vat', 'handmade', 'my-pham', 'nong-san', 'quan-ao']);
+    expect(radios[0]?.checked).toBe(true);
+    expect(looks.querySelectorAll('img[loading="lazy"]')).toHaveLength(6);
+    fireEvent.click(within(looks).getByLabelText('Mỹ phẩm'));
+    expect((within(looks).getByLabelText('Mỹ phẩm') as HTMLInputElement).checked).toBe(true);
+
     const input = screen.getByLabelText('Địa chỉ website');
     fireEvent.change(input, { target: { value: 'vietcombank-hotro' } });
     expect(screen.getByRole('alert').textContent).toContain('giả mạo');
@@ -121,7 +130,7 @@ describe('making a page', () => {
     fireEvent.change(input, { target: { value: 'Nha-Bo' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
     expect(await screen.findByTitle('Xem trước website')).toBeTruthy();
-    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'nha-bo', template: 'shop' });
+    expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'nha-bo', template: 'shop', variant: 'my-pham' });
   });
 
   it('makes a page of the template picked', async () => {
@@ -129,9 +138,23 @@ describe('making a page', () => {
     renderAt('/new');
     fireEvent.click(await screen.findByRole('button', { name: /Thiệp cưới/ }));
     expect(screen.getByRole('link', { name: /Phông chữ và ảnh/ }).getAttribute('href')).toBe('/credits');
+    // Switching template starts again from that template's first look.
+    expect((screen.getByLabelText('Hoa pastel') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Thiệp chúc Tết/ }));
+    expect((screen.getByLabelText('Đất sét đỏ vàng') as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /Thiệp cưới/ }));
     fireEvent.change(screen.getByLabelText('Địa chỉ website'), { target: { value: 'minh-thao' } });
     fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
-    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'minh-thao', template: 'wedding' }));
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'minh-thao', template: 'wedding', variant: 'hoa-pastel' }));
+  });
+
+  it('says when the look is not one of the template', async () => {
+    on('POST', '/api/sites', () => ({ status: 400, body: { error: 'unknown-variant' } }));
+    renderAt('/new');
+    fireEvent.click(await screen.findByRole('button', { name: /Hồ sơ cá nhân/ }));
+    fireEvent.change(screen.getByLabelText('Địa chỉ website'), { target: { value: 'lan-anh' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('không có kiểu đã chọn');
   });
 
   it('says when the name is taken', async () => {

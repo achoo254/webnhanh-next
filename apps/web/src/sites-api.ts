@@ -82,8 +82,9 @@ export async function listSites(): Promise<SiteList> {
   return parse(listSchema, await call('/api/sites'));
 }
 
-export async function createSite(name: string, template: string): Promise<Site> {
-  return parse(z.object({ site: siteSchema }), await call('/api/sites', sendJson('POST', { name, template }))).site;
+/** Makes a template site; `variant` is one of the template's looks (its colours, sample text and pictures). */
+export async function createSite(name: string, template: string, variant?: string): Promise<Site> {
+  return parse(z.object({ site: siteSchema }), await call('/api/sites', sendJson('POST', variant ? { name, template, variant } : { name, template }))).site;
 }
 
 export async function getSite(siteId: string): Promise<SiteDetail> {

@@ -778,6 +778,37 @@ button.bento-card:focus-visible {
   font-weight: 700;
   font-size: 14px;
 }
+
+/* New page: the chosen template's looks, as style-option cards around a thumbnail. */
+.variant-picker {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.variant-picker .hint {
+  margin: 0;
+}
+.variant-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.variant-option img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--webnhanh-gradient);
+}
+.variant-option .style-name {
+  font-size: 13px;
+  line-height: 1.25;
+}
 .style-hint {
   font-size: 12px;
   line-height: 1.35;

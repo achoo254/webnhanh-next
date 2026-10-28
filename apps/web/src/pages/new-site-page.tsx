@@ -11,6 +11,7 @@ import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { createSite } from '../sites-api';
+import { variantChoices } from './template-variant-choices';
 
 /** The templates in the order the page offers them, each with its sample picture (a profile shows a drawn avatar). */
 const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey; picture: string | null }[] = [
@@ -27,7 +28,7 @@ const NAME_REASONS: Readonly<Record<'format' | 'reserved' | 'sensitive', Message
   sensitive: 'name.sensitive',
 };
 
-/** `/new`: choose a template, then the page's address. */
+/** `/new`: choose a template, then one of its looks and the page's address. */
 export function NewSitePage(): ReactNode {
   return <SignedInPage>{() => <NewSite />}</SignedInPage>;
 }
@@ -36,6 +37,7 @@ function NewSite(): ReactNode {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [chosen, setChosen] = useState<TemplateId | null>(null);
+  const [variant, setVariant] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [error, setError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -51,7 +53,7 @@ function NewSite(): ReactNode {
     setBusy(true);
     setError(null);
     try {
-      const site = await createSite(check.name, chosen);
+      const site = await createSite(check.name, chosen, variant ?? undefined);
       navigate(`/sites/${site.id}`);
     } catch (failure) {
       setError(errorMessage(failure));
@@ -75,6 +77,7 @@ function NewSite(): ReactNode {
               aria-pressed={chosen === template.id}
               onClick={() => {
                 setChosen(template.id);
+                setVariant(variantChoices(template.id)[0]?.id ?? null);
                 setError(null);
               }}
               data-id={`template-${template.id}`}
@@ -108,6 +111,7 @@ function NewSite(): ReactNode {
 
       {chosen ? (
         <form className="panel name-form" onSubmit={(event) => void submit(event)} data-id="new-name-form" noValidate>
+          <VariantPicker template={chosen} value={variant} onChange={setVariant} />
           <label className="field-label" htmlFor={inputId}>
             {t('new.name.label')}
           </label>
@@ -148,5 +152,33 @@ function NewSite(): ReactNode {
         </Link>
       </p>
     </section>
+  );
+}
+
+/**
+ * The looks of the chosen template as radio cards (thumbnail and name), loaded lazily; arrow keys move between them.
+ * Nothing shows for a template without looks.
+ */
+function VariantPicker({ template, value, onChange }: { readonly template: TemplateId; readonly value: string | null; readonly onChange: (id: string) => void }): ReactNode {
+  const { t } = useI18n();
+  const choices = variantChoices(template);
+  const hintId = useId();
+  if (choices.length === 0) return null;
+  return (
+    <fieldset className="variant-picker" aria-describedby={hintId} data-id="new-variants">
+      <legend className="field-label">{t('new.variant.title')}</legend>
+      <p id={hintId} className="hint">
+        {t('new.variant.hint')}
+      </p>
+      <div className="variant-options">
+        {choices.map((choice) => (
+          <label key={choice.id} className="style-option variant-option" data-id={`variant-${choice.id}`}>
+            <input type="radio" name="variant" value={choice.id} checked={value === choice.id} onChange={() => onChange(choice.id)} />
+            <img src={choice.thumb} alt="" width={240} height={320} loading="lazy" decoding="async" />
+            <span className="style-name">{t(choice.label)}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
