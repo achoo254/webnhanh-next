@@ -34,7 +34,7 @@ export function PrivacyPage(): ReactNode {
             phiên hết hạn bị xoá khỏi máy chủ.
           </p>
           <h2>Lựa chọn giao diện</h2>
-          <p>Ngôn ngữ và giao diện sáng/tối bạn chọn được lưu trong cookie <code>hd_lang</code>, <code>hd_theme</code>, dùng chung cho các app của {domain}.</p>
+          <p>Ngôn ngữ bạn chọn được lưu trong cookie <code>hd_lang</code>, dùng chung cho các app của {domain}.</p>
           <h2>Website bạn đăng</h2>
           <p>
             Website bạn đăng ở địa chỉ dạng tên-của-bạn.{SITES_DOMAIN} là website công khai: ai có link đều xem được. Ở các website đó {name} không
@@ -53,7 +53,7 @@ export function PrivacyPage(): ReactNode {
             from the server.
           </p>
           <h2>Display choices</h2>
-          <p>The language and light/dark theme you pick are kept in the <code>hd_lang</code> and <code>hd_theme</code> cookies, shared by the {domain} apps.</p>
+          <p>The language you pick is kept in the <code>hd_lang</code> cookie, shared by the {domain} apps.</p>
           <h2>Websites you publish</h2>
           <p>
             A website you publish at an address like your-name.{SITES_DOMAIN} is public: anyone with the link can see it. {name} sets no cookie
