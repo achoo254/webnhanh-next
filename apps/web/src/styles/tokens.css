@@ -1,0 +1,90 @@
+/*
+ * The app's own design tokens: one light theme, warm paper and bright building blocks. Every colour of the app is
+ * here; the other stylesheets use these variables only. Text pairs (WCAG AA, checked against the surface they sit on):
+ * --c-text 15.6:1 and --c-text-muted 6.6:1 on --c-bg; --c-primary 6.0:1 on --c-bg, white on --c-primary-solid 6.3:1;
+ * --c-ink on --c-sun 10.3:1; the status colours ≥ 5.2:1 on white, their *-text ≥ 7:1 on their tints.
+ */
+:root {
+  color-scheme: light;
+
+  --font-display: 'Bricolage Grotesque', 'Be Vietnam Pro', system-ui, sans-serif;
+  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* Paper and ink. */
+  --c-bg: #fff7ec;
+  --c-dots: #eadcc6;
+  --c-surface: #ffffff;
+  --c-surface-subtle: #fffbf4;
+  --c-text: #1d1b3a;
+  --c-ink: #1d1b3a;
+  --c-text-muted: #5b5670;
+  --c-border: #dccdb6;
+  --c-border-subtle: #eee2d0;
+  --c-bar-track: #f4e9d9;
+
+  /* The building blocks: cobalt does the work (links, focus, choices), the others play. */
+  --c-primary: #2f4fe0;
+  --c-primary-solid: #2f4fe0;
+  --c-on-primary: #ffffff;
+  --c-sun: #ffc23d;
+  --c-coral: #ff6b4a;
+  --c-mint: #2fc4a2;
+  --c-sky: #7cc6ff;
+  --c-pink: #ff9ecf;
+  --c-lilac: #b9a7ff;
+  --c-accent: var(--c-coral);
+
+  /* Status. */
+  --c-info: #1d6fb8;
+  --c-success: #1f7a52;
+  --c-warning: #9a5b00;
+  --c-error: #c62f3a;
+  --c-info-text: #123f6b;
+  --c-success-text: #14492f;
+  --c-warning-text: #5a3500;
+  --c-error-text: #7a1a22;
+
+  --webnhanh-gradient: linear-gradient(135deg, var(--c-pink) 0%, var(--c-sun) 52%, var(--c-mint) 100%);
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 999px;
+
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.2, 0.9, 0.3, 1.3);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  --gutter: 16px;
+  --container: 1160px;
+  --topbar-h: 68px;
+  /* The top bar plus the iPhone status bar above it (0 without one; index.html sets viewport-fit=cover). */
+  --header-h: calc(var(--topbar-h) + env(safe-area-inset-top, 0px));
+
+  --shadow-sm: 0 1px 2px rgb(29 27 58 / 0.05), 0 2px 6px rgb(120 84 30 / 0.06);
+  --shadow-md: 0 12px 28px -10px rgb(120 84 30 / 0.22);
+  --shadow-lg: 0 28px 56px -18px rgb(29 27 58 / 0.3);
+  /* The block look of the chrome: an ink outline casting a hard shadow straight down. */
+  --shadow-block: 0 4px 0 var(--c-ink);
+  --shadow-block-lg: 0 6px 0 var(--c-ink);
+  --shadow-glow-primary: 0 8px 20px -8px color-mix(in srgb, var(--c-primary) 55%, transparent);
+  --shadow-focus-primary: 0 0 0 3px var(--c-surface), 0 0 0 6px var(--c-primary);
+}
+
+@media (min-width: 720px) {
+  :root {
+    --gutter: 24px;
+  }
+}

@@ -130,7 +130,7 @@ function Home({ account }: { readonly account: Account }): ReactNode {
       ) : list === null ? (
         <SiteCardsPlaceholder />
       ) : list.sites.length === 0 ? (
-        <div className="shell-card empty" data-id="home-empty">
+        <div className="card empty" data-id="home-empty">
           <h2 className="empty-title">{t('home.empty.title')}</h2>
           <p className="empty-body">{t('home.empty.body')}</p>
           <Link className="pill pill-cta" to="/new" data-id="home-create">

@@ -2,8 +2,7 @@
  * Vite plugins of the web app.
  *
  * brandHead: the head tags from brand.config.json (title, description, Open Graph, favicon from brand/icon.svg, the web
- * app manifest) and the shared theme script of @achoo254/app-shell, inline before the stylesheet so a dark choice
- * never flashes white. The manifest lets phones install the app, which iPhone and iPad need before they allow Web
+ * app manifest). The app has one light theme and no inline script (the CSP allows none). The manifest lets phones install the app, which iPhone and iPad need before they allow Web
  * Push of new orders.
  */
 import { readFileSync } from 'node:fs';
@@ -11,14 +10,12 @@ import { fileURLToPath } from 'node:url';
 import { loadBrandConfig } from '@achoo254/brand/build';
 import { primaryOrigin } from '@achoo254/brand/hosts';
 import type { Plugin } from 'vite';
-import { THEME_BOOTSTRAP_SCRIPT } from './src/theme-bootstrap.ts';
 
 const REPO_ROOT = new URL('../../', import.meta.url);
 /** Repo root as a file path (for fs.allow: the app imports its mark from brand/). */
 export const REPO_ROOT_PATH = fileURLToPath(REPO_ROOT);
 
 const BRAND_TAGS = '<!-- brand-tags -->';
-const THEME_BOOTSTRAP = '<!--theme-bootstrap-->';
 const FAVICON = 'favicon.svg';
 const MANIFEST = 'manifest.webmanifest';
 
@@ -80,10 +77,8 @@ export function brandHead(): Plugin[] {
       transformIndexHtml: {
         order: 'pre',
         handler(html) {
-          for (const marker of [BRAND_TAGS, THEME_BOOTSTRAP]) {
-            if (html.split(marker).length !== 2) throw new Error(`index.html must contain ${marker} once`);
-          }
-          return html.replace(BRAND_TAGS, tags).replace(THEME_BOOTSTRAP, `<script>${THEME_BOOTSTRAP_SCRIPT}</script>`);
+          if (html.split(BRAND_TAGS).length !== 2) throw new Error(`index.html must contain ${BRAND_TAGS} once`);
+          return html.replace(BRAND_TAGS, tags);
         },
       },
     },

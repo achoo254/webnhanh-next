@@ -13,7 +13,7 @@ function SignOutButton(): ReactNode {
   return (
     <button
       type="button"
-      className="shell-topbar-link shell-topbar-cta"
+      className="topbar-cta topbar-cta-quiet"
       onClick={() => void signOut().then(() => navigate('/', { replace: true }))}
       data-id="sign-out"
     >
@@ -23,7 +23,7 @@ function SignOutButton(): ReactNode {
 }
 
 /**
- * A page for a signed-in person, in the shared frame with Đăng xuất in the header. While the session check runs it
+ * A page for a signed-in person, in the app's frame with Đăng xuất in the header. While the session check runs it
  * shows the frame only; signed out, it sends the person to sign in.
  */
 export function SignedInPage({ children }: { readonly children: (account: Account) => ReactNode }): ReactNode {

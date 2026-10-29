@@ -35,10 +35,13 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   (worker chỉ nói chuyện loopback). Endpoint push chỉ nhận host dịch vụ push của trình duyệt (`isPushEndpoint`).
 - Migration là SQL sinh bằng `pnpm --filter @webnhanh/db db:generate`, commit và review như code; không `drizzle-kit push`.
 - Không viết cứng tên sản phẩm: đọc từ `apps/web/src/brand.ts` (chữ giao diện dùng `{app}` trong `messages.ts`).
-- Trang công khai và khung app dùng `@achoo254/app-shell` (header, footer, thẻ đăng nhập, đổi giao diện và ngôn ngữ);
-  không viết tay. Nâng gói thì hash CSP của script theme trong `infra/nginx/webnhanh.hoandat.com.conf` có thể đổi:
-  `apps/web/src/theme-bootstrap.test.ts` báo hash mới.
-- Không truyền `linkComponent` cho `SignInCard`: `/auth/login` là route của server.
+- Web Nhanh có giao diện riêng (nhóm ngoại lệ cá nhân hoá như hoandat.com, Miu World, Tiểu Đệ): header, footer, thẻ
+  đăng nhập, landing tự viết (`apps/web/src/public-page.tsx`, `src/frame/`, `src/sign-in.tsx`), token màu và phông ở
+  `src/styles/tokens.css`; một giao diện sáng duy nhất, không đổi sáng/tối, không script inline (CSP không cho,
+  `src/index-html.test.ts` giữ). Từ `@achoo254/app-shell` chỉ dùng `/preferences` cho ngôn ngữ (cookie `hd_lang` chung
+  các app hoandat.com). Chữ của khung ở khoá `chrome.*` trong `messages.ts`; footer vẫn ghi "Một app của hoandat.com",
+  link Quyền riêng tư, Điều khoản.
+- Nút đăng nhập là link thường tới `/auth/login` (route của server), không qua router.
 - Route admin (`/api/admin/*`) không đi qua `ownedSite`: cổng duy nhất là `requireAdmin` (`apps/server/src/admin/admin-guard.ts`,
   `sub` trong `ADMIN_SUBS`, người khác kể cả chưa đăng nhập nhận 404). Mỗi thao tác admin ghi một dòng `admin_actions`
   trong cùng transaction; thao tác chạm file (gỡ, khôi phục, duyệt, từ chối) chỉ xếp hàng, worker áp dụng.

@@ -36,3 +36,20 @@ const CHOICES: ReadonlyMap<string, readonly VariantChoice[]> = (() => {
 export function variantChoices(template: TemplateId): readonly VariantChoice[] {
   return CHOICES.get(template) ?? [];
 }
+
+/**
+ * Every look of every template, the templates taking turns (a shop, a Tết card, a wedding…, then the next look of
+ * each), for the landing's wall of templates.
+ */
+export function interleavedVariantChoices(): readonly VariantChoice[] {
+  const lists = [...CHOICES.values()];
+  const longest = Math.max(0, ...lists.map((list) => list.length));
+  const result: VariantChoice[] = [];
+  for (let index = 0; index < longest; index += 1) {
+    for (const list of lists) {
+      const choice = list[index];
+      if (choice) result.push(choice);
+    }
+  }
+  return result;
+}

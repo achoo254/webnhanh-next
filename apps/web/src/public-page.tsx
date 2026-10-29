@@ -1,18 +1,13 @@
-import { PublicPage, type ShellLink, type ShellLinkComponent } from '@achoo254/app-shell';
 import type { ReactNode } from 'react';
-import { Link, useLocation } from 'react-router';
-import { SHELL_BRAND } from './brand';
-import { followStoredLocale, LOCALES, useI18n } from './i18n';
+import { AppFooter } from './frame/app-footer';
+import { AppHeader, LOGIN_PATH, type NavLink } from './frame/app-header';
+import { useI18n } from './i18n';
 
-/** The app's own paths go through the router, without a reload. Never used for /auth/* (server routes). */
-const RouterLink: ShellLinkComponent = ({ href, ...rest }) => <Link to={href} {...rest} />;
-
-export const LOGIN_PATH = '/login';
+export { LOGIN_PATH, type NavLink };
 
 /**
- * Every page of the app in the shared frame of the hoandat.com apps (@achoo254/app-shell): header with mark and
- * name, skip link, footer with the language and theme switches, ecosystem and legal links. Signed in, `accountSlot`
- * takes the place of the sign-in pill.
+ * Every page of the app in its own frame: skip link, header (mark and name, links, language, sign-in or
+ * `accountSlot`), the page in the content column, footer with the hoandat.com and legal links.
  */
 export function AppPage({
   children,
@@ -23,25 +18,21 @@ export function AppPage({
   readonly children: ReactNode;
   /** "center" for the sign-in card alone (/login), "flow" otherwise. */
   readonly layout?: 'flow' | 'center';
-  readonly navLinks?: readonly ShellLink[];
+  readonly navLinks?: readonly NavLink[];
   readonly accountSlot?: ReactNode;
 }): ReactNode {
-  const { locale } = useI18n();
-  const { pathname } = useLocation();
+  const { t } = useI18n();
   return (
-    <PublicPage
-      brand={SHELL_BRAND}
-      locale={locale}
-      locales={LOCALES}
-      onLocaleChange={followStoredLocale}
-      signInHref={LOGIN_PATH}
-      signInCurrent={pathname === LOGIN_PATH}
-      navLinks={navLinks}
-      accountSlot={accountSlot}
-      linkComponent={RouterLink}
-      layout={layout}
-    >
-      {children}
-    </PublicPage>
+    <div className="app">
+      <a className="skip-link" href="#main" data-id="skip-link">
+        {t('chrome.skip')}
+      </a>
+      <AppHeader navLinks={navLinks} accountSlot={accountSlot} />
+      {/* Focusable by the skip link only, not in the tab order. */}
+      <main id="main" tabIndex={-1} className={layout === 'center' ? 'app-main container app-main-center' : 'app-main container'}>
+        {children}
+      </main>
+      <AppFooter />
+    </div>
   );
 }

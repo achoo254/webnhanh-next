@@ -6,6 +6,6 @@
     "types": ["vite/client"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  // Runs in Node (reads the nginx site): checked by tsconfig.node.json.
-  "exclude": ["src/theme-bootstrap.test.ts"]
+  // Runs in Node (reads index.html and the nginx site): checked by tsconfig.node.json.
+  "exclude": ["src/index-html.test.ts"]
 }

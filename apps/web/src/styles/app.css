@@ -1,13 +1,4 @@
-/* The app's own blocks inside the shared frame (@achoo254/app-shell): tokens only, no literal colours. */
-body {
-  margin: 0;
-  background: var(--c-bg);
-}
-
-:root {
-  /* The app's purple-pink-orange gradient, from the shared tokens (violet, plum, amber). */
-  --webnhanh-gradient: linear-gradient(135deg, var(--c-primary-solid) 0%, var(--c-accent) 55%, var(--c-warning) 100%);
-}
+/* The app's own blocks inside its frame (frame.css): tokens only (tokens.css). Calm in forms, bright in the chrome. */
 
 /* Loader: centred in the space between the header and the footer. */
 .loading {
@@ -15,7 +6,7 @@ body {
   justify-items: center;
   align-content: center;
   gap: var(--space-3);
-  min-height: calc(100dvh - 260px);
+  min-height: calc(100dvh - 320px);
   padding-block: var(--space-7);
   color: var(--c-text-muted);
 }
@@ -146,11 +137,13 @@ body {
 .page-title,
 .prose h1 {
   margin: 0;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
-  line-height: 1.15;
-  color: var(--c-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.75rem, 1.35rem + 1.6vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  color: var(--c-ink);
+  text-wrap: balance;
 }
 .home-account {
   margin: 0;
@@ -165,9 +158,11 @@ body {
 }
 .empty-title {
   margin: 0;
-  font-family: var(--font-mono);
-  font-size: 1.25rem;
-  color: var(--c-text);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--c-ink);
 }
 .empty-body {
   margin: 0 auto;
@@ -181,9 +176,16 @@ body {
   color: var(--c-text);
   line-height: 1.6;
 }
+.prose h1 {
+  margin-bottom: var(--space-5);
+}
 .prose h2 {
   margin: var(--space-6) 0 var(--space-2);
-  font-size: 1.125rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: -0.01em;
+  color: var(--c-ink);
 }
 .prose p {
   margin: 0 0 var(--space-3);
@@ -191,11 +193,12 @@ body {
 .prose a {
   color: var(--c-primary);
 }
-
-/* The header's sign-out is a button wearing the shell's sign-in pill: drop the browser's button look. */
-button.shell-topbar-link {
-  border: 0;
-  cursor: pointer;
+/* A link alone on its line (404's way home) is a full touch target. */
+.prose p > a:only-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
 }
 
 .visually-hidden {
@@ -241,15 +244,23 @@ button.shell-topbar-link {
 }
 .back-link {
   justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--c-primary);
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
 }
+.back-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
 .back-link::before {
-  content: "‹ ";
+  content: "‹";
+  margin-inline-end: 0.35em;
 }
 
-/* Pill buttons of the mock: one gradient call to action per screen, dark and outline for the rest. */
+/* Pill buttons: one sunny block call to action per screen, ink and outline for the rest. */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -266,7 +277,7 @@ button.shell-topbar-link {
   text-align: center;
   text-decoration: none;
   cursor: pointer;
-  transition: filter var(--dur-fast) var(--ease-standard);
+  transition: filter var(--dur-fast) var(--ease-standard), transform var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
 }
 .pill:hover {
   filter: brightness(1.06);
@@ -287,18 +298,37 @@ label.pill:has(+ input:focus-visible) {
   min-height: 56px;
   font-size: 18px;
   font-weight: 800;
-  color: var(--c-on-primary);
-  background: var(--webnhanh-gradient);
-  box-shadow: var(--shadow-glow-primary);
+  color: var(--c-ink);
+  background: var(--c-sun);
+  border-color: var(--c-ink);
+  box-shadow: var(--shadow-block);
+}
+.pill-cta:hover {
+  filter: none;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0 var(--c-ink);
+}
+.pill-cta:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--c-ink);
+}
+.pill-cta:focus-visible {
+  box-shadow: var(--shadow-block), var(--shadow-focus-primary);
+}
+.pill-cta:disabled,
+.pill-cta[aria-disabled="true"] {
+  transform: none;
+  box-shadow: var(--shadow-block);
 }
 .pill-dark {
   color: var(--c-surface);
-  background: var(--c-text);
+  background: var(--c-ink);
+  border-color: var(--c-ink);
 }
 .pill-ghost {
-  color: var(--c-text);
+  color: var(--c-ink);
   background: var(--c-surface);
-  border-color: var(--c-text);
+  border-color: var(--c-ink);
 }
 .pill-danger {
   color: var(--c-error);
@@ -365,12 +395,18 @@ label.pill:has(+ input:focus-visible) {
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: var(--c-surface);
-  border: 1px solid var(--c-border-subtle);
-  box-shadow: var(--shadow-sm);
+  border: 2px solid var(--c-ink);
+  box-shadow: var(--shadow-block);
+  transition: transform var(--dur-base) var(--ease-bounce), box-shadow var(--dur-base) var(--ease-standard);
+}
+.site-card:not(.site-card-placeholder):hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 0 var(--c-ink);
 }
 .site-card-media {
   aspect-ratio: 16 / 9;
   background: var(--webnhanh-gradient);
+  border-bottom: 2px solid var(--c-ink);
 }
 .site-card-media img {
   display: block;
@@ -386,7 +422,10 @@ label.pill:has(+ input:focus-visible) {
 }
 .site-card-name {
   margin: 0;
-  font-size: 1.0625rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
   color: var(--c-text);
 }
@@ -422,23 +461,29 @@ label.pill:has(+ input:focus-visible) {
   min-height: 140px;
   padding: 0;
   overflow: hidden;
-  border: 0;
+  border: 2px solid var(--c-ink);
   border-radius: var(--radius-xl);
   background: var(--webnhanh-gradient);
+  box-shadow: var(--shadow-block);
   font: inherit;
   text-align: start;
-  color: var(--c-text);
+  color: var(--c-ink);
+  transition: transform var(--dur-base) var(--ease-bounce), box-shadow var(--dur-base) var(--ease-standard);
 }
 button.bento-card {
   min-height: 180px;
   cursor: pointer;
 }
+.bento-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 0 var(--c-ink);
+}
 button.bento-card[aria-pressed="true"] {
-  box-shadow: 0 0 0 3px var(--c-surface), 0 0 0 6px var(--c-primary-solid);
+  box-shadow: var(--shadow-block), 0 0 0 3px var(--c-surface), 0 0 0 6px var(--c-primary-solid);
 }
 button.bento-card:focus-visible {
   outline: none;
-  box-shadow: var(--shadow-focus-primary);
+  box-shadow: var(--shadow-block), var(--shadow-focus-primary);
 }
 .bento-card img {
   position: absolute;
@@ -477,14 +522,15 @@ button.bento-card:focus-visible {
   display: grid;
   margin: var(--space-3);
   padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--c-ink);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--c-surface) 88%, transparent);
+  background: var(--c-surface);
   font-weight: 800;
   font-size: 15px;
   line-height: 1.25;
 }
 .bento-label small {
-  font-weight: 500;
+  font-weight: 400;
   font-size: 12px;
   color: var(--c-text-muted);
 }
@@ -495,7 +541,7 @@ button.bento-card:focus-visible {
   gap: var(--space-4);
   margin: 0;
   padding: var(--space-4);
-  border: 1px solid var(--c-border-subtle);
+  border: 1.5px solid var(--c-border-subtle);
   border-radius: var(--radius-xl);
   background: var(--c-surface);
   box-shadow: var(--shadow-sm);
@@ -508,8 +554,8 @@ button.bento-card:focus-visible {
   margin: 0;
   padding: 0;
   font-size: 1.0625rem;
-  font-weight: 800;
-  color: var(--c-text);
+  font-weight: 700;
+  color: var(--c-ink);
 }
 .field {
   display: grid;
@@ -526,16 +572,20 @@ button.bento-card:focus-visible {
   padding: var(--space-2) var(--space-3);
   border: 1.5px solid var(--c-border);
   border-radius: var(--radius-lg);
-  background: var(--c-surface-subtle);
+  background: var(--c-surface);
   color: var(--c-text);
+  transition: border-color var(--dur-fast) var(--ease-standard), box-shadow var(--dur-fast) var(--ease-standard);
   /* 16px or more: phones do not zoom into the field. */
   font: inherit;
   font-size: 17px;
 }
+.input:hover {
+  border-color: color-mix(in srgb, var(--c-ink) 45%, var(--c-border));
+}
 .input:focus {
   outline: none;
   border-color: var(--c-primary-solid);
-  box-shadow: var(--shadow-focus-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-primary) 24%, transparent);
 }
 .input[aria-invalid="true"] {
   border-color: var(--c-error);
@@ -1098,8 +1148,10 @@ button.bento-card:focus-visible {
   display: grid;
   gap: var(--space-3);
   padding: var(--space-5) var(--space-4);
+  border: 2px solid var(--c-ink);
   border-radius: var(--radius-xl);
-  background: var(--webnhanh-gradient);
+  background: var(--c-primary-solid);
+  box-shadow: var(--shadow-block);
   color: var(--c-on-primary);
 }
 .live p {
@@ -1107,8 +1159,9 @@ button.bento-card:focus-visible {
 }
 .live-title {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 1.75rem;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1.1;
 }
 .live-url {
@@ -1470,7 +1523,7 @@ button.bento-card:focus-visible {
   background: color-mix(in srgb, var(--c-info) 8%, var(--c-surface));
 }
 .text-button {
-  min-height: 32px;
+  min-height: 44px;
   padding: 0 var(--space-1);
   border: 0;
   border-radius: var(--radius-md);
@@ -1697,7 +1750,9 @@ button.bento-card:focus-visible {
   background: var(--c-surface);
 }
 .build-log summary {
-  min-height: 32px;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
   font-weight: 700;
   cursor: pointer;
 }
@@ -1782,6 +1837,18 @@ button.bento-card:focus-visible {
   .build-sentence,
   .build-done {
     animation: none;
+  }
+  .pill,
+  .site-card,
+  .bento-card,
+  .topbar-cta {
+    transition: none;
+  }
+  .pill-cta:hover,
+  .site-card:not(.site-card-placeholder):hover,
+  .bento-card:hover,
+  .topbar-cta:hover {
+    transform: none;
   }
 }
 
@@ -1882,9 +1949,10 @@ button.bento-card:focus-visible {
   place-items: center;
   width: 24px;
   height: 24px;
+  border: 1.5px solid var(--c-ink);
   border-radius: var(--radius-full);
-  background: var(--webnhanh-gradient);
-  color: var(--c-on-primary);
+  background: var(--c-sun);
+  color: var(--c-ink);
   font-weight: 800;
   font-size: 13px;
 }

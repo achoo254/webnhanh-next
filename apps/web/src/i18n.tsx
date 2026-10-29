@@ -1,4 +1,4 @@
-import { matchShellLocale, readPreferences, subscribePreferences } from '@achoo254/app-shell';
+import { readPreferences, subscribePreferences, writePreference } from '@achoo254/app-shell/preferences';
 import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { BUILD_MINUTES_PER_DAY } from '@webnhanh/db/build-limits';
 import { ABUSE_EMAIL } from '@webnhanh/db/site-name';
@@ -8,6 +8,12 @@ import { DICTIONARIES, type Locale, type MessageKey } from './messages';
 export type { Locale, MessageKey };
 export const LOCALES: readonly Locale[] = ['vi', 'en'];
 const DEFAULT_LOCALE: Locale = 'vi';
+
+/** Each language in its own words (the switch never translates them), and its short code for narrow screens. */
+export const LOCALE_NAMES: Readonly<Record<Locale, { readonly name: string; readonly code: string }>> = {
+  vi: { name: 'Tiếng Việt', code: 'VI' },
+  en: { name: 'English', code: 'EN' },
+};
 
 export type Translate = (key: MessageKey, params?: Readonly<Record<string, string | number>>) => string;
 
@@ -29,9 +35,24 @@ export function translator(locale: Locale): Translate {
   return (key, params) => format(DICTIONARIES[locale][key], params);
 }
 
+/** One of the app's languages by the primary subtag of a BCP 47 tag ("vi-VN" is vi, "en-GB" is en). */
+export function matchLocale(tag: unknown): Locale | undefined {
+  if (typeof tag !== 'string') return undefined;
+  const primary = tag.trim().toLowerCase().split(/[-_]/)[0];
+  return LOCALES.find((locale) => locale === primary);
+}
+
 /** The shared choice of every hoandat.com app (`hd_lang`), else the device's language when the app speaks it, else Vietnamese. */
 export function readPreferredLocale(): Locale {
-  return readPreferences({ domain: brand.primaryTenant.domain }).lang ?? matchShellLocale(globalThis.navigator?.language) ?? DEFAULT_LOCALE;
+  return readPreferences({ domain: brand.primaryTenant.domain, locales: LOCALES }).lang ?? matchLocale(globalThis.navigator?.language) ?? DEFAULT_LOCALE;
+}
+
+/**
+ * Stores the language for every hoandat.com app (cookie `hd_lang` on the root domain); the provider's subscription
+ * re-renders the app in it.
+ */
+export function chooseLocale(locale: Locale): void {
+  writePreference('lang', locale, { domain: brand.primaryTenant.domain });
 }
 
 const serverLocale = (): Locale => DEFAULT_LOCALE;
@@ -44,8 +65,8 @@ interface I18n {
 const I18nContext = createContext<I18n | null>(null);
 
 /**
- * Speaks the visitor's language to the whole app. The footer's language switch (@achoo254/app-shell) stores the
- * choice itself; the subscription re-renders the app in it, also when another app changed it while this tab was away.
+ * Speaks the visitor's language to the whole app. The header's language switch stores the choice (`chooseLocale`);
+ * the subscription re-renders the app in it, also when another app changed it while this tab was away.
  */
 export function I18nProvider({ children }: { readonly children: ReactNode }): ReactNode {
   const locale = useSyncExternalStore(subscribePreferences, readPreferredLocale, serverLocale);
@@ -61,6 +82,3 @@ export function useI18n(): I18n {
   if (!value) throw new Error('useI18n outside I18nProvider');
   return value;
 }
-
-/** `onLocaleChange` of the shared switches: the switch already stored the choice, and the provider follows it. */
-export function followStoredLocale(): void {}

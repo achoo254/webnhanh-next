@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
@@ -41,14 +41,45 @@ afterEach(() => {
 });
 
 describe('web app', () => {
-  it('shows a visitor the landing with the shared sign-in card, going through the server sign-in', async () => {
+  it('shows a visitor the landing with the sign-in card, going through the server sign-in', async () => {
     stubMe(401, { error: 'sign-in-required' });
     renderAt('/');
     const cta = await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' });
     expect(cta.getAttribute('href')).toBe('/auth/login?return=%2F&lang=vi');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Có website riêng mà không cần biết làm web');
-    expect(document.querySelector('[data-id="theme-switch"]')).not.toBeNull();
-    expect(document.querySelector('[data-id="lang-en"]')).not.toBeNull();
+    expect(screen.getByText(/App không bao giờ thấy mật khẩu của bạn/)).toBeTruthy();
+    // The header's pill leads to /login; the templates' looks fill the wall beside the hero.
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Đăng nhập' }).getAttribute('href')).toBe('/login');
+    expect(document.querySelectorAll('[data-id="template-wall"] img').length).toBeGreaterThan(0);
+  });
+
+  it('frames every page in the app\'s own header and footer: one theme, language in the header, hoandat.com and legal links below', async () => {
+    stubMe(401, { error: 'sign-in-required' });
+    renderAt('/privacy');
+    await screen.findByRole('heading', { level: 1, name: 'Quyền riêng tư' });
+    expect(document.querySelector('[data-id="theme-switch"]')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Bỏ qua tới nội dung' }).getAttribute('href')).toBe('#main');
+    const header = screen.getByRole('banner');
+    expect(within(header).getByRole('link', { name: 'Web Nhanh' }).getAttribute('href')).toBe('/');
+    expect(within(header).getByRole('button', { name: 'Tiếng Việt' }).getAttribute('aria-pressed')).toBe('true');
+    expect(within(header).getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe('false');
+    const footer = within(screen.getByRole('contentinfo'));
+    expect(footer.getByRole('link', { name: 'Một app của hoandat.com' }).getAttribute('href')).toBe('https://hoandat.com');
+    expect(footer.getByRole('link', { name: 'Quyền riêng tư' }).getAttribute('aria-current')).toBe('page');
+    expect(footer.getByRole('link', { name: 'Điều khoản' }).getAttribute('href')).toBe('/terms');
+  });
+
+  it('switches the language from the header and keeps it for the other hoandat.com apps', async () => {
+    stubMe(401, { error: 'sign-in-required' });
+    renderAt('/');
+    // The landing replaces the frame shown while the session check runs: switch once it is there.
+    await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' });
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+    expect(await screen.findByText('Your own website, no web skills needed')).toBeTruthy();
+    expect(document.cookie).toContain('hd_lang=en');
+    expect(screen.getByRole('link', { name: 'An app from hoandat.com' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Sign in with hoandat.com' }).getAttribute('href')).toBe('/auth/login?return=%2F&lang=en');
+    expect(document.documentElement.lang).toBe('en');
   });
 
   it('tells why the last sign-in came back', async () => {
@@ -62,8 +93,9 @@ describe('web app', () => {
     renderAt('/');
     expect(await screen.findByText('Bạn chưa có website nào')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Tạo website mới' }).getAttribute('href')).toBe('/new');
-    expect(screen.getByRole('button', { name: 'Đăng xuất' })).toBeTruthy();
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Đăng xuất' })).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Đăng nhập' })).toBeNull();
   });
 
   it('names the templates\' fonts with their licence and who owns the pictures, to anyone', async () => {

@@ -1,9 +1,17 @@
-import '@fontsource/inter/400.css';
-import '@fontsource/inter/600.css';
-import '@fontsource/jetbrains-mono/600.css';
-import '@fontsource/jetbrains-mono/700.css';
-import '@achoo254/app-shell/tokens.css';
-import '@achoo254/app-shell/app-shell.css';
+// The app's faces, self-hosted, Latin and Vietnamese files only (together they hold every Vietnamese letter).
+import '@fontsource/bricolage-grotesque/latin-800.css';
+import '@fontsource/bricolage-grotesque/vietnamese-800.css';
+import '@fontsource/be-vietnam-pro/latin-400.css';
+import '@fontsource/be-vietnam-pro/vietnamese-400.css';
+import '@fontsource/be-vietnam-pro/latin-600.css';
+import '@fontsource/be-vietnam-pro/vietnamese-600.css';
+import '@fontsource/be-vietnam-pro/latin-700.css';
+import '@fontsource/be-vietnam-pro/vietnamese-700.css';
+import '@fontsource/jetbrains-mono/latin-600.css';
+import '@fontsource/jetbrains-mono/latin-700.css';
+import './styles/tokens.css';
+import './styles/frame.css';
+import './styles/landing.css';
 import './styles/app.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';

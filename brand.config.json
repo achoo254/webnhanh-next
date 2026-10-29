@@ -4,8 +4,8 @@
   "shortName": "Web Nhanh",
   "description": "Làm một website từ mẫu có sẵn rồi đăng ra địa chỉ riêng <tên>.hoandat.io.vn; lập trình viên gắn link git hoặc tải file zip lên là có website.",
   "colors": {
-    "primary": "#6e56cf",
-    "background": "#f9f9fb",
+    "primary": "#2f4fe0",
+    "background": "#fff7ec",
     "backgroundDark": "#111113"
   },
   "icon": "brand/icon.svg",

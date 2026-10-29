@@ -5,6 +5,16 @@
 const vi = {
   'nav.features': 'Làm được gì',
   'nav.how': 'Cách dùng',
+  'chrome.skip': 'Bỏ qua tới nội dung',
+  'chrome.nav': 'Điều hướng',
+  'chrome.signIn': 'Đăng nhập',
+  'chrome.signInWith': 'Đăng nhập bằng {domain}',
+  'chrome.signInNote': 'Dùng tài khoản {domain}: đăng nhập bằng Google hoặc GitHub. App không bao giờ thấy mật khẩu của bạn.',
+  'chrome.ecosystem': 'Một app của {domain}',
+  'chrome.privacy': 'Quyền riêng tư',
+  'chrome.terms': 'Điều khoản',
+  'chrome.footLinks': 'Liên kết cuối trang',
+  'chrome.language': 'Ngôn ngữ',
   'hero.title': 'Có website riêng mà không cần biết làm web',
   'hero.lede':
     'Chọn một mẫu, sửa chữ, thay ảnh, chọn màu rồi bấm Đăng. Website của bạn có ngay địa chỉ riêng dạng tên-của-bạn.{sites} để gửi cho khách và bạn bè.',
@@ -646,6 +656,16 @@ export type Locale = 'vi' | 'en';
 const en: Readonly<Record<MessageKey, string>> = {
   'nav.features': 'What it does',
   'nav.how': 'How it works',
+  'chrome.skip': 'Skip to content',
+  'chrome.nav': 'Navigation',
+  'chrome.signIn': 'Sign in',
+  'chrome.signInWith': 'Sign in with {domain}',
+  'chrome.signInNote': 'Use your {domain} account: sign in with Google or GitHub. The app never sees your password.',
+  'chrome.ecosystem': 'An app from {domain}',
+  'chrome.privacy': 'Privacy',
+  'chrome.terms': 'Terms',
+  'chrome.footLinks': 'Footer links',
+  'chrome.language': 'Language',
   'hero.title': 'Your own website, no web skills needed',
   'hero.lede':
     'Pick a template, change the text, swap the photos, choose the colours and press Publish. Your website gets its own address like your-name.{sites} to send to customers and friends.',
