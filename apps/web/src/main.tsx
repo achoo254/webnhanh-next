@@ -9,6 +9,8 @@ import '@fontsource/be-vietnam-pro/latin-700.css';
 import '@fontsource/be-vietnam-pro/vietnamese-700.css';
 import '@fontsource/jetbrains-mono/latin-600.css';
 import '@fontsource/jetbrains-mono/latin-700.css';
+// The account menu's layout (shell-* classes only); its colours come from tokens.css, skinned in frame.css.
+import '@achoo254/app-shell/app-shell.css';
 import './styles/tokens.css';
 import './styles/frame.css';
 import './styles/landing.css';

@@ -88,14 +88,37 @@ describe('web app', () => {
     expect((await screen.findByRole('status')).textContent).toContain('Đăng nhập tạm thời chưa dùng được');
   });
 
-  it('shows a signed-in account without pages the way to make one, with sign-out', async () => {
-    stubMe(200, { account: { id: 'a1', createdAt: '2026-10-28T03:00:00.000Z' } });
+  it('shows a signed-in account without pages the way to make one, with the account menu in the header', async () => {
+    const picture = 'https://lh3.googleusercontent.com/a/lan';
+    stubMe(200, { account: { id: 'a1', createdAt: '2026-10-28T03:00:00.000Z', name: 'Lan Anh', email: 'lan@example.com', picture } });
     renderAt('/');
     expect(await screen.findByText('Bạn chưa có website nào')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Tạo website mới' }).getAttribute('href')).toBe('/new');
-    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Đăng xuất' })).toBeTruthy();
+    const header = screen.getByRole('banner');
+    const menu = header.querySelector('[data-id="account-menu"]');
+    expect(header.querySelector('[data-id="topbar-account"]')?.getAttribute('aria-label')).toBe('Lan Anh · Tài khoản');
+    expect(header.querySelector('.shell-avatar')?.getAttribute('src')).toBe(picture);
+    expect(menu?.textContent).toContain('lan@example.com');
+    // Not an admin: the menu has the hoandat.com account pages and sign-out, no admin tools.
+    expect(menu?.querySelector('[data-id="account-menu-admin"]')).toBeNull();
+    expect(menu?.querySelector('[data-id="account-menu-idp-email"]')?.getAttribute('href')).toBe('https://auth.hoandat.com/account#account-email');
+    expect(within(header).getByRole('button', { name: 'Đăng xuất' }).getAttribute('data-id')).toBe('account-menu-sign-out');
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Đăng nhập' })).toBeNull();
+  });
+
+  it('names an account the IdP told nothing about "Tài khoản", lists the admin tools for admins and signs out from the menu', async () => {
+    stubMe(200, { account: { id: 'a1', createdAt: '2026-10-28T03:00:00.000Z', admin: true } });
+    renderAt('/');
+    expect(await screen.findByText('Bạn chưa có website nào')).toBeTruthy();
+    const header = screen.getByRole('banner');
+    expect(header.querySelector('[data-id="topbar-account"]')?.getAttribute('aria-label')).toBe('Tài khoản · Tài khoản');
+    expect(header.querySelector('img.shell-avatar')).toBeNull();
+    expect(within(header).getByRole('link', { name: 'Quản trị' }).getAttribute('href')).toBe('/admin');
+    fireEvent.click(within(header).getByRole('button', { name: 'Đăng xuất' }));
+    expect(await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeTruthy();
+    const calls = vi.mocked(fetch).mock.calls.map(([input, init]) => `${init?.method ?? 'GET'} ${String(input)}`);
+    expect(calls).toContain('POST /auth/logout');
   });
 
   it('names the templates\' fonts with their licence and who owns the pictures, to anyone', async () => {

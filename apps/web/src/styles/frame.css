@@ -203,6 +203,75 @@ code {
   box-shadow: 0 1px 0 var(--c-ink);
 }
 
+/*
+ * The signed-in account menu (AccountMenu of @achoo254/app-shell, whose app-shell.css lays it out from the same
+ * variable names as tokens.css). Here it takes the header's look: the trigger is the quiet ink pill, the round
+ * picture has an ink ring, and the panel is a block with a hard ink shadow.
+ */
+.shell-account {
+  --c-icon-muted: var(--c-text-muted);
+  --icon-stroke: 2;
+}
+.topbar .shell-account-trigger {
+  min-height: 44px;
+  padding: 0 14px 0 5px;
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius-full);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  box-shadow: var(--shadow-block);
+  font-weight: 700;
+  transition:
+    transform var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard);
+}
+.topbar .shell-account-trigger:hover,
+.topbar .shell-account[open] > .shell-account-trigger {
+  background: var(--c-surface);
+  box-shadow: 0 5px 0 var(--c-ink);
+}
+.topbar .shell-account-trigger:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--c-ink);
+}
+.topbar .shell-avatar {
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius-full);
+}
+.topbar .shell-avatar-initial {
+  background: var(--c-sun);
+  color: var(--c-ink);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+.topbar .shell-account-name {
+  font-family: var(--font-sans);
+  font-size: 15px;
+}
+.topbar .shell-account-panel {
+  top: calc(100% + var(--space-3));
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 0 var(--c-ink);
+}
+.topbar .shell-account-head-name {
+  font-weight: 700;
+}
+.topbar .shell-account-group {
+  border-top-color: var(--c-border);
+}
+.topbar .shell-account-item {
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+.topbar .shell-account-item:hover {
+  background: var(--c-surface-subtle);
+  color: var(--c-primary);
+}
+
 /* Language: two round buttons on a track, the current one raised. */
 .lang-switch {
   display: inline-flex;

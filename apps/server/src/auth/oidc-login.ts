@@ -126,3 +126,47 @@ export function subFromIdToken(idToken: string, expect: { issuer: string; client
   }
   return claims.sub;
 }
+
+/** What the account menu shows of the person, from the IdP's userinfo; null where the IdP has nothing usable. */
+export interface IdpProfile {
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly picture: string | null;
+}
+
+const NAME_MAX = 200;
+const EMAIL_MAX = 320;
+const PICTURE_MAX = 2048;
+
+function shortText(value: unknown, max: number): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.trim();
+  return text !== '' && text.length <= max ? text : null;
+}
+
+/** An https URL only: the menu shows nothing else, and the CSP allows no other scheme. */
+function httpsUrl(value: unknown): string | null {
+  const text = shortText(value, PICTURE_MAX);
+  if (!text) return null;
+  try {
+    return new URL(text).protocol === 'https:' ? text : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The profile in a userinfo response, or null when the response is not about `sub` (OIDC Core 5.3.2: its `sub`
+ * must be the ID token's). Fields that are missing, too long or of the wrong shape become null.
+ */
+export function profileFromUserinfo(value: unknown, sub: string): IdpProfile | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const v = value as Record<string, unknown>;
+  if (v.sub !== sub) return null;
+  const email = shortText(v.email, EMAIL_MAX);
+  return {
+    name: shortText(v.name, NAME_MAX) ?? shortText(v.preferred_username, NAME_MAX),
+    email: email?.includes('@') ? email : null,
+    picture: httpsUrl(v.picture),
+  };
+}

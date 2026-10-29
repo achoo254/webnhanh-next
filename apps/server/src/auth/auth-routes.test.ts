@@ -12,26 +12,42 @@ const SECRET = 's'.repeat(40);
 const b64 = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString('base64url');
 
 interface FakeIdp {
-  readonly issuer: string;
+  /** Set once the server listens (its port is known only then). */
+  issuer: string;
   /** The token requests it received (Authorization header and form). */
   readonly tokenRequests: { authorization: string | undefined; form: Record<string, string> }[];
   /** Nonce of the ID token it hands out. */
   nonce: string;
+  /** What its userinfo endpoint answers (status and body), and the Authorization headers it received. */
+  userinfo: { status: number; body: unknown };
+  readonly userinfoRequests: (string | undefined)[];
   close(): Promise<void>;
 }
+
+const ACCESS_TOKEN = 'access-token-1';
 
 /** A local stand-in for auth.hoandat.com: discovery and a token endpoint (http is allowed on loopback outside production). */
 async function startFakeIdp(): Promise<FakeIdp> {
   const app = express();
   app.use(express.urlencoded({ extended: false }));
-  const idp: { issuer: string; nonce: string; tokenRequests: FakeIdp['tokenRequests'] } = { issuer: '', nonce: '', tokenRequests: [] };
+  const idp: Omit<FakeIdp, 'close'> = {
+    issuer: '',
+    nonce: '',
+    tokenRequests: [],
+    userinfo: { status: 200, body: { sub: 'account-42', name: 'Lan Anh', email: 'lan@example.com', picture: 'https://lh3.googleusercontent.com/a/lan' } },
+    userinfoRequests: [],
+  };
   app.get('/.well-known/openid-configuration', (_req, res) => {
-    res.json({ issuer: idp.issuer, authorization_endpoint: `${idp.issuer}/auth`, token_endpoint: `${idp.issuer}/token` });
+    res.json({ issuer: idp.issuer, authorization_endpoint: `${idp.issuer}/auth`, token_endpoint: `${idp.issuer}/token`, userinfo_endpoint: `${idp.issuer}/me` });
+  });
+  app.get('/me', (req, res) => {
+    idp.userinfoRequests.push(req.headers.authorization);
+    res.status(idp.userinfo.status).json(idp.userinfo.body);
   });
   app.post('/token', (req, res) => {
     idp.tokenRequests.push({ authorization: req.headers.authorization, form: req.body as Record<string, string> });
     const claims = { iss: idp.issuer, aud: 'webnhanh-web', exp: Math.floor(Date.now() / 1000) + 300, nonce: idp.nonce, sub: 'account-42' };
-    res.json({ id_token: `${b64({ alg: 'RS256' })}.${b64(claims)}.sig`, token_type: 'Bearer' });
+    res.json({ id_token: `${b64({ alg: 'RS256' })}.${b64(claims)}.sig`, access_token: ACCESS_TOKEN, token_type: 'Bearer' });
   });
   const server: Server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.once('listening', resolve));
@@ -76,7 +92,7 @@ describe('sign-in with the account service', () => {
       client_id: 'webnhanh-web',
       redirect_uri: `${ORIGIN}/auth/callback`,
       response_type: 'code',
-      scope: 'openid',
+      scope: 'openid profile email',
       code_challenge_method: 'S256',
       ui_locales: 'en',
     });
@@ -107,11 +123,56 @@ describe('sign-in with the account service', () => {
 
     const me = await http.get('/api/me');
     expect(me.status).toBe(200);
-    expect(me.body).toEqual({ account: { id: account?.id, createdAt: account?.createdAt.toISOString(), admin: false, locked: false } });
+    expect(idp.userinfoRequests).toEqual([`Bearer ${ACCESS_TOKEN}`]);
+    expect(me.body).toEqual({
+      account: {
+        id: account?.id,
+        createdAt: account?.createdAt.toISOString(),
+        name: 'Lan Anh',
+        email: 'lan@example.com',
+        picture: 'https://lh3.googleusercontent.com/a/lan',
+        admin: false,
+        locked: false,
+      },
+    });
 
     expect((await http.post('/auth/logout').set('Origin', ORIGIN)).status).toBe(204);
     expect((await http.get('/api/me')).status).toBe(401);
     expect(await app.handle.db.select().from(sessions)).toHaveLength(0);
+  });
+
+  it('refreshes the profile at each sign-in, and keeps it when userinfo cannot be read', async () => {
+    idp = await startFakeIdp();
+    const fake = idp;
+    const base = loadConfig({ NODE_ENV: 'test', AUTH_ISSUER: fake.issuer, AUTH_CLIENT_SECRET: SECRET, PUBLIC_URL: ORIGIN });
+    const test = await startTestApp({ auth: base.auth });
+    app = test;
+    const http = test.http();
+    const signIn = async (): Promise<string | undefined> => {
+      const authorize = new URL((await http.get('/auth/login?return=/')).headers.location ?? '');
+      fake.nonce = authorize.searchParams.get('nonce') ?? '';
+      return (await http.get(`/auth/callback?state=${authorize.searchParams.get('state') ?? ''}&code=c1`)).headers.location;
+    };
+    const profile = async (): Promise<unknown> => {
+      const [row] = await test.handle.db.select({ name: accounts.name, email: accounts.email, picture: accounts.picture }).from(accounts);
+      return row;
+    };
+
+    expect(await signIn()).toBe('/');
+    expect(await profile()).toEqual({ name: 'Lan Anh', email: 'lan@example.com', picture: 'https://lh3.googleusercontent.com/a/lan' });
+
+    // The person removed their picture at the IdP: the next sign-in clears it.
+    fake.userinfo = { status: 200, body: { sub: 'account-42', name: 'Lan Anh Nguyễn', email: 'lan@example.com' } };
+    expect(await signIn()).toBe('/');
+    expect(await profile()).toEqual({ name: 'Lan Anh Nguyễn', email: 'lan@example.com', picture: null });
+
+    // Userinfo down, or about another subject: sign-in still works, the stored profile stays.
+    fake.userinfo = { status: 500, body: { error: 'server_error' } };
+    expect(await signIn()).toBe('/');
+    fake.userinfo = { status: 200, body: { sub: 'someone-else', name: 'Mallory' } };
+    expect(await signIn()).toBe('/');
+    expect(await profile()).toEqual({ name: 'Lan Anh Nguyễn', email: 'lan@example.com', picture: null });
+    expect(await test.handle.db.select().from(accounts)).toHaveLength(1);
   });
 
   it('signs the same IdP subject into the same account twice', async () => {

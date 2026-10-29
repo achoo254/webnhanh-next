@@ -29,9 +29,15 @@ export function PrivacyPage(): ReactNode {
           <p>Trang này nói {name} lưu gì về bạn, vì sao, và bao lâu.</p>
           <h2>Tài khoản</h2>
           <p>
-            Bạn đăng nhập bằng tài khoản {domain}. {name} chỉ nhận một mã định danh tài khoản (không nhận email, tên hay ảnh đại diện) và
-            đặt một cookie phiên đăng nhập. Cookie này chỉ dùng để giữ bạn đăng nhập, hết hạn sau 30 ngày (hoặc sau 7 ngày không dùng);
-            phiên hết hạn bị xoá khỏi máy chủ.
+            Bạn đăng nhập bằng tài khoản {domain}. Mỗi lần bạn đăng nhập, {name} nhận từ {domain} mã định danh tài khoản, tên hiển thị, email
+            và địa chỉ ảnh đại diện của bạn, rồi lưu chúng cùng tài khoản (lần đăng nhập sau thay bằng thông tin mới). Tên, email và ảnh chỉ
+            dùng để hiện ở menu tài khoản của chính bạn trong {name}: không hiện trên website bạn đăng, không gửi cho ai khác. Ảnh đại diện
+            được trình duyệt của bạn tải thẳng từ Google hoặc GitHub (nơi ảnh của tài khoản đăng nhập được lưu), không kèm địa chỉ trang
+            đang xem.
+          </p>
+          <p>
+            {name} đặt một cookie phiên đăng nhập. Cookie này chỉ dùng để giữ bạn đăng nhập, hết hạn sau 30 ngày (hoặc sau 7 ngày không
+            dùng); phiên hết hạn bị xoá khỏi máy chủ.
           </p>
           <h2>Lựa chọn giao diện</h2>
           <p>Ngôn ngữ bạn chọn được lưu trong cookie <code>hd_lang</code>, dùng chung cho các app của {domain}.</p>
@@ -48,9 +54,15 @@ export function PrivacyPage(): ReactNode {
           <p>This page says what {name} keeps about you, why, and for how long.</p>
           <h2>Account</h2>
           <p>
-            You sign in with your {domain} account. {name} receives only an account identifier (no email, name or picture) and sets one
-            session cookie, used only to keep you signed in; it expires after 30 days (or 7 days unused), and expired sessions are deleted
-            from the server.
+            You sign in with your {domain} account. Each time you sign in, {name} receives from {domain} your account identifier, display
+            name, email and picture address, and keeps them with your account (the next sign-in replaces them with what is current). The
+            name, email and picture are only shown in your own account menu in {name}: not on the websites you publish, and not sent to
+            anyone else. Your browser loads the picture straight from Google or GitHub (where the picture of the account you sign in with
+            is kept), without the address of the page you are on.
+          </p>
+          <p>
+            {name} sets one session cookie, used only to keep you signed in; it expires after 30 days (or 7 days unused), and expired
+            sessions are deleted from the server.
           </p>
           <h2>Display choices</h2>
           <p>The language you pick is kept in the <code>hd_lang</code> cookie, shared by the {domain} apps.</p>

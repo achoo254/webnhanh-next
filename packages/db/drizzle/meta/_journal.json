@@ -57,6 +57,13 @@
       "when": 1793197746433,
       "tag": "0007_site-deletion",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793264251363,
+      "tag": "0008_account-profile",
+      "breakpoints": true
     }
   ]
 }

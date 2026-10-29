@@ -1,12 +1,23 @@
 // Sign-in with a hoandat.com account: /auth/login sends the browser to auth.hoandat.com (Code + PKCE, scope
-// openid), /auth/callback exchanges the code (client_secret_basic), opens a session and comes back to the page the
-// person started from. Off until AUTH_CLIENT_SECRET is set.
+// openid profile email), /auth/callback exchanges the code (client_secret_basic), reads the name, email and picture
+// from the userinfo endpoint for the account menu, opens a session and comes back to the page the person started
+// from. Off until AUTH_CLIENT_SECRET is set.
 import { pruneSessions, type Db } from '@webnhanh/db';
 import express, { type RequestHandler, type Router } from 'express';
 import { accountStanding } from '../admin/admin-guard';
 import type { AuthConfig, ServerConfig } from '../config';
 import { HttpError } from '../http-error';
-import { codeChallenge, newLoginState, openState, safeReturnPath, sealState, subFromIdToken, withLoginResult } from './oidc-login';
+import {
+  codeChallenge,
+  newLoginState,
+  openState,
+  profileFromUserinfo,
+  safeReturnPath,
+  sealState,
+  subFromIdToken,
+  withLoginResult,
+  type IdpProfile,
+} from './oidc-login';
 import {
   accountForSub,
   clearSessionCookie,
@@ -21,16 +32,25 @@ import {
 
 const STATE_COOKIE = 'webnhanh_login';
 
+/** What the app asks the IdP for: the account's key, then the name, picture and email of the account menu. */
+const LOGIN_SCOPE = 'openid profile email';
+
 interface Discovery {
   readonly issuer: string;
   readonly authorization_endpoint: string;
   readonly token_endpoint: string;
+  readonly userinfo_endpoint?: string;
 }
 
 function isDiscovery(value: unknown): value is Discovery {
   if (typeof value !== 'object' || value === null) return false;
   const v = value as Record<string, unknown>;
-  return typeof v.issuer === 'string' && typeof v.authorization_endpoint === 'string' && typeof v.token_endpoint === 'string';
+  return (
+    typeof v.issuer === 'string' &&
+    typeof v.authorization_endpoint === 'string' &&
+    typeof v.token_endpoint === 'string' &&
+    (v.userinfo_endpoint === undefined || typeof v.userinfo_endpoint === 'string')
+  );
 }
 
 /** The IdP's endpoints, cached for an hour. */
@@ -47,7 +67,19 @@ function discoveryCache(issuer: string): () => Promise<Discovery> {
   };
 }
 
-async function exchangeCode(auth: AuthConfig, discovery: Discovery, code: string, verifier: string): Promise<{ status: number; idToken: string | null }> {
+interface TokenResult {
+  readonly status: number;
+  readonly idToken: string | null;
+  readonly accessToken: string | null;
+}
+
+function stringField(body: unknown, key: string): string | null {
+  if (typeof body !== 'object' || body === null) return null;
+  const value = (body as Record<string, unknown>)[key];
+  return typeof value === 'string' && value !== '' ? value : null;
+}
+
+async function exchangeCode(auth: AuthConfig, discovery: Discovery, code: string, verifier: string): Promise<TokenResult> {
   const basic = Buffer.from(`${encodeURIComponent(auth.clientId)}:${encodeURIComponent(auth.clientSecret)}`).toString('base64');
   const res = await fetch(discovery.token_endpoint, {
     method: 'POST',
@@ -56,14 +88,49 @@ async function exchangeCode(auth: AuthConfig, discovery: Discovery, code: string
     signal: AbortSignal.timeout(10_000),
   });
   const body: unknown = await res.json().catch(() => null);
-  const idToken = typeof body === 'object' && body !== null && typeof (body as { id_token?: unknown }).id_token === 'string' ? (body as { id_token: string }).id_token : null;
-  return { status: res.status, idToken: res.ok ? idToken : null };
+  if (!res.ok) return { status: res.status, idToken: null, accessToken: null };
+  return { status: res.status, idToken: stringField(body, 'id_token'), accessToken: stringField(body, 'access_token') };
+}
+
+/**
+ * The person's name, email and picture from the userinfo endpoint, or null when it cannot be read: sign-in still
+ * goes on, and the account keeps what it had.
+ */
+async function fetchProfile(discovery: Discovery, accessToken: string | null, sub: string): Promise<IdpProfile | null> {
+  if (!discovery.userinfo_endpoint || !accessToken) return null;
+  try {
+    const res = await fetch(discovery.userinfo_endpoint, {
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.warn(`userinfo refused (${res.status})`);
+      return null;
+    }
+    const profile = profileFromUserinfo(await res.json(), sub);
+    if (!profile) console.warn('userinfo is not about the signed-in subject');
+    return profile;
+  } catch (error) {
+    console.warn(`userinfo failed: ${error instanceof Error ? error.message : String(error)}`);
+    return null;
+  }
 }
 
 /** The signed-in account as the web app sees it. */
 export interface MeResponse {
-  /** `admin`: the admin tools are open to it (ADMIN_SUBS); `locked`: an admin locked it (nothing is published or built). */
-  readonly account: { readonly id: string; readonly createdAt: string; readonly admin: boolean; readonly locked: boolean };
+  /**
+   * `admin`: the admin tools are open to it (ADMIN_SUBS); `locked`: an admin locked it (nothing is published or built);
+   * `name`, `email`, `picture`: from the IdP at the last sign-in, null when unknown.
+   */
+  readonly account: {
+    readonly id: string;
+    readonly createdAt: string;
+    readonly name: string | null;
+    readonly email: string | null;
+    readonly picture: string | null;
+    readonly admin: boolean;
+    readonly locked: boolean;
+  };
 }
 
 export function authRoutes(config: ServerConfig, db: Db): Router {
@@ -88,7 +155,7 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
         client_id: auth.clientId,
         redirect_uri: auth.redirectUri,
         response_type: 'code',
-        scope: 'openid',
+        scope: LOGIN_SCOPE,
         state: s.state,
         nonce: s.nonce,
         code_challenge: codeChallenge(s.verifier),
@@ -121,7 +188,8 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
       }
       const now = new Date();
       await pruneSessions(db, now);
-      const accountId = await accountForSub(db, sub, now);
+      const profile = await fetchProfile(d, token.accessToken, sub);
+      const accountId = await accountForSub(db, sub, now, profile ?? undefined);
       setSessionCookie(res, config, await createSession(db, accountId, now));
       res.redirect(s.returnTo);
     } catch (error) {
@@ -140,7 +208,16 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
   router.get('/api/me', requireAccount(config, db), async (_req, res) => {
     const account = accountOf(res.locals);
     const standing = await accountStanding(db, config, account.id);
-    const body: MeResponse = { account: { id: account.id, createdAt: account.createdAt.toISOString(), ...standing } };
+    const body: MeResponse = {
+      account: {
+        id: account.id,
+        createdAt: account.createdAt.toISOString(),
+        name: account.name,
+        email: account.email,
+        picture: account.picture,
+        ...standing,
+      },
+    };
     res.set('Cache-Control', 'no-store').json(body);
   });
 

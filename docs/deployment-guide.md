@@ -104,7 +104,7 @@ thiếu `index.html`.
    Nhận update, hoặc `PUT $API/webhook` theo `chat-next/docs/bot-api/README.md`); ghi bốn biến `CHAT_*` vào env rồi
    khởi động lại `webnhanh-server`. Bot chỉ cần nhận `message` (mặc định); nó trả lời `/start <mã>` (liên kết chat),
    `/stop` (tắt) ngay trong response của webhook và gửi mỗi đơn mới bằng `POST $API/messages`.
-7. **IdP:** client `webnhanh-web` ở `auth-next` (Code + PKCE, `client_secret_basic`, scope `openid`, redirect
+7. **IdP:** client `webnhanh-web` ở `auth-next` (Code + PKCE, `client_secret_basic`, scope `openid profile email` không trang đồng ý, redirect
    `https://webnhanh.hoandat.com/auth/callback`, đăng xuất về `https://webnhanh.hoandat.com/`).
 8. **DNS:** `webnhanh.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
 9. **Phát site:** `bash infra/deploy.sh hosting`.
@@ -297,6 +297,28 @@ curl -s -o /dev/null -w '%{http_code}\n' https://<tên>.hoandat.io.vn/   # 404 c
 
 Quay lại bản app trước: site đã xoá vẫn đã xoá; tên của chúng còn được giữ (bản cũ đọc `site_name_holds` như cũ); hàng
 đợi `site_deletions` chưa làm thì nằm đó tới khi lên lại bản này.
+
+## Menu tài khoản (tên và ảnh từ hoandat.com)
+
+Có từ bản thêm migration `0008_account-profile` (chỉ thêm: cột `accounts.name`, `email`, `picture`, đều tuỳ chọn). Bản
+app trước vẫn chạy trên schema này. Không có biến env mới.
+
+- Đăng nhập xin `openid profile email` (client `webnhanh-web` ở `auth-next` phải cho scope này trước, nếu không IdP trả
+  `invalid_scope`), rồi gọi userinfo (`userinfo_endpoint` của discovery) bằng access token. Tên, email, ảnh ghi đè mỗi
+  lần đăng nhập; userinfo lỗi thì vẫn đăng nhập. Người đăng nhập từ trước có tên và ảnh từ lần đăng nhập kế tiếp, trước
+  đó menu hiện "Tài khoản".
+- `/api/me` trả thêm `name`, `email`, `picture` (null khi chưa biết). Header dùng `AccountMenu` của `@achoo254/app-shell`.
+- CSP của app (`webnhanh.hoandat.com.conf`) có thêm `img-src https://lh3.googleusercontent.com
+  https://avatars.githubusercontent.com`; CSP của site người dùng không đổi.
+
+Triển khai: sao lưu database trước (trên `.65`, chạy từ `/tmp`):
+`cd /tmp && sudo -u postgres pg_dump -Fc webnhanh > /root/webnhanh-<ngày>-before-0008.dump`, rồi `release` (migration tự
+chạy, nginx app đổi nên `release` cài lại file và `nginx -t`). Kiểm:
+
+```bash
+curl -sI https://webnhanh.hoandat.com/ | grep -i content-security-policy   # img-src có hai host ảnh
+curl -s -o /dev/null -w '%{redirect_url}\n' https://webnhanh.hoandat.com/auth/login   # scope=openid+profile+email
+```
 
 ## Lịch sử
 

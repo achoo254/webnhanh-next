@@ -24,14 +24,28 @@ export interface Account {
   readonly admin: boolean;
   /** An admin locked the account: nothing of it is published or built. */
   readonly locked: boolean;
+  /** Name, email and picture URL from hoandat.com at the last sign-in, for the account menu; null when unknown. */
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly picture: string | null;
 }
+
+const optionalText = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null);
 
 /** The account of a /api/me body; `admin` and `locked` read as false when absent. Null when it is not one. */
 function readAccount(value: unknown): Account | null {
   if (typeof value !== 'object' || value === null) return null;
   const v = value as Record<string, unknown>;
   if (typeof v.id !== 'string' || typeof v.createdAt !== 'string') return null;
-  return { id: v.id, createdAt: v.createdAt, admin: v.admin === true, locked: v.locked === true };
+  return {
+    id: v.id,
+    createdAt: v.createdAt,
+    admin: v.admin === true,
+    locked: v.locked === true,
+    name: optionalText(v.name),
+    email: optionalText(v.email),
+    picture: optionalText(v.picture),
+  };
 }
 
 /** A JSON call to the app's server; throws ApiError with the server's code when it refuses. */

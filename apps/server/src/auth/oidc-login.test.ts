@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { codeChallenge, newLoginState, openState, safeReturnPath, sealState, subFromIdToken, withLoginResult } from './oidc-login';
+import { codeChallenge, newLoginState, openState, profileFromUserinfo, safeReturnPath, sealState, subFromIdToken, withLoginResult } from './oidc-login';
 
 const KEY = 'k'.repeat(40);
 const b64 = (value: unknown): string => Buffer.from(JSON.stringify(value)).toString('base64url');
@@ -52,5 +52,34 @@ describe('ID token checks', () => {
       expect(subFromIdToken(token({ ...good, ...bad }), expect_, 1_000_000)).toBeNull();
     }
     expect(subFromIdToken('garbage', expect_, 1_000_000)).toBeNull();
+  });
+});
+
+describe('userinfo profile', () => {
+  const picture = 'https://lh3.googleusercontent.com/a/photo=s96-c';
+
+  it('keeps the name, email and https picture of the signed-in subject', () => {
+    expect(profileFromUserinfo({ sub: 'acc-1', name: ' Lan Anh ', email: 'lan@example.com', picture }, 'acc-1')).toEqual({
+      name: 'Lan Anh',
+      email: 'lan@example.com',
+      picture,
+    });
+    // No display name: the username, as the IdP shows it.
+    expect(profileFromUserinfo({ sub: 'acc-1', preferred_username: 'lananh' }, 'acc-1')).toEqual({ name: 'lananh', email: null, picture: null });
+  });
+
+  it('refuses a response about another subject', () => {
+    expect(profileFromUserinfo({ sub: 'acc-2', name: 'Someone else' }, 'acc-1')).toBeNull();
+    expect(profileFromUserinfo({ name: 'No subject' }, 'acc-1')).toBeNull();
+    expect(profileFromUserinfo('not an object', 'acc-1')).toBeNull();
+  });
+
+  it('drops fields of the wrong shape: non-https pictures, emails without @, overlong or blank text', () => {
+    for (const bad of ['http://lh3.googleusercontent.com/a', 'javascript:alert(1)', 'data:image/png;base64,AA', 'not a url', `https://x.example/${'a'.repeat(2048)}`]) {
+      expect(profileFromUserinfo({ sub: 'acc-1', picture: bad }, 'acc-1')?.picture, bad).toBeNull();
+    }
+    expect(profileFromUserinfo({ sub: 'acc-1', email: 'no-at-sign' }, 'acc-1')?.email).toBeNull();
+    expect(profileFromUserinfo({ sub: 'acc-1', name: 'x'.repeat(201) }, 'acc-1')?.name).toBeNull();
+    expect(profileFromUserinfo({ sub: 'acc-1', name: '   ', email: 42 }, 'acc-1')).toEqual({ name: null, email: null, picture: null });
   });
 });

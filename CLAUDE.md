@@ -39,9 +39,14 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   đăng nhập, landing tự viết (`apps/web/src/public-page.tsx`, `src/frame/`, `src/sign-in.tsx`), token màu và phông ở
   `src/styles/tokens.css`; một giao diện sáng duy nhất, không đổi sáng/tối, không script inline (CSP không cho,
   `src/index-html.test.ts` giữ). Từ `@achoo254/app-shell` chỉ dùng `/preferences` cho ngôn ngữ (cookie `hd_lang` chung
-  các app hoandat.com). Chữ của khung ở khoá `chrome.*` trong `messages.ts`; footer vẫn ghi "Một app của hoandat.com",
+  các app hoandat.com) và `AccountMenu` (menu tài khoản khi đã đăng nhập, `src/signed-in-page.tsx`): nạp `app-shell.css`
+  (chỉ class `shell-*`), không nạp `tokens.css` của gói; biến nó đọc lấy từ `src/styles/tokens.css`, khoác giao diện ở
+  `src/styles/frame.css`. Chữ của khung ở khoá `chrome.*` trong `messages.ts`; footer vẫn ghi "Một app của hoandat.com",
   link Quyền riêng tư, Điều khoản.
 - Nút đăng nhập là link thường tới `/auth/login` (route của server), không qua router.
+- Đăng nhập xin scope `openid profile email`; tên, email, ảnh lấy từ userinfo (`profileFromUserinfo`, `sub` phải khớp
+  ID token, ảnh chỉ `https:`) và ghi đè mỗi lần đăng nhập, chỉ để hiện ở menu tài khoản. Userinfo lỗi thì vẫn đăng nhập,
+  giữ thông tin cũ. Đổi những gì app nhận hay lưu thì sửa trang Quyền riêng tư (`pages/legal-pages.tsx`, mọi ngôn ngữ).
 - Route admin (`/api/admin/*`) không đi qua `ownedSite`: cổng duy nhất là `requireAdmin` (`apps/server/src/admin/admin-guard.ts`,
   `sub` trong `ADMIN_SUBS`, người khác kể cả chưa đăng nhập nhận 404). Mỗi thao tác admin ghi một dòng `admin_actions`
   trong cùng transaction; thao tác chạm file (gỡ, khôi phục, duyệt, từ chối) chỉ xếp hàng, worker áp dụng.

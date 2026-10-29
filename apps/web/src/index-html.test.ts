@@ -19,6 +19,14 @@ describe('index.html and the CSP', () => {
     expect(scriptSrc).not.toMatch(/sha256-|unsafe-inline/);
   });
 
+  it('lets the account menu show the hoandat.com picture (Google or GitHub) and nothing else from elsewhere', () => {
+    const csp = /set \$webnhanh_csp "([^"]+)"/.exec(readFileSync(NGINX_SITE, 'utf8'))?.[1] ?? '';
+    const imgSrc = csp.split(';').map((part) => part.trim()).find((part) => part.startsWith('img-src')) ?? '';
+    expect(imgSrc.split(' ').slice(1).sort()).toEqual(
+      ["'self'", 'data:', 'https://*.hoandat.io.vn', 'https://avatars.githubusercontent.com', 'https://lh3.googleusercontent.com'].sort(),
+    );
+  });
+
   it('is a light page only', () => {
     expect(readFileSync(INDEX_HTML, 'utf8')).toContain('<meta name="color-scheme" content="light" />');
   });

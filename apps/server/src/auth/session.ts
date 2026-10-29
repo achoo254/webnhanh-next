@@ -4,6 +4,7 @@ import { accounts, SESSION_ABSOLUTE_MS, SESSION_IDLE_MS, sessions, type Db } fro
 import { eq, sql } from 'drizzle-orm';
 import type { CookieOptions, Response } from 'express';
 import type { ServerConfig } from '../config';
+import type { IdpProfile } from './oidc-login';
 
 /** Refresh `last_seen_at` at most this often to avoid a write on every request. */
 const TOUCH_INTERVAL_MS = 60 * 1000;
@@ -16,14 +17,23 @@ export function hashToken(token: string): string {
 export interface Account {
   readonly id: string;
   readonly createdAt: Date;
+  readonly name: string | null;
+  readonly email: string | null;
+  readonly picture: string | null;
 }
 
-/** The account of an IdP subject, created on its first sign-in. */
-export async function accountForSub(db: Db, sub: string, now: Date): Promise<string> {
+/**
+ * The account of an IdP subject, created on its first sign-in. A `profile` (this sign-in's userinfo) replaces the
+ * stored name, email and picture; without one (userinfo failed) they stay as they were.
+ */
+export async function accountForSub(db: Db, sub: string, now: Date, profile?: IdpProfile): Promise<string> {
   const [row] = await db
     .insert(accounts)
-    .values({ sub, createdAt: now })
-    .onConflictDoUpdate({ target: accounts.sub, set: { sub: sql`excluded.sub` } })
+    .values({ sub, createdAt: now, ...profile })
+    .onConflictDoUpdate({
+      target: accounts.sub,
+      set: profile ? { name: profile.name, email: profile.email, picture: profile.picture } : { sub: sql`excluded.sub` },
+    })
     .returning({ id: accounts.id });
   if (!row) throw new Error('account upsert returned no row');
   return row.id;
@@ -46,7 +56,10 @@ export async function createSession(db: Db, accountId: string, now: Date): Promi
 export async function sessionAccount(db: Db, token: string, now: Date): Promise<Account | null> {
   const id = hashToken(token);
   const [row] = await db
-    .select({ session: sessions, account: { id: accounts.id, createdAt: accounts.createdAt } })
+    .select({
+      session: sessions,
+      account: { id: accounts.id, createdAt: accounts.createdAt, name: accounts.name, email: accounts.email, picture: accounts.picture },
+    })
     .from(sessions)
     .innerJoin(accounts, eq(accounts.id, sessions.accountId))
     .where(eq(sessions.id, id));

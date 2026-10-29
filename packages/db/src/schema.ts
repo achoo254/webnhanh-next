@@ -5,9 +5,16 @@ import { bigint, boolean, check, index, integer, jsonb, pgTable, primaryKey, tex
 /** A hoandat.com account that signed in here, known only by the IdP's subject. */
 export const accounts = pgTable('accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
-  /** `sub` of the ID token from auth.hoandat.com: the only thing Web Nhanh learns about the person. */
+  /** `sub` of the ID token from auth.hoandat.com: the account's key. */
   sub: text('sub').notNull().unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+  /**
+   * Display name, email and picture URL from the IdP's userinfo, refreshed at every sign-in (null when the IdP has none,
+   * or before the first sign-in that asked for them). Shown in the app's account menu only.
+   */
+  name: text('name'),
+  email: text('email'),
+  picture: text('picture'),
   /** Set by an admin: the account can sign in and read its sites, but nothing of it is published or built. */
   lockedAt: timestamp('locked_at', { withTimezone: true }),
 });
