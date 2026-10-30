@@ -33,7 +33,7 @@ export function PrivacyPage(): ReactNode {
             và địa chỉ ảnh đại diện của bạn, rồi lưu chúng cùng tài khoản (lần đăng nhập sau thay bằng thông tin mới). Tên, email và ảnh chỉ
             dùng để hiện ở menu tài khoản của chính bạn trong {name}: không hiện trên website bạn đăng, không gửi cho ai khác. Ảnh đại diện
             được trình duyệt của bạn tải thẳng từ Google hoặc GitHub (nơi ảnh của tài khoản đăng nhập được lưu), không kèm địa chỉ trang
-            đang xem.
+            đang xem. Đăng nhập bằng Apple thì không có ảnh đại diện, vì Apple không chia sẻ ảnh.
           </p>
           <p>
             {name} đặt một cookie phiên đăng nhập. Cookie này chỉ dùng để giữ bạn đăng nhập, hết hạn sau 30 ngày (hoặc sau 7 ngày không
@@ -58,7 +58,7 @@ export function PrivacyPage(): ReactNode {
             name, email and picture address, and keeps them with your account (the next sign-in replaces them with what is current). The
             name, email and picture are only shown in your own account menu in {name}: not on the websites you publish, and not sent to
             anyone else. Your browser loads the picture straight from Google or GitHub (where the picture of the account you sign in with
-            is kept), without the address of the page you are on.
+            is kept), without the address of the page you are on. Signing in with Apple gives no picture, because Apple does not share one.
           </p>
           <p>
             {name} sets one session cookie, used only to keep you signed in; it expires after 30 days (or 7 days unused), and expired
