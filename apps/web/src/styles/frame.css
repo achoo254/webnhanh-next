@@ -319,6 +319,20 @@ code {
   }
 }
 /* Narrow phones: the name, one language button (the one to switch to) and the pill fit on one line at 360 px. */
+/* The guest button: full label, short on phones so the app name keeps its room. */
+.topbar-cta-short {
+  display: none;
+}
+
+@media (max-width: 479px) {
+  .topbar-cta-full {
+    display: none;
+  }
+  .topbar-cta-short {
+    display: inline;
+  }
+}
+
 @media (max-width: 479px) {
   .topbar-inner {
     gap: var(--space-1);

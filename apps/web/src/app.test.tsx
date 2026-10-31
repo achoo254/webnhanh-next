@@ -49,7 +49,7 @@ describe('web app', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Có website riêng mà không cần biết làm web');
     expect(screen.getByText(/App không bao giờ thấy mật khẩu của bạn/)).toBeTruthy();
     // The header's pill leads to /login; the templates' looks fill the wall beside the hero.
-    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Đăng nhập' }).getAttribute('href')).toBe('/login');
+    expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Đăng ký miễn phíĐăng ký' }).getAttribute('href')).toBe('/login');
     expect(document.querySelectorAll('[data-id="template-wall"] img').length).toBeGreaterThan(0);
   });
 
@@ -104,7 +104,7 @@ describe('web app', () => {
     expect(menu?.querySelector('[data-id="account-menu-idp-email"]')?.getAttribute('href')).toBe('https://auth.hoandat.com/account#account-email');
     expect(within(header).getByRole('button', { name: 'Đăng xuất' }).getAttribute('data-id')).toBe('account-menu-sign-out');
     expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Đăng nhập' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Đăng ký miễn phíĐăng ký' })).toBeNull();
   });
 
   it('names an account the IdP told nothing about "Tài khoản", lists the admin tools for admins and signs out from the menu', async () => {

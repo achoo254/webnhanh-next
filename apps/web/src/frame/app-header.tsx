@@ -49,7 +49,8 @@ export function AppHeader({ navLinks = [], accountSlot }: { readonly navLinks?: 
           <LanguageSwitch />
           {accountSlot ?? (
             <Link to={LOGIN_PATH} className="topbar-cta" data-id="public-sign-in" aria-current={pathname === LOGIN_PATH ? 'page' : undefined}>
-              {t('chrome.signIn')}
+              <span className="topbar-cta-full">{t('chrome.signUp')}</span>
+              <span className="topbar-cta-short">{t('chrome.signUpShort')}</span>
             </Link>
           )}
         </div>
