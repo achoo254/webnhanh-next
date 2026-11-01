@@ -22,22 +22,10 @@ const MANIFEST = 'manifest.webmanifest';
 const HTML_ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
 const escapeHtml = (value: string): string => value.replace(/[&<>"]/g, (c) => HTML_ESCAPES[c] ?? c);
 
-export function brandHead(): Plugin[] {
+/** index.html with the brand's head tags in place of the marker (the transform the build and dev server apply). */
+export function brandIndexHtml(html: string): string {
   const brand = loadBrandConfig(REPO_ROOT);
-  const icon = (): Buffer => readFileSync(new URL(brand.icon, REPO_ROOT));
   const origin = primaryOrigin(brand);
-  const manifest = (): string =>
-    JSON.stringify({
-      name: brand.appName,
-      short_name: brand.shortName,
-      description: brand.description,
-      start_url: '/',
-      scope: '/',
-      display: 'standalone',
-      background_color: brand.colors.background,
-      theme_color: brand.colors.background,
-      icons: [{ src: `/${FAVICON}`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
-    });
   const tags = [
     `<title>${escapeHtml(brand.appName)}</title>`,
     `<meta name="description" content="${escapeHtml(brand.description)}" />`,
@@ -52,6 +40,25 @@ export function brandHead(): Plugin[] {
     `<meta name="apple-mobile-web-app-capable" content="yes" />`,
     `<meta name="apple-mobile-web-app-title" content="${escapeHtml(brand.shortName)}" />`,
   ].join('\n    ');
+  if (html.split(BRAND_TAGS).length !== 2) throw new Error(`index.html must contain ${BRAND_TAGS} once`);
+  return html.replace(BRAND_TAGS, tags);
+}
+
+export function brandHead(): Plugin[] {
+  const brand = loadBrandConfig(REPO_ROOT);
+  const icon = (): Buffer => readFileSync(new URL(brand.icon, REPO_ROOT));
+  const manifest = (): string =>
+    JSON.stringify({
+      name: brand.appName,
+      short_name: brand.shortName,
+      description: brand.description,
+      start_url: '/',
+      scope: '/',
+      display: 'standalone',
+      background_color: brand.colors.background,
+      theme_color: brand.colors.background,
+      icons: [{ src: `/${FAVICON}`, sizes: 'any', type: 'image/svg+xml', purpose: 'any' }],
+    });
   return [
     {
       name: 'webnhanh-favicon',
@@ -76,10 +83,7 @@ export function brandHead(): Plugin[] {
       name: 'webnhanh-head',
       transformIndexHtml: {
         order: 'pre',
-        handler(html) {
-          if (html.split(BRAND_TAGS).length !== 2) throw new Error(`index.html must contain ${BRAND_TAGS} once`);
-          return html.replace(BRAND_TAGS, tags);
-        },
+        handler: brandIndexHtml,
       },
     },
   ];

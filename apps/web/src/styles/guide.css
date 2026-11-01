@@ -1,0 +1,147 @@
+/*
+ * The guide pages (/thiep-cuoi-online, /website-ban-hang-mien-phi, /thiep-tet-2027) and the landing's "Gợi ý" links.
+ * Tokens from tokens.css only; the steps reuse the landing's .how-* blocks, the call to action the sunny .pill-cta.
+ */
+.guide {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 52em;
+  padding-block: var(--space-7);
+  color: var(--c-text);
+  line-height: 1.6;
+}
+.guide-head {
+  display: grid;
+  gap: var(--space-4);
+  justify-items: start;
+}
+.guide-cta {
+  width: auto;
+  padding-inline: var(--space-6);
+}
+.guide-title {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.75rem);
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  color: var(--c-ink);
+  text-wrap: balance;
+}
+.guide-section p {
+  margin: 0 0 var(--space-3);
+}
+.guide-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: 1.25em;
+}
+.guide-list li::marker {
+  color: var(--c-coral);
+}
+
+/* The template's looks: small cards in a row that wraps, each a link into /new with that look picked. */
+.guide-look-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-look {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-block);
+  color: var(--c-ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform var(--dur-base) var(--ease-bounce), box-shadow var(--dur-base) var(--ease-standard);
+}
+.guide-look:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 0 var(--c-ink);
+}
+.guide-look:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-block), var(--shadow-focus-primary);
+}
+.guide-look img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  background: var(--c-bar-track);
+}
+.guide-look-name {
+  padding-inline: var(--space-1);
+  line-height: 1.3;
+}
+
+.guide-faq {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.guide-faq-item {
+  padding: var(--space-4);
+  border: 2px dashed var(--c-border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--c-surface) 60%, transparent);
+}
+.guide-faq-item dt {
+  font-weight: 700;
+  color: var(--c-ink);
+}
+.guide-faq-item dd {
+  margin: var(--space-1) 0 0;
+  color: var(--c-text-muted);
+}
+
+.guide-end {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: start;
+}
+
+/* Links to the other guides (on a guide) and to every guide (the landing's "Gợi ý"). */
+.guide-related-list,
+.idea-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide-related-list a,
+.idea-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius-full);
+  background: var(--c-surface);
+  color: var(--c-primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+.guide-related-list a:hover,
+.idea-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide-look {
+    transition: none;
+  }
+}

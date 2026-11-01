@@ -1,5 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { guidePages } from './vite-guide-pages.ts';
 import { REPO_ROOT_PATH, brandHead } from './vite-head.ts';
 import { previewFonts } from './vite-preview-fonts.ts';
 
@@ -7,7 +8,7 @@ import { previewFonts } from './vite-preview-fonts.ts';
 const API = 'http://127.0.0.1:5296';
 
 export default defineConfig({
-  plugins: [react(), ...brandHead(), previewFonts()],
+  plugins: [react(), ...brandHead(), previewFonts(), guidePages()],
   server: {
     host: '127.0.0.1',
     fs: { allow: [REPO_ROOT_PATH] },

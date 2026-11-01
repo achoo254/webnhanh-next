@@ -15,6 +15,7 @@ import './styles/tokens.css';
 import './styles/frame.css';
 import './styles/landing.css';
 import './styles/app.css';
+import './styles/guide.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';

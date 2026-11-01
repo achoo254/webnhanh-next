@@ -1,6 +1,9 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Routes } from 'react-router';
 import { useAccount } from './account';
+import { GUIDES } from './guides/guide-content';
+import { GuidePage } from './guides/guide-page';
+import { GUIDE_IDS } from './guides/guide-paths';
 import { Loader } from './loading';
 import { LandingPage } from './pages/landing-page';
 import { CreditsPage, PrivacyPage, TermsPage } from './pages/legal-pages';
@@ -52,6 +55,10 @@ export function App(): ReactNode {
         <Route path="/bao-cao" element={<ReportPage />} />
         <Route path="/report" element={<ReportPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        {/* Guide pages: static words, in the main bundle so the prerendered HTML is replaced by the same page at once. */}
+        {GUIDE_IDS.map((id) => (
+          <Route key={id} path={GUIDES[id].path} element={<GuidePage guide={GUIDES[id]} />} />
+        ))}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>

@@ -36,6 +36,15 @@ có ảnh thu nhỏ 240 px tải lười): site mới bắt đầu từ kiểu t
 với trường nháp là `variantDraft` trong `variant-drafts.ts`). Hoạ tiết vẽ của kiểu Tết và thiệp cưới nằm ở trường
 `ornaments` của nháp (ảnh trang trí `alt=""`, `aria-hidden`); nháp không có trường này vẫn vẽ hoạ tiết SVG như cũ.
 
+**Trang gợi ý** cho người tìm trên Google: `/thiep-cuoi-online`, `/website-ban-hang-mien-phi`, `/thiep-tet-2027` (chữ ở
+`apps/web/src/guides/guide-content.ts`, chỉ tiếng Việt), mỗi trang dẫn vào `/new?template=<mẫu>` (thẻ kiểu dẫn kèm
+`&variant=<kiểu>`), landing có mục "Gợi ý" tới cả ba. Máy tìm kiếm cần HTML thật nên lúc build các trang được render sẵn
+(cùng cách trang năm của tu-vi-next): `vite build --ssr src/guides/guide-prerender.tsx`, rồi `prerender.ts` ghi
+`dist/<đường dẫn>/index.html` với title, description, canonical, `og:*`, JSON-LD `WebPage` + `FAQPage`
+(`vite-guide-pages.ts`; thiếu thẻ là build hỏng). Build cũng ghi `robots.txt` và `sitemap.xml` (danh sách ở
+`src/guides/guide-paths.ts`). nginx phục vụ `$uri/index.html` trước khi rơi về SPA: đổi cấu hình nginx nên cần một lần
+`deploy.sh release` tay (CI không đổi nginx; trước đó các trang vẫn chạy như SPA).
+
 ## Cấu trúc
 
 | Thư mục | Vai trò |

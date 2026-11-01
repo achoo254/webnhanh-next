@@ -5,5 +5,15 @@
     // Vite loads its config natively: relative imports carry their extension.
     "allowImportingTsExtensions": true
   },
-  "include": ["vite.config.ts", "vite-head.ts", "vite-preview-fonts.ts", "src/index-html.test.ts"]
+  "include": [
+    "vite.config.ts",
+    "vite-head.ts",
+    "vite-preview-fonts.ts",
+    "vite-guide-pages.ts",
+    "prerender.ts",
+    "src/guides/guide-paths.ts",
+    "src/guides/guide-render-types.ts",
+    "src/guides/guide-build.test.ts",
+    "src/index-html.test.ts"
+  ]
 }

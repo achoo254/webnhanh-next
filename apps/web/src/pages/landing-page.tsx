@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
 import { brand } from '../brand';
+import { GUIDES } from '../guides/guide-content';
+import type { GuideId } from '../guides/guide-paths';
 import { useI18n, type MessageKey } from '../i18n';
 import { AppPage } from '../public-page';
 import { AppSignInCard } from '../sign-in';
@@ -41,6 +43,13 @@ const STEPS: readonly { id: string; title: MessageKey; body: MessageKey }[] = [
   { id: 'sign-in', title: 'how.signIn.title', body: 'how.signIn.body' },
   { id: 'make', title: 'how.make.title', body: 'how.make.body' },
   { id: 'publish', title: 'how.publish.title', body: 'how.publish.body' },
+];
+
+/** The guide pages (what people search for), each leading to one template. */
+const IDEAS: readonly { readonly id: GuideId; readonly label: MessageKey }[] = [
+  { id: 'wedding', label: 'ideas.wedding' },
+  { id: 'shop', label: 'ideas.shop' },
+  { id: 'tet', label: 'ideas.tet' },
 ];
 
 /** Columns of the template wall (rows on phones). */
@@ -113,6 +122,22 @@ export function LandingPage(): ReactNode {
             </li>
           ))}
         </ol>
+      </section>
+
+      <section className="landing-section" data-id="ideas">
+        <div className="section-head">
+          <p className="eyebrow">{t('ideas.eyebrow')}</p>
+          <h2 className="section-title">{t('ideas.title')}</h2>
+        </div>
+        <ul className="idea-list">
+          {IDEAS.map(({ id, label }) => (
+            <li key={id}>
+              <Link className="idea-link" to={GUIDES[id].path} data-id={`idea-${id}`}>
+                {t(label)}
+              </Link>
+            </li>
+          ))}
+        </ul>
       </section>
     </AppPage>
   );
