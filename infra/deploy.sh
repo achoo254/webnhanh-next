@@ -15,16 +15,20 @@
 #          /etc/webnhanh/builder.env is written by hand too.
 # hosting  installs the shared pages (infra/static) and the nginx site for *.hoandat.io.vn: nginx -t first, the
 #          previous config restored if it fails, reload only when the config changed.
-# release  gates and build here, upload, `pnpm install --prod` for the server and the worker on the server, switch
-#          app/ (the previous one kept as app.prev), install changed units and the nginx site of webnhanh.hoandat.com
-#          (nginx -t first; it replaces the old trang.hoandat.com.conf, whose name it also serves), restart
-#          webnhanh-server and check /healthz (on failure switch back to app.prev, restart, exit 1), then restart
-#          webnhanh-worker. With /etc/webnhanh/builder.env present: let webnhanh-builder read the app (ACL), build the
-#          image infra/builder as webnhanh-build:node22, (re)apply the build network and its firewall
-#          (webnhanh-build-network), restart webnhanh-builder.
+# release  gates and build here, pack the release (infra/pack-release.sh, the same tree CI uploads: bundles, web app
+#          and production node_modules, no links), upload it to /var/www/webnhanh-deploy/incoming/<id> and infra/ as
+#          the root-owned /var/www/webnhanh-deploy/infra. From that copy: refresh /usr/local/sbin/webnhanh-activate-
+#          incoming, install changed units (the replaced one kept in /var/www/webnhanh-deploy/systemd.prev), the nginx
+#          site of webnhanh.hoandat.com (nginx -t first; it replaces the old trang.hoandat.com.conf, whose name it also
+#          serves) and, with /etc/webnhanh/builder.env present, build the image webnhanh-build:node22 and (re)apply the
+#          build network and its firewall (webnhanh-build-network). Then switch with webnhanh-activate-incoming
+#          (infra/activate-incoming.sh), the same switch every push to main runs through CI
+#          (.github/workflows/deploy.yml): app/ replaced (the previous one kept as app.prev), webnhanh-server restarted
+#          and checked on /healthz (on failure app.prev comes back, exit 1), then webnhanh-worker and webnhanh-builder.
+#          CI never changes nginx, units or root scripts: deploy by hand after changing anything under infra/.
 #
 # Rollback of the app: ssh in, `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
-# webnhanh-worker`.
+# webnhanh-worker` (and webnhanh-builder when developer builds are on).
 # The database only ever gains migrations that keep the previous release working. Published sites are never
 # touched here.
 set -euo pipefail
@@ -32,7 +36,7 @@ set -euo pipefail
 : "${SSH_TARGET:?set SSH_TARGET to the ssh target of the server}"
 read -r -a ssh_opts <<<"${SSH_OPTS:-}"
 REMOTE=/var/www/webnhanh
-PORT=4860
+DEPLOY_ROOT=/var/www/webnhanh-deploy
 PNPM="npx --yes pnpm@11.9.0"
 export COPYFILE_DISABLE=1
 
@@ -107,6 +111,8 @@ hosting() {
 }
 
 release() {
+	# The release id names the commit; a tree with uncommitted changes would ship something else under its name.
+	git diff --quiet HEAD -- || { echo 'uncommitted changes: commit them first' >&2; exit 1; }
 	echo "== gates and build"
 	$PNPM install --frozen-lockfile
 	$PNPM lint
@@ -114,79 +120,61 @@ release() {
 	$PNPM test
 	$PNPM build
 
-	echo "== upload"
-	# The release keeps the workspace layout: the bundles find the migrations through @webnhanh/db and the template's
-	# sample photos through @webnhanh/templates.
-	tar --no-xattrs -czf - package.json pnpm-lock.yaml pnpm-workspace.yaml infra packages \
-		apps/server/package.json apps/server/dist apps/worker/package.json apps/worker/dist apps/web/package.json apps/web/dist |
-		remote "set -euo pipefail; rm -rf $REMOTE/incoming; mkdir -p $REMOTE/incoming; tar xzf - --no-same-owner -C $REMOTE/incoming"
+	echo "== pack"
+	id="$(date -u +%Y%m%d-%H%M%S)-$(git rev-parse --short=12 HEAD)"
+	pack_dir="$(mktemp -d)"
+	trap 'rm -rf "$pack_dir"' EXIT
+	PNPM="$PNPM" bash infra/pack-release.sh "$pack_dir/release"
 
-	echo "== install, switch, restart"
+	echo "== upload $id"
+	# The reviewed infra copy (nginx, units, builder image, the root scripts): root-owned, replaced whole.
+	tar --no-xattrs -czf - infra | remote "set -euo pipefail
+		install -d -m 755 -o root -g root $DEPLOY_ROOT
+		[ -d $DEPLOY_ROOT/incoming ] || install -d -m 750 -o root -g root $DEPLOY_ROOT/incoming
+		rm -rf $DEPLOY_ROOT/infra.new && install -d -m 700 -o root -g root $DEPLOY_ROOT/infra.new
+		tar xzf - --no-same-owner --strip-components=1 -C $DEPLOY_ROOT/infra.new
+		chown -R root:root $DEPLOY_ROOT/infra.new && chmod -R go-w $DEPLOY_ROOT/infra.new
+		rm -rf $DEPLOY_ROOT/infra.old
+		[ -d $DEPLOY_ROOT/infra ] && mv $DEPLOY_ROOT/infra $DEPLOY_ROOT/infra.old
+		mv $DEPLOY_ROOT/infra.new $DEPLOY_ROOT/infra && rm -rf $DEPLOY_ROOT/infra.old"
+	tar --no-xattrs -czf - -C "$pack_dir/release" . | remote "set -euo pipefail
+		rm -rf $DEPLOY_ROOT/incoming/$id && mkdir -p $DEPLOY_ROOT/incoming/$id
+		tar xzf - --no-same-owner -C $DEPLOY_ROOT/incoming/$id"
+
+	echo "== infra"
 	remote "set -euo pipefail
-		[ -s /etc/webnhanh/production.env ] || { echo 'no /etc/webnhanh/production.env: run setup and write it first' >&2; exit 1; }
-		[ -d $REMOTE/uploads ] || { echo 'no $REMOTE/uploads: run setup first' >&2; exit 1; }
-		export PATH=/opt/node22/bin:\$PATH
-		cd $REMOTE/incoming
-		$PNPM install --prod --frozen-lockfile --filter '@webnhanh/server...' --filter '@webnhanh/worker...' --reporter=silent
-		chown -R root:webnhanh $REMOTE/incoming && chmod -R g+rX,o-rwx $REMOTE/incoming
-		cd $REMOTE
-		rm -rf app.prev
-		[ -d app ] && mv app app.prev
-		mv incoming app
+		infra=$DEPLOY_ROOT/infra
+		install -m 755 -o root -g root \$infra/activate-incoming.sh /usr/local/sbin/webnhanh-activate-incoming
 
+		# Changed units are installed; the replaced file is kept in $DEPLOY_ROOT/systemd.prev.
 		changed=0
-		for unit in app/infra/systemd/*; do
+		for unit in \$infra/systemd/*; do
 			name=\$(basename \$unit)
-			cmp -s \$unit /etc/systemd/system/\$name || { install -m 644 \$unit /etc/systemd/system/\$name; changed=1; }
+			if ! cmp -s \$unit /etc/systemd/system/\$name; then
+				if [ -f /etc/systemd/system/\$name ]; then
+					install -d -m 700 $DEPLOY_ROOT/systemd.prev
+					cp /etc/systemd/system/\$name $DEPLOY_ROOT/systemd.prev/\$name
+				fi
+				install -m 644 \$unit /etc/systemd/system/\$name
+				changed=1
+				echo \"unit \$name installed\"
+			fi
 		done
 		[ \$changed = 1 ] && systemctl daemon-reload
 
 		$install_nginx_site
 		# The app moved from trang.hoandat.com (28/10/2026); the new file serves both names and replaces the old one.
-		install_nginx_site $REMOTE/app/infra webnhanh.hoandat.com.conf trang.hoandat.com.conf
+		install_nginx_site \$infra webnhanh.hoandat.com.conf trang.hoandat.com.conf
 
-		healthy() {
-			for i in \$(seq 1 20); do
-				curl -fsS http://127.0.0.1:$PORT/healthz >/dev/null && return 0
-				sleep 1
-			done
-			return 1
-		}
-		systemctl enable webnhanh-server >/dev/null
-		systemctl restart webnhanh-server
-		if ! healthy; then
-			journalctl -u webnhanh-server -n 40 --no-pager
-			if [ -d app.prev ]; then
-				echo 'healthz failed: switching back to the previous release' >&2
-				rm -rf app.failed && mv app app.failed && mv app.prev app
-				systemctl restart webnhanh-server
-				systemctl is-enabled --quiet webnhanh-worker && systemctl restart webnhanh-worker
-				healthy && echo 'previous release is back and healthy' >&2 || echo 'previous release is not healthy either' >&2
-			fi
-			exit 1
-		fi
-		echo healthz ok
-		systemctl enable webnhanh-worker >/dev/null
-		systemctl restart webnhanh-worker
-		sleep 3
-		systemctl is-active --quiet webnhanh-worker || { journalctl -u webnhanh-worker -n 40 --no-pager; echo 'webnhanh-worker is not running' >&2; exit 1; }
-		echo worker ok
+		if [ -s /etc/webnhanh/builder.env ]; then
+			docker build --pull=false -t webnhanh-build:node22 \$infra/builder
+			systemctl enable webnhanh-build-network >/dev/null
+			systemctl restart webnhanh-build-network
+			echo 'build image and network ok'
+		fi"
 
-		if [ ! -s /etc/webnhanh/builder.env ]; then
-			echo 'no /etc/webnhanh/builder.env: developer builds stay off (docs/deployment-guide.md)'
-			exit 0
-		fi
-		# The builder is not in group webnhanh (that would let it read production.env): an ACL lets it read the app.
-		setfacl -m u:webnhanh-builder:x $REMOTE
-		setfacl -R -m u:webnhanh-builder:rX $REMOTE/app
-		docker build --pull=false -t webnhanh-build:node22 $REMOTE/app/infra/builder
-		systemctl enable webnhanh-build-network >/dev/null
-		systemctl restart webnhanh-build-network
-		systemctl enable webnhanh-builder >/dev/null
-		systemctl restart webnhanh-builder
-		sleep 3
-		systemctl is-active --quiet webnhanh-builder || { journalctl -u webnhanh-builder -n 40 --no-pager; echo 'webnhanh-builder is not running' >&2; exit 1; }
-		echo builder ok"
+	echo "== switch"
+	remote "/usr/local/sbin/webnhanh-activate-incoming $id"
 }
 
 case "${1:-}" in
