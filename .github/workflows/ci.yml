@@ -1,5 +1,6 @@
-# Kiểm tra tự động: lint (kèm check:brand), typecheck, test, build. Chỉ kiểm, không deploy: deploy lên .65 làm tay
-# bằng infra/deploy.sh theo docs/deployment-guide.md.
+# Kiểm tra tự động: lint (kèm check:brand), typecheck, test, build. Push lên main mà CI xanh thì deploy.yml tự deploy
+# lên .65 (user hạn chế, docs/deployment-guide.md, mục "Phát hành app"); đổi infra/ thì vẫn deploy tay bằng
+# infra/deploy.sh release.
 name: CI
 
 on:

@@ -18,7 +18,8 @@ thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, dat
 | Trang dùng chung | `/var/www/webnhanh/static/404.html` (từ `infra/static/`) |
 | nginx | `/etc/nginx/conf.d/hoandat.io.vn.conf` (từ `infra/nginx/`): HTTP → HTTPS, tên miền gốc → `webnhanh.hoandat.com`, mỗi tên hợp lệ một site, tên khác dưới `hoandat.io.vn` trả 404 thay vì rơi sang server block của app khác; `/.well-known/report` của mọi site 302 về form báo cáo `https://webnhanh.hoandat.com/bao-cao?site=<tên>` (không đụng file của site) |
 | Chứng chỉ gốc | `/etc/pki/nginx/server.{crt,key}` như các app khác; Cloudflare SSL "full", Universal SSL phủ `hoandat.io.vn` và `*.hoandat.io.vn` |
-| App | `/var/www/webnhanh/app` (bản phát hành hiện tại, `root:webnhanh`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
+| App | `/var/www/webnhanh/app` (bản phát hành hiện tại, `root:webnhanh`, id trong `app/RELEASE`), `app.prev` (bản trước); web tĩnh ở `app/apps/web/dist`, server `app/apps/server/dist/server.mjs` |
+| Deploy | `/var/www/webnhanh-deploy/`: `incoming/` (user CI `webnhanh-deploy` ghi), `staging/` (chỉ root), `infra/` (bản `infra/` của repo do `deploy.sh release` đẩy lên, root sở hữu: nginx, unit, `builder/`, script root), `systemd.prev/`; lệnh `/usr/local/sbin/webnhanh-activate-incoming` (mục "Phát hành app") |
 | Server | systemd `webnhanh-server` (user `webnhanh`, `127.0.0.1:4860`, `MemoryMax=512M` vì ffmpeg làm sạch ảnh chạy trong giới hạn này, ghi được `uploads/`), Node `/opt/node22`; migration của `packages/db` tự chạy khi server khởi động |
 | Worker | systemd `webnhanh-worker` (user `webnhanh`, `MemoryMax=512M` vì mỗi lần đăng chạy một Chrome headless chụp ảnh xem trước, chỉ nói chuyện với loopback, ghi được `sites/` và `uploads/`): đăng site của mọi mẫu từ hàng đợi `jobs` (trang bán hàng kèm form đặt hàng, thiệp cưới kèm form xác nhận tham dự, cả hai có token ký; ảnh `og-<bản>.jpg` 1200×630), lưu trang đang chạy vào `sites.live_page`; khi hàng đợi trống, mỗi ngày (giờ Việt Nam) render lại thiệp cưới chưa qua ngày cưới để đếm ngược đúng ngày (`wedding-refresh.ts`: chép bản đang chạy, chỉ viết lại `index.html`, không Chrome, không báo, không tạo job), mỗi giờ dọn phiên hết hạn, tên giữ chỗ và mã liên kết Chat hết hạn, bản ghi báo đơn quá 30 ngày, ảnh không còn dùng quá 1 ngày |
 | Báo đơn | `webnhanh-server` nhận đơn và xác nhận tham dự của thiệp cưới (`kind=rsvp`) ở `POST /f/<tên>` (cùng token, trường bẫy, thời gian điền, giới hạn theo IP và theo trang) và gửi báo (Web Push, bot Chat) từ bảng `notification_deliveries`: mỗi dòng một máy hoặc một chat, thử lại riêng sau 30 giây, 2, 10, 30 phút, 2 rồi 6 giờ; đăng ký push hết hạn (404/410) và chat chặn bot (403) bị xoá |
@@ -97,7 +98,7 @@ thiếu `index.html`.
      | `BUILD_WORK_DIR`, `BUILD_CACHE_DIR` | `/var/lib/webnhanh/work`, `/var/lib/webnhanh/cache` (cùng ổ: cache chuyển bằng rename) |
      | `SERVER_PUBLIC_IP` | IPv4 công khai của `.65` (`<SERVER_65_IP>`), bị chặn trong mạng build |
      | `BUILD_IMAGE`, `BUILD_MIN_FREE_MB`, `BUILD_MIN_DISK_MB` | Tuỳ chọn: mặc định `webnhanh-build:node22`, 1536, 5120 |
-   - Thêm `BUILD_INBOX_DIR`, `BUILD_OUTPUT_DIR` vào `production.env`, rồi `release`: nó build image, dựng mạng và tường
+   - Thêm `BUILD_INBOX_DIR`, `BUILD_OUTPUT_DIR` vào `production.env`, rồi `release` tay: nó build image, dựng mạng và tường
      lửa, khởi động `webnhanh-builder`. Kiểm theo mục "Kiểm máy build" bên dưới.
 6. **Bot Chat báo đơn** (tuỳ chọn, làm lúc nào cũng được): ở app Chat, Cài đặt → Developer Console → Tạo bot
    (username kết thúc bằng `bot`), cấp token; đặt webhook `https://webnhanh.hoandat.com/hooks/chat` với secret mới (tab
@@ -109,14 +110,56 @@ thiếu `index.html`.
 8. **DNS:** `webnhanh.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
 9. **Phát site:** `bash infra/deploy.sh hosting`.
 10. **App:** `bash infra/deploy.sh release`.
+11. **CI deploy:** tạo user `webnhanh-deploy` và bốn secret `DEPLOY_*` (mục "Phát hành app"); từ đó mỗi push lên `main`
+    tự deploy.
 
 ## Phát hành app
 
-`bash infra/deploy.sh release` chạy gate (`lint`, `typecheck`, `test`, `build`) ở máy dev, đẩy bản build lên
-`/var/www/webnhanh/incoming`, `pnpm install --prod` cho server và worker, đổi `incoming` thành `app` (bản cũ thành
-`app.prev`), cài unit systemd và nginx nếu đổi (`nginx -t` trước, hỏng thì trả file cũ, không reload), khởi động lại
-`webnhanh-server` và chờ `/healthz` (không lên trong 20 giây thì tự đổi về `app.prev`), rồi bật và khởi động lại
-`webnhanh-worker`. Lần đầu có worker: chạy `setup` trước để tạo `/var/www/webnhanh/uploads` (`release` dừng nếu thiếu).
+Có hai đường, dùng **chung một bước đóng gói** (`infra/pack-release.sh`) và **chung một bước đổi bản**
+(`/usr/local/sbin/webnhanh-activate-incoming`, cài từ `infra/activate-incoming.sh`):
+
+- **CI (mặc định):** mỗi push lên `main` mà workflow `CI` xanh thì `.github/workflows/deploy.yml` tự deploy. Job
+  `build` (không có secret) cài, `pnpm build`, đóng gói rồi tải artifact lên. Job `deploy` (environment `production`)
+  chỉ tải artifact về, `rsync` lên `/var/www/webnhanh-deploy/incoming/<id>` bằng user hạn chế `webnhanh-deploy`, chạy
+  `sudo -n /usr/local/sbin/webnhanh-activate-incoming <id>` (id dạng `YYYYMMDD-HHMMSS-<sha12>`), rồi kiểm từ ngoài:
+  `https://webnhanh.hoandat.com/` trả 200, `/healthz` trả `ok`, `/RELEASE` trả đúng id vừa lên. Các lần deploy xếp
+  hàng (`concurrency: deploy-prod`), không lần nào bị huỷ giữa chừng.
+- **Tay:** `bash infra/deploy.sh release` chạy gate (`lint`, `typecheck`, `test`, `build`) ở máy dev (dừng nếu còn thay
+  đổi chưa commit: id mang sha của commit), đóng gói, đẩy bản lên cùng thư mục `incoming/<id>` và đẩy `infra/` thành bản
+  root sở hữu `/var/www/webnhanh-deploy/infra`. Từ bản đó: cài lại lệnh `webnhanh-activate-incoming`, cài unit systemd
+  đổi (file bị thay giữ ở `/var/www/webnhanh-deploy/systemd.prev/`), cài nginx nếu đổi (`nginx -t` trước, hỏng thì trả
+  file cũ, không reload), có `builder.env` thì build image `webnhanh-build:node22` và dựng lại mạng build. Rồi đổi bản
+  bằng đúng lệnh CI dùng.
+
+Bản đóng gói giữ bố cục workspace (bundle tìm migration qua `@webnhanh/db`, ảnh mẫu qua `@webnhanh/templates`, phông qua
+`@fontsource`) kèm thư viện production của server và worker, cài sẵn lúc đóng gói (hoisted, không chạy install script)
+và chép với mọi link đã giải: máy chủ không chạy `pnpm` trên bản tải lên. Không có `infra/`.
+
+Lệnh đổi bản (root): kiểm id; chuyển bản tải lên vào `/var/www/webnhanh-deploy/staging` (chỉ root) rồi mới kiểm, để user
+deploy không tráo được tệp đã kiểm; từ chối nếu có link hoặc tệp đặc biệt hay thiếu bundle server/worker/builder,
+`apps/web/dist/index.html`; ghi id vào `RELEASE` và `apps/web/dist/RELEASE`; `root:webnhanh`, không ai ngoài root ghi;
+đổi `app` (bản cũ thành `app.prev`), khởi động lại `webnhanh-server` và chờ `/healthz` (không lên trong 20 giây thì tự
+đổi về `app.prev`, exit 1), rồi `webnhanh-worker`, và có `builder.env` thì ACL cho builder đọc app và khởi động lại
+`webnhanh-builder`. Mỗi lần chỉ một lần đổi (`flock`). Nó không lấy nginx, unit hay script nào từ bản tải lên, không
+đụng site, ảnh hay database (migration chạy khi server khởi động, như trước). Unit `webnhanh-build-network` chạy
+`build-network.sh` bằng root từ `/var/www/webnhanh-deploy/infra`, không từ `app`.
+
+**Khi nào deploy tay:** lần đầu (trước khi có user deploy), và mỗi khi đổi gì trong `infra/` (nginx, unit,
+`builder/`, `activate-incoming.sh`, `setup-deploy-user.sh`): CI không bao giờ đổi những thứ đó. Push đổi `infra/` vẫn tự
+deploy code; phần hạ tầng chỉ có hiệu lực sau `deploy.sh release` tay. Lần đầu có worker: chạy `setup` trước để tạo
+`/var/www/webnhanh/uploads` (lệnh đổi bản dừng nếu thiếu).
+
+**User deploy hạn chế** `webnhanh-deploy`: chỉ ghi được `/var/www/webnhanh-deploy/incoming`, khoá SSH `restrict` (không
+chuyển cổng, không pty), sudo đúng một lệnh `/usr/local/sbin/webnhanh-activate-incoming` (`/etc/sudoers.d/webnhanh-deploy`);
+không đọc được `app`, `production.env`, không ghi được bản `infra` của root. Tạo (sau một lần `release` tay), bằng root
+trên máy chủ: `bash /var/www/webnhanh-deploy/infra/setup-deploy-user.sh < webnhanh-deploy.pub`. Secret của repo
+`achoo254/webnhanh-next`: `DEPLOY_SSH_KEY` (khoá riêng ed25519), `DEPLOY_KNOWN_HOSTS`
+(`ssh-keyscan -p <SSH_PORT> -t ed25519,ecdsa,rsa <SERVER_65_IP>`), `DEPLOY_HOST`, `DEPLOY_PORT`.
+
+**Đổi khoá deploy:** `ssh-keygen -t ed25519 -N '' -f webnhanh-deploy`, chạy lại `setup-deploy-user.sh` với khoá công khai
+mới qua stdin (ghi đè `authorized_keys`, khoá cũ hết dùng ngay), `gh secret set DEPLOY_SSH_KEY -R achoo254/webnhanh-next
+< webnhanh-deploy`, xoá khoá riêng ở máy. Đổi IP hay host key của máy chủ: đặt lại `DEPLOY_HOST`, `DEPLOY_PORT`,
+`DEPLOY_KNOWN_HOSTS`. Tạm dừng CI deploy: `gh workflow disable deploy -R achoo254/webnhanh-next`.
 
 nginx của app nhận thân request tới 6 MB ở route tải ảnh `/api/sites/<id>/images`, 101 MB ở route tải zip
 `/api/sites/<id>/zip` (chuyển thẳng cho server, server đếm byte và dừng quá 100 MB), 2 MB ở webhook `/hooks/git/<id>`;
@@ -129,7 +172,9 @@ Cloudflare (lấy từ https://www.cloudflare.com/ips ngày 28/10/2026). Cloudfl
 28/10/2026 chưa có real_ip: giới hạn theo IP của `/f/` đếm theo node Cloudflare.
 
 **Quay lại bản trước bằng tay:** `cd /var/www/webnhanh && rm -rf app && mv app.prev app && systemctl restart webnhanh-server
-webnhanh-worker`.
+webnhanh-worker` (có build cho lập trình viên thì thêm `webnhanh-builder`). Bản đang chạy: `cat /var/www/webnhanh/app/RELEASE`
+hoặc `https://webnhanh.hoandat.com/RELEASE`. Push tiếp theo lên `main` sẽ deploy bản mới: muốn giữ bản cũ thì revert
+commit hoặc tắt workflow `deploy` trước.
 Migration chỉ thêm, bản trước vẫn chạy được trên schema mới.
 
 ## Kiểm máy build
@@ -326,3 +371,6 @@ curl -s -o /dev/null -w '%{redirect_url}\n' https://webnhanh.hoandat.com/auth/lo
   tên thành `openapi.conf.retired-20261028` vì trùng `server_name`; `/var/www/openapi` giữ nguyên.
 - 28/10/2026: đổi tên sản phẩm Trang Của Tôi (`trang.hoandat.com`) thành Web Nhanh (`webnhanh.hoandat.com`), cùng mọi
   tên nội bộ `trang` → `webnhanh` (repo `webnhanh-next`, GitHub `achoo254/webnhanh-next`).
+- 01/11/2026: CI tự deploy mỗi push xanh lên `main` qua user hạn chế `webnhanh-deploy`; bản phát hành mang sẵn thư viện
+  (máy chủ không còn `pnpm install`), `infra/` của root ở `/var/www/webnhanh-deploy/infra`, unit `webnhanh-build-network`
+  chạy script từ đó (bản unit cũ ở `/var/www/webnhanh-deploy/systemd.prev/`).
