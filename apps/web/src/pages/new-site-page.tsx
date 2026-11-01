@@ -5,10 +5,13 @@ import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
 import tetPhoto from '@webnhanh/templates/samples/tet-photo.webp';
 import weddingCover from '@webnhanh/templates/samples/wedding-cover.webp';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useAccount } from '../account';
+import { signInUrl } from '../api';
 import { SITES_DOMAIN } from '../brand';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
+import { AppPage } from '../public-page';
 import { SignedInPage } from '../signed-in-page';
 import { createSite } from '../sites-api';
 import { variantChoices } from './template-variant-choices';
@@ -28,17 +31,41 @@ const NAME_REASONS: Readonly<Record<'format' | 'reserved' | 'sensitive', Message
   sensitive: 'name.sensitive',
 };
 
-/** `/new`: choose a template, then one of its looks and the page's address. */
-export function NewSitePage(): ReactNode {
-  return <SignedInPage>{() => <NewSite />}</SignedInPage>;
+/**
+ * What the person picked before signing up (`/new?template=…&variant=…&name=…`), checked against the templates and
+ * their looks; anything else is dropped.
+ */
+function pickedBefore(params: URLSearchParams): { template: TemplateId | null; variant: string | null; name: string } {
+  const template = TEMPLATES.find((item) => item.id === params.get('template'))?.id ?? null;
+  const looks = template ? variantChoices(template) : [];
+  const variant = looks.find((look) => look.id === params.get('variant'))?.id ?? looks[0]?.id ?? null;
+  return { template, variant, name: template ? (params.get('name') ?? '').slice(0, 30) : '' };
 }
 
-function NewSite(): ReactNode {
-  const { t } = useI18n();
+/**
+ * `/new`: choose a template, then one of its looks and the page's address. A visitor without an account picks the
+ * same way; making the page is where they sign up, and they come back here with what they picked.
+ */
+export function NewSitePage(): ReactNode {
+  const { account } = useAccount();
+  if (account === null) {
+    return (
+      <AppPage>
+        <NewSite guest />
+      </AppPage>
+    );
+  }
+  return <SignedInPage>{() => <NewSite guest={false} />}</SignedInPage>;
+}
+
+function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
+  const { t, locale } = useI18n();
   const navigate = useNavigate();
-  const [chosen, setChosen] = useState<TemplateId | null>(null);
-  const [variant, setVariant] = useState<string | null>(null);
-  const [name, setName] = useState('');
+  const [params] = useSearchParams();
+  const [before] = useState(() => pickedBefore(params));
+  const [chosen, setChosen] = useState<TemplateId | null>(before.template);
+  const [variant, setVariant] = useState<string | null>(before.variant);
+  const [name, setName] = useState(before.name);
   const [error, setError] = useState<MessageKey | null>(null);
   const [busy, setBusy] = useState(false);
   const inputId = useId();
@@ -46,10 +73,16 @@ function NewSite(): ReactNode {
   const check = name.trim() === '' ? null : checkSiteName(name);
   const localError = check && !check.ok ? NAME_REASONS[check.reason] : null;
   const shown = localError ?? error;
+  const picked = new URLSearchParams({ ...(chosen ? { template: chosen } : {}), ...(variant ? { variant } : {}), name: name.trim() });
+  const signUpHref = signInUrl(`/new?${picked.toString()}`, locale, true);
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
     if (!check?.ok || busy || !chosen) return;
+    if (guest) {
+      window.location.assign(signUpHref);
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
@@ -64,7 +97,7 @@ function NewSite(): ReactNode {
   return (
     <section className="new-site" data-id="new-site">
       <Link className="back-link" to="/" data-id="new-back">
-        {t('new.back')}
+        {t(guest ? 'new.guest.back' : 'new.back')}
       </Link>
       <h1 className="page-title">{t('new.title')}</h1>
       <p className="lede">{t('new.lede')}</p>
@@ -141,9 +174,21 @@ function NewSite(): ReactNode {
           <p id={helpId} className={shown ? 'field-error' : 'hint'} role={shown ? 'alert' : undefined}>
             {shown ? t(shown) : t('new.name.help')}
           </p>
-          <button type="submit" className="pill pill-cta" disabled={!check?.ok || busy} aria-busy={busy} data-id="new-submit">
-            {t('new.name.submit')}
-          </button>
+          {guest && check?.ok ? (
+            // A plain link: /auth/login is a server route.
+            <a className="pill pill-cta" href={signUpHref} data-id="new-sign-up">
+              {t('new.guest.submit')}
+            </a>
+          ) : (
+            <button type="submit" className="pill pill-cta" disabled={!check?.ok || busy} aria-busy={busy} data-id="new-submit">
+              {t(guest ? 'new.guest.submit' : 'new.name.submit')}
+            </button>
+          )}
+          {guest ? (
+            <p className="hint" data-id="new-guest-note">
+              {t('new.guest.note')}
+            </p>
+          ) : null}
         </form>
       ) : null}
       <p className="hint">

@@ -194,6 +194,37 @@ describe('making a page', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('không có kiểu đã chọn');
   });
 
+  it('lets a visitor pick first and sends them to sign up with what they picked', async () => {
+    on('GET', '/api/me', () => ({ status: 401, body: { error: 'unauthenticated' } }));
+    renderAt('/new');
+    fireEvent.click(await screen.findByRole('button', { name: /Thiệp cưới/ }));
+    // No button that makes a page before the address is valid.
+    expect(screen.queryByRole('link', { name: 'Đăng ký miễn phí để tạo website' })).toBeNull();
+    fireEvent.change(screen.getByLabelText('Địa chỉ website'), { target: { value: 'minh-thao' } });
+    const link = screen.getByRole('link', { name: 'Đăng ký miễn phí để tạo website' });
+    const url = new URL(link.getAttribute('href') ?? '', 'https://webnhanh.hoandat.com');
+    expect(url.pathname).toBe('/auth/login');
+    expect(url.searchParams.get('signup')).toBe('1');
+    expect(url.searchParams.get('return')).toBe('/new?template=wedding&variant=hoa-pastel&name=minh-thao');
+    expect(calls.some((c) => c.method === 'POST')).toBe(false);
+  });
+
+  it('comes back from sign-up with the template, look and address filled in', async () => {
+    on('POST', '/api/sites', () => ({ status: 201, body: { site: site({ template: 'wedding' }) } }));
+    renderAt('/new?template=wedding&variant=hoa-pastel&name=minh-thao');
+    expect((await screen.findByRole('button', { name: /Thiệp cưới/ })).getAttribute('aria-pressed')).toBe('true');
+    expect((screen.getByLabelText('Hoa pastel') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('Địa chỉ website') as HTMLInputElement).value).toBe('minh-thao');
+    fireEvent.click(screen.getByRole('button', { name: 'Tạo website' }));
+    await waitFor(() => expect(calls.find((c) => c.method === 'POST')?.body).toEqual({ name: 'minh-thao', template: 'wedding', variant: 'hoa-pastel' }));
+  });
+
+  it('drops a template or look from the address that does not exist', async () => {
+    renderAt('/new?template=casino&variant=x&name=abc');
+    expect(await screen.findByRole('button', { name: /Thiệp cưới/ })).toBeTruthy();
+    expect(screen.queryByLabelText('Địa chỉ website')).toBeNull();
+  });
+
   it('says when the name is taken', async () => {
     on('POST', '/api/sites', () => ({ status: 409, body: { error: 'name-taken' } }));
     renderAt('/new');

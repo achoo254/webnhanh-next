@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Link } from 'react-router';
 import { brand } from '../brand';
 import { useI18n, type MessageKey } from '../i18n';
 import { AppPage } from '../public-page';
@@ -69,6 +70,11 @@ export function LandingPage(): ReactNode {
           <h1 className="hero-title">{t('hero.title')}</h1>
           <p className="hero-lede">{t('hero.lede')}</p>
           <AppSignInCard headingLevel={2} title={t('signIn.title')} description={t('signIn.body')} returnTo="/" />
+          <p className="hint">
+            <Link to="/new" data-id="hero-try">
+              {t('hero.try')}
+            </Link>
+          </p>
         </div>
         <TemplateWall />
       </section>

@@ -97,6 +97,7 @@ describe('sign-in with the account service', () => {
       ui_locales: 'en',
     });
     idp.nonce = q.get('nonce') ?? '';
+    expect(q.get('prompt')).toBeNull();
 
     // A callback with another state is refused (back on the page it started from, with the failure noted).
     expect((await http.get('/auth/callback?state=wrong&code=c1')).headers.location).toBe('/webnhanh?login=fail');
@@ -139,6 +140,16 @@ describe('sign-in with the account service', () => {
     expect((await http.post('/auth/logout').set('Origin', ORIGIN)).status).toBe(204);
     expect((await http.get('/api/me')).status).toBe(401);
     expect(await app.handle.db.select().from(sessions)).toHaveLength(0);
+  });
+
+  it('opens the IdP on making an account when a sign-up button sent the person', async () => {
+    idp = await startFakeIdp();
+    const base = loadConfig({ NODE_ENV: 'test', AUTH_ISSUER: idp.issuer, AUTH_CLIENT_SECRET: SECRET, PUBLIC_URL: ORIGIN });
+    app = await startTestApp({ auth: base.auth });
+    const http = app.http();
+    const authorize = new URL((await http.get('/auth/login?return=/new&signup=1')).headers.location ?? '');
+    expect(authorize.searchParams.get('prompt')).toBe('create');
+    expect(authorize.searchParams.get('client_id')).toBe('webnhanh-web');
   });
 
   it('refreshes the profile at each sign-in, and keeps it when userinfo cannot be read', async () => {

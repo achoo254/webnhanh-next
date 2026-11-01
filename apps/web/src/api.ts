@@ -76,6 +76,6 @@ export async function signOut(): Promise<void> {
 }
 
 /** Sign-in at the account service, coming back to `returnTo`. */
-export function signInUrl(returnTo: string, lang: string): string {
-  return `/auth/login?${new URLSearchParams({ return: returnTo, lang }).toString()}`;
+export function signInUrl(returnTo: string, lang: string, signUp = false): string {
+  return `/auth/login?${new URLSearchParams({ return: returnTo, lang, ...(signUp ? { signup: '1' } : {}) }).toString()}`;
 }

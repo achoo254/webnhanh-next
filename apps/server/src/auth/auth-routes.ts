@@ -142,6 +142,8 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
   router.get('/auth/login', async (req, res) => {
     const returnTo = safeReturnPath(req.query.return);
     const lang = req.query.lang === 'en' ? 'en' : 'vi';
+    // `signup=1`: the person pressed a sign-up button, so the IdP opens on making an account.
+    const signUp = req.query.signup === '1';
     if (!auth || !discover) {
       res.redirect(withLoginResult(returnTo, 'unavailable'));
       return;
@@ -161,6 +163,7 @@ export function authRoutes(config: ServerConfig, db: Db): Router {
         code_challenge: codeChallenge(s.verifier),
         code_challenge_method: 'S256',
         ui_locales: lang,
+        ...(signUp ? { prompt: 'create' } : {}),
       }).toString();
       res.redirect(url.href);
     } catch (error) {
