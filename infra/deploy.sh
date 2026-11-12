@@ -113,6 +113,11 @@ hosting() {
 release() {
 	# The release id names the commit; a tree with uncommitted changes would ship something else under its name.
 	git diff --quiet HEAD -- || { echo 'uncommitted changes: commit them first' >&2; exit 1; }
+	git fetch --quiet origin main
+	if ! git merge-base --is-ancestor HEAD origin/main; then
+		echo "HEAD $(git rev-parse --short HEAD) is not on origin/main: push it first" >&2
+		exit 1
+	fi
 	echo "== gates and build"
 	$PNPM install --frozen-lockfile
 	$PNPM lint
