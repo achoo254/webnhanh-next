@@ -4,7 +4,9 @@ import { rateLimit } from 'express-rate-limit';
 import helmet from 'helmet';
 import { reportRoutes } from './abuse/report-routes';
 import { adminRoutes } from './admin/admin-routes';
+import { accountDeletedRoute } from './auth/account-deleted';
 import { authRoutes } from './auth/auth-routes';
+import { idpMetadata } from './auth/idp-metadata';
 import { developerRoutes } from './builds/developer-routes';
 import { gitWebhookRoutes } from './builds/git-webhook';
 import type { Fetcher } from './builds/repo-check';
@@ -28,6 +30,8 @@ export interface AppDeps {
 
 export function createApp({ config, db, onOrder = () => undefined, fetcher = (url, init) => fetch(url, init) }: AppDeps): Express {
   const app = express();
+  // One reader of the IdP's discovery and keys, shared by sign-in and the account-deletion notice.
+  const idp = config.auth ? idpMetadata(config.auth.issuer) : null;
   app.disable('x-powered-by');
   // nginx in front (one hop): req.ip is the visitor, for the rate limits.
   app.set('trust proxy', 'loopback');
@@ -41,13 +45,14 @@ export function createApp({ config, db, onOrder = () => undefined, fetcher = (ur
   const signInLimit = rateLimit({ windowMs: 15 * 60_000, limit: 100, standardHeaders: 'draft-8', legacyHeaders: false });
   app.use(['/auth/login', '/auth/callback'], signInLimit);
   // Callers from elsewhere, each with checks of its own: visitors' orders from published sites (CORS by the site's
-  // origin), the Chat bot's webhook (HMAC), and pushes from GitHub/GitLab (the site's webhook secret). Everything after
-  // this takes requests from the app's origin only.
+  // origin), the Chat bot's webhook (HMAC), pushes from GitHub/GitLab (the site's webhook secret), and the IdP's notice
+  // of a deleted account (a SET signed with its keys). Everything after this takes requests from the app's origin only.
   app.use(formRoutes(config, db, onOrder));
   app.use(chatWebhookRoutes(config, db));
   app.use(gitWebhookRoutes(db));
+  app.use(accountDeletedRoute(config, db, idp));
   app.use(requireAllowedOrigin(config.allowedOrigins));
-  app.use(authRoutes(config, db));
+  app.use(authRoutes(config, db, idp));
   // The public abuse report form posts from the app's own page (`/bao-cao`), without sign-in.
   app.use(reportRoutes(config, db, onOrder));
   app.use(adminRoutes(config, db));

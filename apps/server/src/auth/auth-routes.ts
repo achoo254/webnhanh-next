@@ -7,6 +7,7 @@ import express, { type RequestHandler, type Router } from 'express';
 import { accountStanding } from '../admin/admin-guard';
 import type { AuthConfig, ServerConfig } from '../config';
 import { HttpError } from '../http-error';
+import type { Discovery, IdpMetadata } from './idp-metadata';
 import {
   codeChallenge,
   newLoginState,
@@ -34,38 +35,6 @@ const STATE_COOKIE = 'webnhanh_login';
 
 /** What the app asks the IdP for: the account's key, then the name, picture and email of the account menu. */
 const LOGIN_SCOPE = 'openid profile email';
-
-interface Discovery {
-  readonly issuer: string;
-  readonly authorization_endpoint: string;
-  readonly token_endpoint: string;
-  readonly userinfo_endpoint?: string;
-}
-
-function isDiscovery(value: unknown): value is Discovery {
-  if (typeof value !== 'object' || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.issuer === 'string' &&
-    typeof v.authorization_endpoint === 'string' &&
-    typeof v.token_endpoint === 'string' &&
-    (v.userinfo_endpoint === undefined || typeof v.userinfo_endpoint === 'string')
-  );
-}
-
-/** The IdP's endpoints, cached for an hour. */
-function discoveryCache(issuer: string): () => Promise<Discovery> {
-  let cached: { at: number; doc: Discovery } | null = null;
-  return async () => {
-    if (cached && Date.now() - cached.at < 3_600_000) return cached.doc;
-    const res = await fetch(`${issuer}/.well-known/openid-configuration`, { signal: AbortSignal.timeout(10_000) });
-    if (!res.ok) throw new Error(`discovery ${res.status}`);
-    const doc: unknown = await res.json();
-    if (!isDiscovery(doc) || doc.issuer !== issuer) throw new Error('discovery document does not match the issuer');
-    cached = { at: Date.now(), doc };
-    return doc;
-  };
-}
 
 interface TokenResult {
   readonly status: number;
@@ -133,10 +102,10 @@ export interface MeResponse {
   };
 }
 
-export function authRoutes(config: ServerConfig, db: Db): Router {
+export function authRoutes(config: ServerConfig, db: Db, idp: IdpMetadata | null): Router {
   const router = express.Router();
   const auth = config.auth;
-  const discover = auth ? discoveryCache(auth.issuer) : null;
+  const discover = auth && idp ? idp.discover : null;
   const stateCookie = { httpOnly: true, secure: config.nodeEnv === 'production', sameSite: 'lax' as const, path: '/auth' };
 
   router.get('/auth/login', async (req, res) => {

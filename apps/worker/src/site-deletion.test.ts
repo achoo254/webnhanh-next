@@ -83,6 +83,20 @@ describe('a deleted site', () => {
     expect(await processNextJob(deps)).toBe('idle');
   });
 
+  it('is still taken off the web after its account was deleted at the IdP', async () => {
+    const gone = randomUUID();
+    await siteOnDisk('cua-nguoi-da-xoa');
+    await photosOf(gone);
+    const id = await queueDeletion(gone, ['cua-nguoi-da-xoa']);
+    await handle.db.delete(accounts).where(eq(accounts.id, accountId));
+
+    expect(await processNextSiteDeletion(deps)).toBe(true);
+    expect(await readdir(deps.sitesDir)).toEqual([]);
+    expect(await readdir(deps.uploadsDir)).toEqual([]);
+    const [row] = await handle.db.select().from(siteDeletions).where(eq(siteDeletions.id, id));
+    expect(row).toMatchObject({ accountId: null, status: 'done' });
+  });
+
   it('is done even when nothing was ever published or uploaded', async () => {
     const id = await queueDeletion(randomUUID(), ['chua-dang']);
     const only: SiteDeletionDeps = deps;

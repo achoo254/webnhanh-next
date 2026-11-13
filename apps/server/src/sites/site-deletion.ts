@@ -44,28 +44,41 @@ export async function deleteSite(db: Db, site: Site, confirm: unknown, now: Date
       .limit(1);
     if (active) throw new HttpError(409, 'job-active');
 
-    // Old names of a rename the site still holds are taken off the web too, and freed like its name.
-    const oldNames = await tx
-      .delete(siteNameHolds)
-      .where(and(eq(siteNameHolds.siteId, row.id), ne(siteNameHolds.name, row.name)))
-      .returning({ name: siteNameHolds.name });
-    // The site's builds of today leave with it but still count against the account's day.
-    const buildMs = await buildMsToday(tx, row.accountId, now, row.id);
-    await tx.delete(sites).where(eq(sites.id, row.id));
-    await tx.insert(siteDeletions).values({
-      id: randomUUID(),
-      siteId: row.id,
-      accountId: row.accountId,
-      names: [row.name, ...oldNames.map((hold) => hold.name)],
-      buildMs,
-      status: 'queued',
-      createdAt: now,
-    });
+    await deleteSiteRows(tx, row, now);
   });
-  if (site.kind === 'developer' && inboxDir) {
-    await rm(inboxZip({ inbox: inboxDir, out: inboxDir, work: inboxDir, cache: inboxDir }, site.id), { force: true }).catch((error: unknown) => {
-      // The builder's maintenance removes zips of sites that no longer exist.
-      console.warn('zip of a deleted site not removed', error instanceof Error ? error.message : String(error));
-    });
-  }
+  if (site.kind === 'developer') await removeInboxZip(inboxDir, site.id);
+}
+
+/**
+ * The rows of a site go (everything cascading from `sites` with them), its old names are freed, and a `site_deletions`
+ * row asks the worker to take the site off the web and delete its photos. Runs inside the caller's transaction, which
+ * holds the site's row lock. Shared by a deletion by the owner and the deletion of the whole account.
+ */
+export async function deleteSiteRows(tx: Db, row: Pick<Site, 'id' | 'name' | 'accountId'>, now: Date): Promise<void> {
+  // Old names of a rename the site still holds are taken off the web too, and freed like its name.
+  const oldNames = await tx
+    .delete(siteNameHolds)
+    .where(and(eq(siteNameHolds.siteId, row.id), ne(siteNameHolds.name, row.name)))
+    .returning({ name: siteNameHolds.name });
+  // The site's builds of today leave with it but still count against the account's day.
+  const buildMs = await buildMsToday(tx, row.accountId, now, row.id);
+  await tx.delete(sites).where(eq(sites.id, row.id));
+  await tx.insert(siteDeletions).values({
+    id: randomUUID(),
+    siteId: row.id,
+    accountId: row.accountId,
+    names: [row.name, ...oldNames.map((hold) => hold.name)],
+    buildMs,
+    status: 'queued',
+    createdAt: now,
+  });
+}
+
+/** Removes the uploaded zip of a deleted developer site (the server owns the build inbox); never throws. */
+export async function removeInboxZip(inboxDir: string | null, siteId: string): Promise<void> {
+  if (!inboxDir) return;
+  await rm(inboxZip({ inbox: inboxDir, out: inboxDir, work: inboxDir, cache: inboxDir }, siteId), { force: true }).catch((error: unknown) => {
+    // The builder's maintenance removes zips of sites that no longer exist.
+    console.warn('zip of a deleted site not removed', error instanceof Error ? error.message : String(error));
+  });
 }

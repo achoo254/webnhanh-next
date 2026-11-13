@@ -384,15 +384,15 @@ export type SiteDeletionStatus = (typeof SITE_DELETION_STATUSES)[number];
  * queue tells webnhanh-worker, the only writer of SITES_DIR, to take the names (`names`: the site's name and the old
  * names it still held) off the web and delete the site's photos. `build_ms` carries the build time the site used that
  * day, still counted against its account's day (`buildMsToday`). No foreign key on `site_id`: the site is gone.
+ * `account_id` turns null when the account itself is deleted (at the IdP): the deletions of its sites stay queued, so
+ * the worker still takes them off the web.
  */
 export const siteDeletions = pgTable(
   'site_deletions',
   {
     id: uuid('id').primaryKey(),
     siteId: uuid('site_id').notNull(),
-    accountId: uuid('account_id')
-      .notNull()
-      .references(() => accounts.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id').references(() => accounts.id, { onDelete: 'set null' }),
     names: jsonb('names').$type<string[]>().notNull(),
     buildMs: integer('build_ms').notNull().default(0),
     status: text('status').$type<SiteDeletionStatus>().notNull(),

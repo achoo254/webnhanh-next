@@ -365,6 +365,47 @@ curl -sI https://webnhanh.hoandat.com/ | grep -i content-security-policy   # img
 curl -s -o /dev/null -w '%{redirect_url}\n' https://webnhanh.hoandat.com/auth/login   # scope=openid+profile+email
 ```
 
+## Xoá tài khoản (chỉ ở hoandat.com)
+
+Tài khoản chỉ bị xoá ở `auth.hoandat.com/account` (ADR 0018 của `auth-next`); app không có nút, màn hay API xoá tài
+khoản. IdP báo bằng `POST https://webnhanh.hoandat.com/api/idp/account-deleted`
+([`account-deleted.ts`](../apps/server/src/auth/account-deleted.ts)), body là SET (RFC 8417,
+`Content-Type: application/secevent+jwt`): header `alg` ES256, `typ` `secevent+jwt`; `iss` là `AUTH_ISSUER`; `aud`
+đúng `PUBLIC_URL/api/idp/account-deleted`; `exp` chưa qua (lệch giờ 60 giây); event
+`urn:hoandat:auth:event:account.deleted`; chữ ký kiểm bằng `jwks_uri` trong discovery của IdP. Route gắn trước
+`requireAllowedOrigin` (IdP gọi không có Origin), như `/f/`, `/hooks/*`.
+
+Hợp lệ thì trong một transaction ([`account-data.ts`](../apps/server/src/auth/account-data.ts)): mỗi site của tài
+khoản đi đúng đường xoá website ở trên (`deleteSiteRows`: dòng `sites` và mọi thứ cascade theo, tên và tên cũ trả lại
+ngay, một dòng `site_deletions` để worker gỡ site khỏi `<tên>.hoandat.io.vn` và xoá ảnh), rồi xoá dòng `accounts` (phiên,
+máy nhận push, liên kết Chat, mã liên kết, thông báo chờ gửi đi theo). Khác với chủ tự xoá site, không có gì bị từ chối:
+job đang chờ hay chạy (worker chạy các xoá đã xếp ngay sau job đang làm; builder dọn output của job không còn), site bị
+gỡ, tài khoản bị khoá, báo cáo còn mở. `abuse_reports` và `admin_actions` còn nguyên, id site và id tài khoản thành
+null, giữ tên site. Site chỉ có một chủ nên không có gì chuyển chủ. Zip tải lên của site lập trình viên bị server xoá
+ngay.
+
+Trả `202` khi đã xoá, khi không có tài khoản mang `sub` đó, hay khi nhận lại (IdP thử lại); `400` khi body không phải
+SET; `401` khi SET sai; `503` khi đăng nhập đang tắt, không đọc được khoá của IdP hay xoá lỗi, để IdP thử lại. Log chỉ ghi
+id nội bộ và số site đã xếp gỡ, không ghi SET hay `sub`.
+
+Có từ bản thêm migration `0009_account-deleted-site-deletions` (`site_deletions.account_id` thành tuỳ chọn, khoá ngoại
+chuyển từ `cascade` sang `set null`: hàng đợi gỡ site còn lại khi tài khoản đã xoá). Không có biến env mới; nginx chuyển
+sẵn qua `location /api/`.
+
+Triển khai: `release` (migration tự chạy), rồi thêm `https://webnhanh.hoandat.com/api/idp/account-deleted` vào
+`ACCOUNT_DELETED_URLS` của env IdP (`auth-next`); URL phải đúng từng ký tự với `PUBLIC_URL` + `/api/idp/account-deleted`.
+Kiểm:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST -H 'Content-Type: application/secevent+jwt' --data 'x' \
+  https://webnhanh.hoandat.com/api/idp/account-deleted                        # 400 (không phải SET)
+journalctl -u webnhanh-server -n 50 | grep 'account deletion notice'          # sau một lần xoá thật
+journalctl -u webnhanh-worker -n 50 | grep 'site deleted'                     # các site của tài khoản đó: done
+```
+
+Quay lại bản app trước: route biến mất (IdP nhận 404 và thử lại tới khi lên lại bản này); schema mới vẫn chạy với bản
+cũ (bản cũ luôn ghi `account_id`).
+
 ## Lịch sử
 
 - 28/10/2026: `/etc/nginx/conf.d/openapi.conf` (trang OpenAPI cũ từ 12/2025, chỉ cổng 80, cho `hoandat.io.vn`) đổi

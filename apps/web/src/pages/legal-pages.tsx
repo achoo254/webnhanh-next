@@ -17,6 +17,9 @@ function LegalPage({ title, dataId, children }: { readonly title: string; readon
   );
 }
 
+/** Where a hoandat.com account is deleted (auth-next ADR 0018): the app has no deletion of its own. */
+const ACCOUNT_DELETE_URL = 'https://auth.hoandat.com/account#account-delete';
+
 /** What the app keeps today. Update it whenever the app starts keeping something new. */
 export function PrivacyPage(): ReactNode {
   const { t, locale } = useI18n();
@@ -46,6 +49,13 @@ export function PrivacyPage(): ReactNode {
             Website bạn đăng ở địa chỉ dạng tên-của-bạn.{SITES_DOMAIN} là website công khai: ai có link đều xem được. Ở các website đó {name} không
             đặt cookie nào.
           </p>
+          <h2>Xoá tài khoản</h2>
+          <p>
+            Tài khoản chỉ xoá được ở <a href={ACCOUNT_DELETE_URL}>trang tài khoản {domain}</a>; {name} không có nút xoá riêng. Khi bạn
+            xoá ở đó, {name} xoá ngay mọi dữ liệu của tài khoản: tên, email, ảnh, mọi website của bạn (gỡ khỏi địa chỉ .{SITES_DOMAIN}
+            cùng ảnh, đơn hàng, xác nhận tham dự, bản build), máy nhận thông báo, liên kết Chat và mọi phiên đăng nhập. Tên website được
+            giải phóng ngay. Báo cáo vi phạm người khác gửi về website của bạn vẫn được giữ cho quản trị viên, không còn gắn với tài khoản.
+          </p>
           <h2>Không có</h2>
           <p>Không quảng cáo, không bán hay chia sẻ dữ liệu cho bên thứ ba. Lượt xem được đếm ẩn danh bằng Cloudflare Web Analytics, không dùng cookie.</p>
         </>
@@ -70,6 +80,14 @@ export function PrivacyPage(): ReactNode {
           <p>
             A website you publish at an address like your-name.{SITES_DOMAIN} is public: anyone with the link can see it. {name} sets no cookie
             on those websites.
+          </p>
+          <h2>Deleting your account</h2>
+          <p>
+            The account can only be deleted on the <a href={ACCOUNT_DELETE_URL}>{domain} account page</a>; {name} has no deletion of its
+            own. When you delete it there, {name} deletes everything of it at once: the name, email, picture, all your websites (taken off
+            their .{SITES_DOMAIN} address with their photos, orders, replies and builds), notification devices, the Chat link and every
+            session. The website names are free at once. Abuse reports others sent about your websites are kept for the admins, no longer
+            tied to the account.
           </p>
           <h2>None of this</h2>
           <p>No ads, no selling or sharing of data with third parties. Visits are counted anonymously by Cloudflare Web Analytics, without cookies.</p>

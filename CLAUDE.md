@@ -23,8 +23,12 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
 - Script của form đặt hàng (`ORDER_SCRIPT` trong `packages/templates/src/order-form.ts`) được CSP cho phép bằng hash
   `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Form xác nhận tham dự của thiệp cưới
   (`rsvp-form.ts`, `kind=rsvp`) dùng nguyên script đó. Không thêm script nào khác vào trang mẫu.
-- `/f/:site`, `/hooks/chat` và `/hooks/git/:site` gắn trước `requireAllowedOrigin` và tự kiểm (CORS theo origin của
-  site + token ký; HMAC của bot; secret webhook của từng site). Route mới của app đặt sau, như cũ.
+- `/f/:site`, `/hooks/chat`, `/hooks/git/:site` và `/api/idp/account-deleted` gắn trước `requireAllowedOrigin` và tự kiểm
+  (CORS theo origin của site + token ký; HMAC của bot; secret webhook của từng site; SET ký ES256 của IdP). Route mới của
+  app đặt sau, như cũ.
+- Tài khoản chỉ xoá ở `auth.hoandat.com/account` (ADR 0018 của `auth-next`): app không có nút hay API xoá tài khoản.
+  IdP báo qua `/api/idp/account-deleted`, `auth/account-data.ts` xoá mọi site qua `deleteSiteRows` (cùng đường với xoá
+  website) rồi xoá tài khoản, trong một transaction. Thêm bảng gắn với tài khoản thì cho nó cascade theo `accounts`.
 - Build của lập trình viên chạy trong `webnhanh-builder` (nhóm `docker`); mọi lệnh `docker` chỉ đi qua
   `apps/worker/src/build/run-build.ts` với mảng tham số đã kiểm, không ghép chuỗi lệnh từ input. Builder không ghi
   `SITES_DIR`: output vào `BUILD_OUTPUT_DIR`, worker phát hành.
