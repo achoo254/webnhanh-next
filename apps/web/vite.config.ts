@@ -15,5 +15,16 @@ export default defineConfig({
     proxy: { '/api': API, '/auth': API, '/healthz': API },
   },
   preview: { host: '127.0.0.1', proxy: { '/api': API, '/auth': API, '/healthz': API } },
-  build: { target: 'es2022', sourcemap: true },
+  build: {
+    target: 'es2022',
+    sourcemap: true,
+    // React and the router in a chunk of their own: they change only with a dependency update, so browsers keep them
+    // cached across releases of the app, and the app's own entry stays small. The index.html checks still hold: a
+    // module chunk loaded by the entry, no inline script.
+    rolldownOptions: {
+      output: {
+        codeSplitting: { groups: [{ name: 'react', test: /node_modules[\\/](?:\.pnpm[\\/])?(?:react|react-dom|react-router|scheduler|cookie|set-cookie-parser)(?:@[^\\/]+)?[\\/]/ }] },
+      },
+    },
+  },
 });
