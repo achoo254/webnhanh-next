@@ -57,7 +57,11 @@ nhập đi tới đăng ký (`/auth/login?signup=1`) kèm `utm_source`, `utm_med
 đầu tiên (giữ trong sessionStorage, mỗi thẻ một giá trị đầu; server chuyển tiếp nguyên cho IdP, `signUpSource` trong
 `auth-routes.ts`), quay về `/new/publish`: chọn địa chỉ, rồi `guest-transfer.ts` tạo site từ cùng kiểu (`POST /api/sites`
 trả thêm `slotImages`: ảnh của kiểu thành ảnh nào của site), tải ảnh khách chọn lên (server kiểm và làm sạch như mọi
-ảnh), lưu nháp, xếp lệnh đăng, mở trang sửa của site. Mỗi bước được ghi lại, tải lại giữa chừng thì làm tiếp với cùng site.
+ảnh), lưu nháp, xếp lệnh đăng, mở trang sửa của site. Mỗi bước được ghi lại, tải lại giữa chừng thì làm tiếp với cùng site;
+nháp chỉ bị quên sau khi lệnh đăng đã nhận. Nhiều tab (`guest-locks.ts`): tab thấy tab khác ghi nháp thì ngừng lưu và hỏi;
+việc chuyển nháp chạy dưới khoá loại trừ (Web Locks, thiếu thì một lease trong localStorage) nên không tạo hai site; ảnh
+không dùng chỉ bị dọn khi không tab nào mở trình sửa. Ảnh khách chọn được đọc kích thước từ header trước (quá 60 MP thì từ
+chối) rồi giải nén thẳng ở cỡ nhỏ.
 
 ## Cấu trúc
 
