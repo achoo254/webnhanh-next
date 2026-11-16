@@ -16,6 +16,9 @@ SupplementaryGroups=docker
 # DATABASE_URL, BUILD_INBOX_DIR, BUILD_OUTPUT_DIR, BUILD_WORK_DIR, BUILD_CACHE_DIR, SERVER_PUBLIC_IP (optionally
 # BUILD_IMAGE, BUILD_MIN_FREE_MB, BUILD_MIN_DISK_MB): docs/deployment-guide.md.
 EnvironmentFile=/etc/webnhanh/builder.env
+# IPv6 egress on .65 is broken and IPv4 connects can take over 2 s, so Node's default happy eyeballs (250 ms per
+# address) times out on outbound calls: try IPv4 first and give each address 2.5 s.
+Environment="NODE_OPTIONS=--dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=2500"
 WorkingDirectory=/var/www/webnhanh/app
 ExecStart=/opt/node22/bin/node --enable-source-maps apps/worker/dist/builder.mjs
 Restart=on-failure

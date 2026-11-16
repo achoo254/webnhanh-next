@@ -10,6 +10,15 @@ Trước 28/10/2026 sản phẩm tên là Trang Của Tôi ở `trang.hoandat.co
 thống, `/var/www/trang`, `/etc/trang`, unit `trang-server`/`trang-worker`, database và role, client `trang-web`, cookie
 `__Host-trang_session`, gói `@trang/*`, repo `trang-next`). Xem "Đổi tên sang Web Nhanh" bên dưới.
 
+**Kết nối ra ngoài ưu tiên IPv4.** IPv6 đi ra từ .65 không chạy và kết nối IPv4 đôi khi mất hơn 2 giây, nên với mặc
+định của Node 22 (happy eyeballs, 250 ms mỗi địa chỉ) lời gọi qua Cloudflare hay bên thứ ba (đổi mã đăng nhập với
+`auth.hoandat.com`, Web Push, bot Chat) hỏng với `AggregateError [ETIMEDOUT]`. Ba process Node
+chạy với `NODE_OPTIONS=--dns-result-order=ipv4first --network-family-autoselection-attempt-timeout=2500` (`Environment=`
+trong `infra/systemd/webnhanh-server.service`, `webnhanh-worker.service`, `webnhanh-builder.service`): thử IPv4 trước,
+đợi mỗi địa chỉ 2,5 giây. Đổi unit thì chạy `infra/deploy.sh release` tay (CI không cài unit; unit đổi thì lệnh đổi bản
+khởi động lại các service). Kiểm: `tr '\0' '\n' < /proc/<pid>/environ | grep NODE_OPTIONS` với pid của từng service
+(`systemctl show -p MainPID --value webnhanh-server`).
+
 ## Thành phần trên máy chủ
 
 | Thứ | Ở đâu |
