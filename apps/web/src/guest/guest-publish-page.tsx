@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAccount } from '../account';
+import { ApiError } from '../api';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { Loader } from '../loading';
@@ -8,9 +9,9 @@ import { SiteNameField, useSiteName } from '../pages/site-name-field';
 import { AppPage } from '../public-page';
 import { AppSignInCard } from '../sign-in';
 import { SignedInPage } from '../signed-in-page';
-import { loadGuestDraft, loadGuestTransfer, type GuestDraft } from './guest-draft-storage';
+import { clearGuestTransfer, loadGuestDraft, type GuestDraft } from './guest-draft-storage';
 import { GUEST_PUBLISH_PATH } from './guest-editor-page';
-import { transferGuestDraft, type TransferStep } from './guest-transfer';
+import { DRAFT_GONE, madeSiteOf, transferGuestDraft, type TransferStep } from './guest-transfer';
 
 const STEP_MESSAGES: Readonly<Record<TransferStep, MessageKey>> = {
   create: 'try.step.create',
@@ -81,9 +82,11 @@ function PublishDraft({ draft }: { readonly draft: GuestDraft }): ReactNode {
   const { t } = useI18n();
   const navigate = useNavigate();
   const field = useSiteName('');
-  // A transfer cut short (a reload, a refused photo) already made the site: carry on with it, no second address.
-  const [resuming, setResuming] = useState(() => loadGuestTransfer() !== null);
+  // A transfer cut short (a reload, a refused photo, a refused publish) already made the site: carry on with it.
+  const [madeSite, setMadeSite] = useState(() => madeSiteOf(draft.id));
   const [step, setStep] = useState<TransferStep | null>(null);
+  const [gone, setGone] = useState(false);
+  const resuming = madeSite !== null;
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
@@ -93,12 +96,30 @@ function PublishDraft({ draft }: { readonly draft: GuestDraft }): ReactNode {
       const siteId = await transferGuestDraft(draft, field.valid ?? '', setStep);
       navigate(`/sites/${siteId}`, { replace: true });
     } catch (failure) {
-      field.setError(errorMessage(failure));
       setStep(null);
+      if (failure instanceof ApiError && failure.code === DRAFT_GONE) {
+        setGone(true);
+        return;
+      }
+      field.setError(errorMessage(failure));
       // The site it carried on with is gone: the address is asked again.
-      setResuming(loadGuestTransfer() !== null);
+      setMadeSite(madeSiteOf(draft.id));
     }
   };
+
+  if (gone) {
+    return (
+      <section className="new-site" data-id="guest-publish-gone">
+        <h1 className="page-title">{t('try.gone.title')}</h1>
+        <p className="lede">{t('try.gone.body')}</p>
+        <p>
+          <Link className="pill pill-cta" to="/" data-id="guest-publish-home">
+            {t('try.gone.home')}
+          </Link>
+        </p>
+      </section>
+    );
+  }
 
   const busy = step !== null;
   return (
@@ -127,6 +148,30 @@ function PublishDraft({ draft }: { readonly draft: GuestDraft }): ReactNode {
         <p className="hint" role="status" data-id="guest-publish-step">
           {busy ? t(STEP_MESSAGES[step]) : null}
         </p>
+        {resuming && field.shown && !busy ? (
+          // Trying again did not help: the site is in the account already; the owner can finish it in its editor, or
+          // leave it as a draft and start over at another address.
+          <div className="notice notice-info" data-id="guest-publish-escape">
+            <p>{t('try.escape.body')}</p>
+            <div className="notice-actions">
+              <Link className="pill pill-dark pill-small" to={`/sites/${madeSite}`} data-id="guest-publish-open-site">
+                {t('try.escape.open')}
+              </Link>
+              <button
+                type="button"
+                className="pill pill-ghost pill-small"
+                onClick={() => {
+                  clearGuestTransfer();
+                  setMadeSite(null);
+                  field.setError(null);
+                }}
+                data-id="guest-publish-restart"
+              >
+                {t('try.escape.restart')}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </form>
     </section>
   );

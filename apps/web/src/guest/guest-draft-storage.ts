@@ -1,20 +1,30 @@
 /**
  * The draft of a visitor without an account, kept in this browser only until they sign up and publish: the draft and
  * its photo list in localStorage, the photos they chose in IndexedDB. Nothing goes to the server before sign-in.
- * Storage can be off or full (private mode, quota): every call catches, and a draft that cannot be read back whole is
- * dropped, so the editor opens the template fresh.
+ * Storage can be off or full (private mode, quota): every call catches. A draft that cannot be read back whole opens
+ * the template fresh, but nothing is deleted on a failed read: photos are only removed once their draft went into an
+ * account, or by a sweep run when no guest editor is open in any tab (`guest-locks.ts`).
  */
-import { parseDraft, type TemplateDraft } from '@webnhanh/templates';
+import { CAFE_LIMITS, LIMITS, parseDraft, TET_LIMITS, WEDDING_LIMITS, type TemplateDraft } from '@webnhanh/templates';
 import { artFile, type TemplateVariant } from '@webnhanh/templates/variants';
 import { z } from 'zod';
 import { libraryUrl, pickedLook, type GuestPhoto } from './guest-library';
 
-const DRAFT_KEY = 'webnhanh.guest-draft';
+/** The localStorage key of the draft: other tabs see its writes as `storage` events. */
+export const DRAFT_KEY = 'webnhanh.guest-draft';
 const TRANSFER_KEY = 'webnhanh.guest-transfer';
 const DB_NAME = 'webnhanh-guest';
 const STORE = 'photos';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const UUIDS = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
+
+/**
+ * The most photos a draft of any template can show (the cover plus every place for a photo): a café's 120 dishes, a
+ * shop's products, a wedding's gallery and ornaments, a Tết card's ornaments. A stored list longer than this is not a
+ * draft of ours.
+ */
+export const MAX_DRAFT_PHOTOS = Math.max(1 + CAFE_LIMITS.items, 1 + LIMITS.products, 1 + WEDDING_LIMITS.gallery + WEDDING_LIMITS.ornaments, 1 + TET_LIMITS.ornaments);
 
 const storedPhoto = z.object({
   id: z.string().regex(UUID),
@@ -25,15 +35,19 @@ const storedPhoto = z.object({
 });
 
 const storedDraft = z.object({
-  v: z.literal(1),
+  v: z.literal(2),
+  /** Names this draft: a transfer and a tab's writes belong to one draft. */
+  id: z.string().regex(UUID),
   template: z.string(),
   variant: z.string(),
   draft: z.unknown(),
-  photos: z.array(storedPhoto).max(60),
+  photos: z.array(storedPhoto).max(MAX_DRAFT_PHOTOS),
 });
+type StoredDraft = z.infer<typeof storedDraft>;
 
 /** A visitor's draft read back: its look, the draft, every photo it has with where it shows from, and their own photos' bytes. */
 export interface GuestDraft {
+  readonly id: string;
   readonly look: TemplateVariant;
   readonly value: TemplateDraft;
   readonly photos: readonly GuestPhoto[];
@@ -57,13 +71,13 @@ function openDb(): Promise<IDBDatabase> {
   });
 }
 
-async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+async function withStore<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T> | null): Promise<T | undefined> {
   const db = await openDb();
   try {
-    return await new Promise<T>((resolve, reject) => {
+    return await new Promise<T | undefined>((resolve, reject) => {
       const tx = db.transaction(STORE, mode);
       const request = run(tx.objectStore(STORE));
-      tx.oncomplete = () => resolve(request.result);
+      tx.oncomplete = () => resolve(request?.result);
       tx.onerror = () => reject(tx.error ?? new Error('IndexedDB transaction failed'));
       tx.onabort = () => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
     });
@@ -92,6 +106,29 @@ async function getGuestPhoto(id: string): Promise<Blob | null> {
   }
 }
 
+/** Removes the photos `ids` (their draft went into an account). */
+export async function deleteGuestPhotos(ids: readonly string[]): Promise<void> {
+  if (ids.length === 0) return;
+  try {
+    await withStore('readwrite', (store) => {
+      for (const id of ids) store.delete(id);
+      return null;
+    });
+  } catch {
+    // Left behind: the next sweep takes them.
+  }
+}
+
+/** Removes every kept photo but `keep` (call only when no guest editor is open in any tab). */
+export async function sweepGuestPhotos(keep: ReadonlySet<string>): Promise<void> {
+  try {
+    const keys = (await withStore('readonly', (store) => store.getAllKeys())) ?? [];
+    await deleteGuestPhotos(keys.filter((key): key is string => typeof key === 'string' && !keep.has(key)));
+  } catch {
+    // No IndexedDB: nothing was kept.
+  }
+}
+
 /** Reads a Blob as a `data:` URL (the preview frame and the app's CSP allow `data:` pictures, not `blob:`). */
 export function dataUrlOf(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -104,19 +141,44 @@ export function dataUrlOf(blob: Blob): Promise<string> {
 
 // The draft itself, in localStorage.
 
-/** Keeps the draft and its photo list; false when storage is off or full. */
-export function saveGuestDraft(look: TemplateVariant, value: TemplateDraft, photos: readonly GuestPhoto[]): boolean {
-  const used = new Set<string>(JSON.stringify(value.draft).match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g) ?? []);
-  const record: z.infer<typeof storedDraft> = {
-    v: 1,
+function readRecord(raw: string | null): StoredDraft | null {
+  if (!raw) return null;
+  try {
+    const parsed = storedDraft.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function storedRecord(): StoredDraft | null {
+  try {
+    return readRecord(localStorage.getItem(DRAFT_KEY));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Keeps the draft `id` and its photo list (only the photos the draft still shows); false when storage is off or full,
+ * or the draft has more photos than any template can show (it would not read back).
+ */
+export function saveGuestDraft(id: string, look: TemplateVariant, value: TemplateDraft, photos: readonly GuestPhoto[]): boolean {
+  const used = new Set<string>(JSON.stringify(value.draft).match(UUIDS) ?? []);
+  const record = storedDraft.safeParse({
+    v: 2,
+    id,
     template: look.template,
     variant: look.id,
     draft: value.draft,
-    // Only the photos the draft still uses: a replaced photo is not kept for the transfer.
     photos: photos.filter((photo) => used.has(photo.image.id)).map((photo) => ({ ...photo.image, slot: photo.slot })),
-  };
+  });
+  if (!record.success) {
+    console.warn('guest draft does not fit the stored shape', record.error.issues[0]?.message ?? '');
+    return false;
+  }
   try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(record));
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(record.data));
     return true;
   } catch (error) {
     console.warn('guest draft not kept', error instanceof Error ? error.message : String(error));
@@ -124,29 +186,22 @@ export function saveGuestDraft(look: TemplateVariant, value: TemplateDraft, phot
   }
 }
 
-/** Which template and look the stored draft is of, without reading its photos; null when there is none. */
-export function storedGuestLook(): { template: string; variant: string } | null {
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    const parsed = raw ? storedDraft.safeParse(JSON.parse(raw)) : null;
-    return parsed?.success ? { template: parsed.data.template, variant: parsed.data.variant } : null;
-  } catch {
-    return null;
-  }
+/** Which draft is stored (its id, template and look), without reading its photos; null when there is none. */
+export function storedGuestLook(): { id: string; template: string; variant: string } | null {
+  const record = storedRecord();
+  return record ? { id: record.id, template: record.template, variant: record.variant } : null;
+}
+
+/** The photo ids a stored draft (as `raw`, a localStorage value) still uses. */
+export function storedPhotoIds(raw: string | null = null): Set<string> {
+  const record = raw === null ? storedRecord() : readRecord(raw);
+  return new Set(record?.photos.map((photo) => photo.id) ?? []);
 }
 
 /** The stored draft with every photo, or null when there is none or any part of it is gone or does not fit. */
 export async function loadGuestDraft(): Promise<GuestDraft | null> {
-  let record: z.infer<typeof storedDraft>;
-  try {
-    const raw = localStorage.getItem(DRAFT_KEY);
-    if (!raw) return null;
-    const parsed = storedDraft.safeParse(JSON.parse(raw));
-    if (!parsed.success) return null;
-    record = parsed.data;
-  } catch {
-    return null;
-  }
+  const record = storedRecord();
+  if (!record) return null;
   const look = pickedLook(record.template, record.variant);
   const value = look && look.id === record.variant ? parseDraft(look.template, record.draft) : null;
   if (!look || !value) return null;
@@ -169,27 +224,28 @@ export async function loadGuestDraft(): Promise<GuestDraft | null> {
     }
     blobs.set(photo.id, blob);
   }
-  return { look, value, photos, blobs };
+  return { id: record.id, look, value, photos, blobs };
 }
 
-/** Forgets the draft and its photos (after it went into an account, or when another template is opened). */
-export async function clearGuestDraft(): Promise<void> {
+/**
+ * Forgets the draft `draft` once it is in an account: its record (only if no tab stored another draft since) and the
+ * visitor's photos of it.
+ */
+export async function forgetGuestDraft(draft: Pick<GuestDraft, 'id' | 'blobs'>): Promise<void> {
   try {
-    localStorage.removeItem(DRAFT_KEY);
+    if (storedRecord()?.id === draft.id) localStorage.removeItem(DRAFT_KEY);
   } catch {
     // Nothing to forget.
   }
-  try {
-    await withStore('readwrite', (store) => store.clear());
-  } catch {
-    // No IndexedDB: no photos were kept.
-  }
+  await deleteGuestPhotos([...draft.blobs.keys()]);
 }
 
-// How far moving the draft into the account went, so a reload in the middle neither makes a second site nor uploads
-// a photo twice.
+// How far moving a draft into the account went, so a reload in the middle neither makes a second site nor uploads a
+// photo twice.
 
 const transferSchema = z.object({
+  /** The draft being moved: a transfer never carries over to another draft. */
+  draftId: z.string().regex(UUID),
   siteId: z.string().regex(UUID),
   /** The image id each library picture became in the site, by slot. */
   slotImages: z.record(z.string(), z.string()),
@@ -198,11 +254,12 @@ const transferSchema = z.object({
 });
 export type GuestTransfer = z.infer<typeof transferSchema>;
 
-export function loadGuestTransfer(): GuestTransfer | null {
+/** The transfer of draft `draftId` cut short earlier, or null. */
+export function loadGuestTransfer(draftId: string): GuestTransfer | null {
   try {
     const raw = localStorage.getItem(TRANSFER_KEY);
     const parsed = raw ? transferSchema.safeParse(JSON.parse(raw)) : null;
-    return parsed?.success ? parsed.data : null;
+    return parsed?.success && parsed.data.draftId === draftId ? parsed.data : null;
   } catch {
     return null;
   }

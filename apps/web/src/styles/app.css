@@ -128,6 +128,16 @@
   background: color-mix(in srgb, var(--c-warning) 14%, var(--c-surface));
   border: 1px solid color-mix(in srgb, var(--c-warning) 40%, var(--c-surface));
 }
+/* A notice that asks for a choice: its words, then the buttons in a row (wrapping on phones). */
+.notice > p {
+  margin: 0;
+}
+.notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
 
 .home {
   display: grid;

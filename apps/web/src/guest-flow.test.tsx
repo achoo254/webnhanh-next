@@ -3,6 +3,7 @@ import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
 import { App } from './app';
+import { fakeIndexedDb, type FakeIndexedDb } from './guest/fake-indexed-db.test-support';
 import { I18nProvider } from './i18n';
 import { leaveTo } from './leave-to';
 import { rememberSignUpSource } from './signup-source';
@@ -23,46 +24,11 @@ const SERVER_COVER = '22222222-2222-4222-8222-222222222222';
 const SERVER_ORNAMENT = '33333333-3333-4333-8333-333333333333';
 const UPLOADED = '44444444-4444-4444-8444-444444444444';
 
-/** A Map-backed IndexedDB, enough for the guest draft's photo store (open, put, get, clear). */
-function fakeIndexedDb(): IDBFactory {
-  const data = new Map<string, unknown>();
-  const later = (run: () => void): void => void setTimeout(run, 0);
-  const store = {
-    put: (value: unknown, key: string) => {
-      data.set(key, value);
-      return { result: key };
-    },
-    get: (key: string) => ({ result: data.get(key) }),
-    clear: () => {
-      data.clear();
-      return { result: undefined };
-    },
-  };
-  const db = {
-    createObjectStore: () => store,
-    close: () => undefined,
-    transaction: () => {
-      const tx: { objectStore: () => typeof store; oncomplete?: () => void } = { objectStore: () => store };
-      later(() => tx.oncomplete?.());
-      return tx;
-    },
-  };
-  return {
-    open: () => {
-      const request: { result: typeof db; onupgradeneeded?: () => void; onsuccess?: () => void } = { result: db };
-      later(() => {
-        request.onupgradeneeded?.();
-        request.onsuccess?.();
-      });
-      return request;
-    },
-  } as unknown as IDBFactory;
-}
-
 type Handler = (init: RequestInit | undefined) => { status: number; body: unknown };
 let routes: Map<string, Handler>;
 let calls: { method: string; url: string; body: unknown }[];
 let signedIn: boolean;
+let idb: FakeIndexedDb;
 
 function on(method: string, url: string, handler: Handler): void {
   routes.set(`${method} ${url}`, handler);
@@ -104,7 +70,8 @@ beforeEach(() => {
   signedIn = false;
   FakeXhr.sent = [];
   vi.mocked(leaveTo).mockClear();
-  vi.stubGlobal('indexedDB', fakeIndexedDb());
+  idb = fakeIndexedDb();
+  vi.stubGlobal('indexedDB', idb.factory);
   vi.stubGlobal('XMLHttpRequest', FakeXhr);
   on('GET', '/api/me', () => (signedIn ? { status: 200, body: { account: { id: 'a1', createdAt: NOW } } } : { status: 401, body: { error: 'sign-in-required' } }));
   vi.stubGlobal(
@@ -277,5 +244,96 @@ describe('a visitor edits, signs up when publishing, and the site is made with w
     expect(url.searchParams.get('signup')).toBe('1');
     expect(url.searchParams.get('return')).toBe('/new/publish');
     expect(url.searchParams.get('utm_source')).toBe('tiktok');
+  });
+});
+
+describe('the visitor draft when things go wrong', () => {
+  async function chooseCover(): Promise<void> {
+    const coverInput = document.querySelector('[data-id="cover"] input[type="file"]');
+    if (!(coverInput instanceof HTMLInputElement)) throw new Error('no cover input');
+    fireEvent.change(coverInput, { target: { files: [new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 9])], 'cuoi.jpg', { type: 'image/jpeg' })] } });
+    await waitFor(() => expect(frame().getAttribute('srcdoc')).toContain('data:image/jpeg;base64,'));
+  }
+
+  function fillRequired(): void {
+    fireEvent.change(screen.getByLabelText('Ngày cưới'), { target: { value: '2027-01-09' } });
+    for (const venue of screen.getAllByLabelText('Nơi tổ chức')) fireEvent.change(venue, { target: { value: 'Nhà hàng Hoa Sen' } });
+  }
+
+  it('deletes no photo when the kept draft cannot be read, nor when another template opens', async () => {
+    renderAt('/new/edit?template=wedding&variant=hoa-pastel');
+    await screen.findByLabelText('Tên chú rể');
+    await chooseCover();
+    await waitFor(() => expect(idb.data.size).toBe(1));
+    cleanup();
+    // Another tab opens another template: the first draft's photo stays.
+    renderAt('/new/edit?template=tet&variant=clay-do-vang');
+    await waitFor(() => expect(document.querySelector('[data-id="guest-editor"]')).toBeTruthy());
+    cleanup();
+    localStorage.setItem('webnhanh.guest-draft', '{broken');
+    renderAt('/new/edit?template=wedding&variant=vintage');
+    await screen.findByLabelText('Tên chú rể');
+    expect(idb.data.size).toBe(1);
+  });
+
+  it('stops saving and says so when another tab changes the draft', async () => {
+    renderAt('/new/edit?template=wedding&variant=hoa-pastel');
+    const groom = await screen.findByLabelText('Tên chú rể');
+    await waitFor(() => expect(localStorage.getItem('webnhanh.guest-draft')).not.toBeNull());
+    const other = '{"v":2,"from":"other tab"}';
+    localStorage.setItem('webnhanh.guest-draft', other);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'webnhanh.guest-draft', newValue: other }));
+    expect((await screen.findByText(/sửa bản nháp ở một tab khác/)).closest('[role="alert"]')).toBeTruthy();
+    fireEvent.change(groom, { target: { value: 'Quang' } });
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(localStorage.getItem('webnhanh.guest-draft')).toBe(other);
+    // Keeping this tab's draft saves it again.
+    fireEvent.click(screen.getByRole('button', { name: 'Giữ bản ở tab này' }));
+    await waitFor(() => expect(localStorage.getItem('webnhanh.guest-draft')).toContain('Quang'));
+  });
+
+  it('warns before sign-up when the browser could not keep the draft', async () => {
+    renderAt('/new/edit?template=wedding&variant=hoa-pastel');
+    await screen.findByLabelText('Tên chú rể');
+    idb.failWrites = true;
+    await chooseCover();
+    fillRequired();
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
+    expect((await screen.findByText(/chưa lưu được bản nháp. Đi đăng ký/)).closest('[role="alert"]')).toBeTruthy();
+    expect(vi.mocked(leaveTo)).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Vẫn đi đăng ký' }));
+    expect(vi.mocked(leaveTo)).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the preview a moment after typing, not at every key', async () => {
+    renderAt('/new/edit?template=wedding&variant=hoa-pastel');
+    const groom = await screen.findByLabelText('Tên chú rể');
+    fireEvent.change(groom, { target: { value: 'Quang' } });
+    expect(frame().getAttribute('srcdoc')).not.toContain('Quang');
+    await waitFor(() => expect(frame().getAttribute('srcdoc')).toContain('Quang'));
+  });
+
+  it('offers a way out when the site was made but its draft keeps being refused', async () => {
+    renderAt('/new/edit?template=wedding&variant=hoa-pastel');
+    await screen.findByLabelText('Tên chú rể');
+    await waitFor(() => expect(localStorage.getItem('webnhanh.guest-draft')).not.toBeNull());
+    cleanup();
+    signedIn = true;
+    on('POST', '/api/sites', () => ({ status: 201, body: { site: site(), slotImages: { cover: SERVER_COVER, ornament: SERVER_ORNAMENT } } }));
+    on('PUT', `/api/sites/${SITE_ID}/draft`, () => ({ status: 400, body: { error: 'invalid-draft' } }));
+    renderAt('/new/publish');
+    fireEvent.change(await screen.findByLabelText('Địa chỉ website'), { target: { value: 'minh-thao' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
+    // The site is made: the way out shows, and trying again carries on with the same site.
+    const escape = await screen.findByText(/Website đã nằm trong tài khoản/);
+    const box = escape.closest('[data-id="guest-publish-escape"]');
+    if (!(box instanceof HTMLElement)) throw new Error('no way out');
+    expect(within(box).getByRole('link', { name: 'Mở website đã tạo' }).getAttribute('href')).toBe(`/sites/${SITE_ID}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Tiếp tục đăng' }));
+    await waitFor(() => expect(calls.filter((call) => call.method === 'PUT')).toHaveLength(2));
+    expect(calls.filter((call) => call.method === 'POST' && call.url === '/api/sites')).toHaveLength(1);
+    fireEvent.click(await screen.findByRole('button', { name: 'Làm lại với địa chỉ khác' }));
+    expect(await screen.findByLabelText('Địa chỉ website')).toBeTruthy();
+    expect(localStorage.getItem('webnhanh.guest-transfer')).toBeNull();
   });
 });

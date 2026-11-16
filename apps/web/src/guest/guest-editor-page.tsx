@@ -3,21 +3,24 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAccount } from '../account';
 import { signInUrl } from '../api';
-import { leaveTo } from '../leave-to';
 import { EditorTabs, PreviewFrame, TemplateForm, useEditorChecks, visibleIssues } from '../editor/site-editor';
 import { ISSUE_MESSAGES } from '../error-messages';
 import { useI18n } from '../i18n';
+import { leaveTo } from '../leave-to';
 import { Loader } from '../loading';
 import { AppPage } from '../public-page';
 import { SignedInPage } from '../signed-in-page';
 import type { SiteImage } from '../sites-api';
-import { clearGuestDraft, clearGuestTransfer, loadGuestDraft, saveGuestDraft, type GuestDraft } from './guest-draft-storage';
+import { DRAFT_KEY, loadGuestDraft, saveGuestDraft, storedPhotoIds, sweepGuestPhotos, type GuestDraft } from './guest-draft-storage';
 import { freshGuestDraft, pickedLook, type GuestPhoto } from './guest-library';
+import { EDITOR_LOCK, holdShared, whenNobodyHolds } from './guest-locks';
 import { guestPhotos } from './guest-photo-store';
 import { guestPreviewHtml } from './guest-preview';
 
 /** Keeps the draft in the browser this long after the last change. */
 const KEEP_DELAY_MS = 400;
+/** The preview is rendered again this long after the last change, not at every key press. */
+export const PREVIEW_DELAY_MS = 250;
 /** Where the editor goes once Publish passes its checks (after sign-up, for a visitor). */
 export const GUEST_PUBLISH_PATH = '/new/publish';
 /** The address the preview's form would send to: the page has no address yet. */
@@ -49,18 +52,17 @@ export function GuestEditorPage(): ReactNode {
 
 /**
  * The draft to open: the one kept in this browser when it is of the look asked for (or none was asked for), else the
- * look new. Null when nothing can be opened (no look asked for and none kept).
+ * look new under a new id. Nothing kept is deleted here: photos no draft uses are swept only while no guest editor is
+ * open in any tab. Null when nothing can be opened (no look asked for and none kept).
  */
 async function openDraft(template: string | null, variant: string | null): Promise<GuestDraft | null> {
+  await whenNobodyHolds(EDITOR_LOCK, () => sweepGuestPhotos(storedPhotoIds()));
   const kept = await loadGuestDraft();
   const look = template ? pickedLook(template, variant) : null;
   if (kept && (!template || (look && kept.look.template === look.template && kept.look.id === look.id))) return kept;
   if (!look) return null;
-  // Another look, or what was kept cannot be read whole: start this one fresh, and forget the rest.
-  clearGuestTransfer();
-  await clearGuestDraft();
   const fresh = freshGuestDraft(look);
-  return { look, value: fresh.value, photos: fresh.photos, blobs: new Map() };
+  return { id: crypto.randomUUID(), look, value: fresh.value, photos: fresh.photos, blobs: new Map() };
 }
 
 function LoadGuestEditor({ guest }: { readonly guest: boolean }): ReactNode {
@@ -68,6 +70,8 @@ function LoadGuestEditor({ guest }: { readonly guest: boolean }): ReactNode {
   const [draft, setDraft] = useState<GuestDraft | null | 'none'>(null);
   const template = params.get('template');
   const variant = params.get('variant');
+  // Open guest editors hold this lock shared, so another tab never sweeps the photos of the draft open here.
+  useEffect(() => holdShared(EDITOR_LOCK), []);
   useEffect(() => {
     let live = true;
     openDraft(template, variant)
@@ -84,7 +88,28 @@ function LoadGuestEditor({ guest }: { readonly guest: boolean }): ReactNode {
   }, [template, variant]);
   if (draft === 'none') return <Navigate to="/new" replace />;
   if (!draft) return <Loader />;
-  return <GuestEditor key={`${draft.look.template}/${draft.look.id}`} initial={draft} guest={guest} />;
+  return <GuestEditor key={draft.id} initial={draft} guest={guest} />;
+}
+
+/**
+ * What another tab did to the draft this tab edits: stored another one over it (`replaced`), or moved it into an
+ * account (`published`). This tab then stops writing until the visitor chooses, so two tabs never overwrite each other
+ * in turn.
+ */
+type OtherTab = 'replaced' | 'published' | null;
+
+function useOtherTab(): [OtherTab, () => void] {
+  const [other, setOther] = useState<OtherTab>(null);
+  useEffect(() => {
+    // `storage` fires only for writes made by other tabs.
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== DRAFT_KEY) return;
+      setOther(event.newValue === null ? 'published' : 'replaced');
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+  return [other, () => setOther(null)];
 }
 
 function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonly guest: boolean }): ReactNode {
@@ -95,6 +120,8 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
   const [value, setValue] = useState<TemplateDraft>(initial.value);
   const [images, setImages] = useState<ReadonlyMap<string, SiteImage>>(() => new Map(initial.photos.map((photo) => [photo.image.id, photo.image])));
   const [leaving, setLeaving] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [otherTab, keepThisTab] = useOtherTab();
   const { view, setView, attempted, setAttempted, refuse, editorRef } = useEditorChecks();
   const look = initial.look;
 
@@ -102,13 +129,26 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
     (): GuestPhoto[] => [...images.values()].map((image) => ({ image, url: store.urls.get(image.id) ?? '', slot: store.slots.get(image.id) ?? null })),
     [images, store],
   );
-  const keep = useCallback((): void => {
-    if (!saveGuestDraft(look, value, photoList())) setKeepFailed(true);
-  }, [look, value, photoList]);
+  /** Stores the draft now; false when the browser would not keep it. */
+  const keep = useCallback((): boolean => {
+    const ok = saveGuestDraft(initial.id, look, value, photoList());
+    setKeepFailed((failed) => failed || !ok);
+    return ok;
+  }, [initial.id, look, value, photoList]);
   useEffect(() => {
+    if (otherTab) return;
     const timer = setTimeout(keep, KEEP_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [keep]);
+  }, [keep, otherTab]);
+
+  // The preview follows the draft a moment after the last change: rendering the page (photos inline) at every key
+  // press would make typing lag on a phone.
+  const [previewed, setPreviewed] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setPreviewed(value), PREVIEW_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [value]);
+  const html = useMemo(() => guestPreviewHtml(previewed, images, store.urls, PREVIEW_NAME), [previewed, images, store]);
 
   const issues = visibleIssues(value, attempted);
   const issueText = (field: string): string | null => {
@@ -117,7 +157,15 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
   };
   const usesSamples = templateImageIds(value).some((id) => images.get(id)?.sample);
   const addImage = useCallback((image: SiteImage): void => setImages((current) => new Map(current).set(image.id, image)), []);
-  const html = useMemo(() => guestPreviewHtml(value, images, store.urls, PREVIEW_NAME), [value, images, store]);
+
+  const goPublish = (): void => {
+    if (guest) {
+      // A plain navigation: /auth/login is a server route; the account service brings the visitor back to publish.
+      leaveTo(signInUrl(GUEST_PUBLISH_PATH, locale, true));
+      return;
+    }
+    navigate(GUEST_PUBLISH_PATH);
+  };
 
   const publish = async (): Promise<void> => {
     if (publishIssues(value).length > 0) {
@@ -126,14 +174,16 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
     }
     setAttempted(true);
     setLeaving(true);
-    keep();
+    keepThisTab();
+    const stored = keep();
     await store.settled();
-    if (guest) {
-      // A plain navigation: /auth/login is a server route; the account service brings the visitor back to publish.
-      leaveTo(signInUrl(GUEST_PUBLISH_PATH, locale, true));
+    // Not kept in this browser: going to sign up now would lose it. Say so first.
+    if (!stored || !store.kept()) {
+      setConfirmLeave(true);
+      setLeaving(false);
       return;
     }
-    navigate(GUEST_PUBLISH_PATH);
+    goPublish();
   };
 
   return (
@@ -147,6 +197,34 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
         </span>
       </div>
       <EditorTabs view={view} onChange={setView} />
+
+      {otherTab ? (
+        <div className="notice notice-warning" role="alert" data-id="guest-other-tab">
+          <p>{t(otherTab === 'published' ? 'try.otherTab.published' : 'try.otherTab.replaced')}</p>
+          <div className="notice-actions">
+            {otherTab === 'replaced' ? (
+              <button type="button" className="pill pill-dark pill-small" onClick={() => window.location.reload()} data-id="guest-other-tab-open">
+                {t('try.otherTab.open')}
+              </button>
+            ) : (
+              <Link className="pill pill-dark pill-small" to="/" data-id="guest-other-tab-home">
+                {t('try.otherTab.home')}
+              </Link>
+            )}
+            <button
+              type="button"
+              className="pill pill-ghost pill-small"
+              onClick={() => {
+                keepThisTab();
+                keep();
+              }}
+              data-id="guest-other-tab-keep"
+            >
+              {t('try.otherTab.keep')}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="editor-columns">
         <div className="editor-form">
@@ -174,6 +252,19 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
           </p>
         ) : null}
         <section className="publish" data-id="guest-publish">
+          {confirmLeave ? (
+            <div className="notice notice-warning" role="alert" data-id="guest-confirm-leave">
+              <p>{t('try.notKept.leave')}</p>
+              <div className="notice-actions">
+                <button type="button" className="pill pill-dark pill-small" onClick={goPublish} data-id="guest-leave-anyway">
+                  {t('try.notKept.leaveAnyway')}
+                </button>
+                <button type="button" className="pill pill-ghost pill-small" onClick={() => setConfirmLeave(false)} data-id="guest-stay">
+                  {t('try.notKept.stay')}
+                </button>
+              </div>
+            </div>
+          ) : null}
           <button type="button" className="pill pill-cta" onClick={() => void publish()} disabled={leaving} aria-busy={leaving} data-id="publish-button">
             {t('publish.button')}
           </button>
