@@ -34,7 +34,10 @@ export function renderLinks(draft: LinksDraft, assets: ReadonlyMap<string, Image
     .map((item) => {
       const link = webLink(item.url);
       const label = item.label.trim();
-      if (!link || !label) return '';
+      if (!label) return '';
+      // A named link still without a working address: shown greyed in the editor's preview. Publishing refuses it
+      // (`linkListIssues`), so a published page never has one.
+      if (!link) return `<li><span class="l-link l-pending"><span class="l-label">${escapeHtml(label)}</span><span class="l-host">Chưa có link</span></span></li>`;
       return `<li><a class="l-link" href="${escapeHtml(link.href)}"><span class="l-label">${escapeHtml(label)}</span><span class="l-host">${escapeHtml(link.label)}</span></a></li>`;
     })
     .filter(Boolean);

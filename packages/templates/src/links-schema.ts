@@ -53,7 +53,7 @@ export function linksImageIds(draft: LinksDraft): string[] {
 /** No sample photo of its own: a new page starts from one of its variants, whose pictures it gets. */
 export const LINKS_SAMPLES = {} as const;
 
-/** A new page: two empty links, every text left to the owner. */
+/** A new page: two links named for the owner to give their addresses (or remove), every other text left to them. */
 export function newLinksDraft(samples: { avatar: string | null; cover: string | null } = { avatar: null, cover: null }): LinksDraft {
   return {
     name: '',
@@ -62,8 +62,8 @@ export function newLinksDraft(samples: { avatar: string | null; cover: string | 
     avatar: samples.avatar,
     cover: samples.cover,
     links: [
-      { key: 'l1', label: '', url: '' },
-      { key: 'l2', label: '', url: '' },
+      { key: 'l1', label: 'Video mới nhất của mình', url: '' },
+      { key: 'l2', label: 'Đặt lịch, hợp tác', url: '' },
     ],
     contacts: { ...EMPTY_CONTACTS },
     palette: 'berry',

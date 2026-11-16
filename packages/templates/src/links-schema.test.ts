@@ -13,7 +13,7 @@ const sample = (overrides: Partial<LinksDraft> = {}): LinksDraft => ({ ...sample
 const NO_CONTACTS = { zalo: '', phone: '', facebook: '' };
 
 describe('link-in-bio draft', () => {
-  it('starts with two empty links; needs a name and something to tap', () => {
+  it('starts with two named links to fill in; needs a name and something to tap', () => {
     const draft = newLinksDraft();
     expect(linksDraftSchema.safeParse(draft).success).toBe(true);
     expect(linksPublishIssues({ ...draft, links: [] })).toEqual([
@@ -52,12 +52,14 @@ describe('renderLinks', () => {
     expect(html).not.toMatch(/<script|<form/);
   });
 
-  it('shows the initials without a photo, and leaves out broken links', () => {
+  it('shows the initials without a photo, a named link without an address greyed out and not as a link', () => {
     const [first] = sample().links;
     if (!first) throw new Error('sample has links');
-    const { html } = renderLinks(sample({ avatar: null, cover: null, links: [{ ...first, url: 'not a link' }] }), assets);
+    const { html } = renderLinks(sample({ avatar: null, cover: null, links: [{ ...first, url: 'not a link' }, { ...first, key: 'x', label: ' ' }] }), assets);
     expect(html).toContain('<div class="l-avatar l-initials" aria-hidden="true">MT</div>');
-    expect(html).not.toContain('class="l-links"');
+    expect(html).toContain('<li><span class="l-link l-pending"><span class="l-label">Video mới nhất trên TikTok</span><span class="l-host">Chưa có link</span></span></li>');
+    expect(html).not.toContain('class="l-link" href');
+    expect(linksPublishIssues(sample({ links: [{ ...first, url: '' }] }))).toEqual([{ field: 'links.0.url', code: 'required' }]);
   });
 
   it('escapes what the owner typed', () => {

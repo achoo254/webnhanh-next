@@ -28,6 +28,8 @@ body{position:relative}
 .bl-2{top:42%;right:-14px;width:34px;height:34px;transform:rotate(18deg)}
 .bl-3{bottom:-16px;left:22%;width:30px;height:30px}
 .orn{position:absolute;z-index:1;width:104px;height:auto;pointer-events:none}
+/* The drawn ornaments sit in the bottom corners: room for them below the last line of the card. */
+.tet-card:has(.orn){padding-bottom:72px}
 .orn-1{bottom:-30px;right:-12px;transform:rotate(8deg)}
 .orn-2{bottom:-30px;left:-12px;transform:rotate(-10deg)}
 .orn-2.orn-flip{transform:scaleX(-1) rotate(-10deg)}

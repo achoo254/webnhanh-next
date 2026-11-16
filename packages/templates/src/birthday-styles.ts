@@ -20,6 +20,7 @@ body{position:relative}
 .b-orn{position:absolute;z-index:1;width:96px;height:auto;pointer-events:none}
 .b-orn-1{top:-34px;right:-10px;transform:rotate(8deg)}
 .b-orn-2{bottom:-26px;left:-12px;transform:rotate(-10deg)}
+.b-card:has(.b-orn-2){padding-bottom:64px}
 .b-gallery{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .b-gallery img{width:100%;aspect-ratio:1;object-fit:cover}
 .reply-intro{text-align:center;color:var(--muted);margin:-6px auto 18px;max-width:40ch}
