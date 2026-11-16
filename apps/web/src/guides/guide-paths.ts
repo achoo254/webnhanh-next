@@ -3,6 +3,7 @@
  * it in Node to write the sitemap and to serve the prerendered pages in dev, the app to route them.
  */
 export const GUIDE_PATHS = {
+  party: '/thiep-moi-tat-nien-online',
   wedding: '/thiep-cuoi-online',
   shop: '/website-ban-hang-mien-phi',
   tet: '/thiep-tet-2027',
@@ -11,7 +12,7 @@ export const GUIDE_PATHS = {
 export type GuideId = keyof typeof GUIDE_PATHS;
 export type GuidePath = (typeof GUIDE_PATHS)[GuideId];
 
-export const GUIDE_IDS: readonly GuideId[] = ['wedding', 'shop', 'tet'];
+export const GUIDE_IDS: readonly GuideId[] = ['party', 'wedding', 'shop', 'tet'];
 
 /** The guide at `path` (a trailing slash allowed), or null. */
 export function guideAt(path: string): GuideId | null {

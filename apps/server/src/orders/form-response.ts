@@ -22,9 +22,9 @@ export const FORM_MESSAGES = {
     'server-error': 'Chưa gửi được đơn. Hãy thử lại sau ít phút.',
   },
   rsvp: {
-    sent: 'Đã gửi xác nhận. Cô dâu chú rể cảm ơn bạn!',
+    sent: 'Đã gửi xác nhận. Cảm ơn bạn!',
     'not-found': 'Thiệp này không nhận xác nhận nữa.',
-    'forbidden-origin': 'Xác nhận này không gửi từ thiệp cưới.',
+    'forbidden-origin': 'Xác nhận này không gửi từ thiệp mời.',
     'stale-page': 'Trang đã cũ. Hãy tải lại trang rồi gửi xác nhận lần nữa.',
     'too-fast': 'Bạn gửi hơi nhanh. Hãy xem lại rồi bấm Gửi xác nhận lần nữa.',
     'too-many-requests': 'Đã có nhiều xác nhận gửi đi cùng lúc. Hãy thử lại sau ít phút.',
@@ -39,7 +39,7 @@ export type FormField = OrderField | RsvpField;
 /** The headings and back link of the HTML answer, per kind. */
 const PAGE_WORDS = {
   order: { sent: 'Đã gửi đơn', notSent: 'Chưa gửi được đơn', back: 'Quay lại cửa hàng' },
-  rsvp: { sent: 'Đã gửi xác nhận', notSent: 'Chưa gửi được xác nhận', back: 'Quay lại thiệp cưới' },
+  rsvp: { sent: 'Đã gửi xác nhận', notSent: 'Chưa gửi được xác nhận', back: 'Quay lại thiệp mời' },
 } as const satisfies Record<FormKind, Record<string, string>>;
 
 /** True when the page's script sent the form (it asks for JSON); false for a plain HTML form post. */

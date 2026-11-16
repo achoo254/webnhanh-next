@@ -1,6 +1,7 @@
 /**
- * The wedding countdown ("Còn 41 ngày") is worked out when the page is rendered, so a published invitation is
- * rendered again once a day until the day after the wedding (when the countdown goes away). The refresh is cheap and
+ * The countdown of a wedding or party invitation ("Còn 41 ngày") is worked out when the page is rendered, so a
+ * published invitation (`RSVP_TEMPLATES`, whose drafts have a `date`) is rendered again once a day until the day after
+ * the event (when the countdown goes away). The refresh is cheap and
  * changes nothing the owner made: it renders the live page (`sites.live_page`, the draft as it was published, not the
  * one being edited) into a copy of the live release, whose photos, fonts and share picture it reuses, and makes that
  * the new release. No Chrome, no uploads, no notification, no job row.
@@ -15,8 +16,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { imageFileName, releases, sites, type Db, type LivePage } from '@webnhanh/db';
 import { publishRelease } from '@webnhanh/publish';
-import { daysUntil, imageAsset, parseDraft, WEDDING_TEMPLATE } from '@webnhanh/templates';
-import { and, asc, eq, isNotNull, lt, sql } from 'drizzle-orm';
+import { daysUntil, imageAsset, parseDraft, RSVP_TEMPLATES } from '@webnhanh/templates';
+import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { renderLivePage, type PublishDeps } from './publish-job';
 
 /** Vietnam is UTC+7 all year; the countdown counts its days. */
@@ -39,27 +40,28 @@ export type RefreshDeps = Pick<PublishDeps, 'db' | 'log' | 'appUrl' | 'formSecre
 interface Candidate {
   readonly id: string;
   readonly name: string;
+  readonly template: string | null;
   readonly releaseId: string;
   readonly releasedAt: Date;
   readonly livePage: LivePage;
 }
 
 /**
- * Published wedding pages whose live release was made before today (Vietnam time) and whose wedding day was not yet
- * over then: their countdown is a day old or more. Oldest release first.
+ * Published wedding and party pages whose live release was made before today (Vietnam time) and whose day was not
+ * yet over then: their countdown is a day old or more. Oldest release first.
  */
 async function staleWeddings(db: Db, now: Date): Promise<Candidate[]> {
   const rows = await db
-    .select({ id: sites.id, name: sites.name, releaseId: releases.id, releasedAt: releases.createdAt, livePage: sites.livePage })
+    .select({ id: sites.id, name: sites.name, template: sites.template, releaseId: releases.id, releasedAt: releases.createdAt, livePage: sites.livePage })
     .from(sites)
     .innerJoin(releases, eq(releases.id, sites.currentReleaseId))
     .where(
       and(
-        eq(sites.template, WEDDING_TEMPLATE),
+        inArray(sites.template, [...RSVP_TEMPLATES]),
         eq(sites.status, 'published'),
         isNotNull(sites.livePage),
         lt(releases.createdAt, vietnamDayStart(now)),
-        // The wedding day (YYYY-MM-DD) on or after the Vietnamese day the release was made: it still shows a countdown.
+        // The day (YYYY-MM-DD) on or after the Vietnamese day the release was made: it still shows a countdown.
         sql`(${sites.livePage}->'draft'->>'date') >= to_char((${releases.createdAt} + interval '7 hours') at time zone 'UTC', 'YYYY-MM-DD')`,
       ),
     )
@@ -70,9 +72,9 @@ async function staleWeddings(db: Db, now: Date): Promise<Candidate[]> {
 
 /** Renders `site`'s live page again into a new release; the site's row only gets the new release. */
 async function refresh(deps: RefreshDeps, site: Candidate): Promise<boolean> {
-  const value = parseDraft(WEDDING_TEMPLATE, site.livePage.draft);
-  if (value?.template !== WEDDING_TEMPLATE) {
-    deps.log.warn(`wedding refresh ${site.name}: the live page cannot be read`);
+  const value = parseDraft(site.template, site.livePage.draft);
+  if (value?.template !== 'wedding' && value?.template !== 'party') {
+    deps.log.warn(`countdown refresh ${site.name}: the live page cannot be read`);
     return false;
   }
   // Only while the page still shows a countdown (the query checks the same; this is the template's own reckoning).
@@ -95,7 +97,7 @@ async function refresh(deps: RefreshDeps, site: Candidate): Promise<boolean> {
     });
     return true;
   } catch (error) {
-    deps.log.warn(`wedding refresh ${site.name} failed: ${error instanceof Error ? error.message : String(error)}`);
+    deps.log.warn(`countdown refresh ${site.name} failed: ${error instanceof Error ? error.message : String(error)}`);
     return false;
   } finally {
     await rm(work, { recursive: true, force: true });
@@ -106,7 +108,7 @@ async function refresh(deps: RefreshDeps, site: Candidate): Promise<boolean> {
 export async function refreshNextWedding(deps: RefreshDeps): Promise<string | null> {
   for (const site of await staleWeddings(deps.db, deps.now())) {
     if (await refresh(deps, site)) {
-      deps.log.info(`wedding refresh ${site.name}: countdown rendered again`);
+      deps.log.info(`countdown refresh ${site.name}: countdown rendered again`);
       return site.name;
     }
   }

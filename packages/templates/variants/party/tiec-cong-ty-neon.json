@@ -1,0 +1,32 @@
+{
+  "template": "party",
+  "id": "tiec-cong-ty-neon",
+  "label": "Tiệc công ty neon",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "berry",
+  "copy": {
+    "kicker": "Company Party 2026",
+    "title": "Quẩy cuối năm",
+    "host": "Team Product × Team Sales",
+    "intro": "KPI xong rồi, giờ là lúc quẩy! Có DJ, photobooth, bốc thăm quà xịn và đồ ăn không giới hạn. Ai trốn là bị réo tên trong group nha.",
+    "dressCode": "Neon, lấp lánh, càng chói càng tốt",
+    "rsvpNote": "Bấm xác nhận trước thứ Sáu để ban tổ chức chốt suất ăn."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "rooftop party venue at night lit by neon purple and pink lights, a big mirror disco ball, clusters of metallic balloons, falling confetti, string lights over the city skyline, vibrant and glowing, wide shot, empty venue before the party, no people, no screens, no signs, no text, no letters, no logos, no watermark",
+      "seed": 3972676790
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a shiny 3D mirror disco ball with small sparkles, glossy, vibrant purple and pink reflections, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": 2762822434
+    }
+  ]
+}

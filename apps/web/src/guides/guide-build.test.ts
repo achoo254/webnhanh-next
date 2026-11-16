@@ -28,6 +28,7 @@ const jsonLdOf = (html: string): unknown => JSON.parse(tag(html, /<script type="
 const ORIGIN = 'https://webnhanh.hoandat.com';
 
 const CASES = [
+  { path: GUIDE_PATHS.party, title: /^Thiệp mời tất niên, Giáng sinh online/, h1: 'Thiệp mời tất niên online', cta: '/new?template=party', look: '/new?template=party&amp;variant=tat-nien-sang-trong' },
   { path: GUIDE_PATHS.wedding, title: /^Thiệp cưới online miễn phí/, h1: 'Thiệp cưới online miễn phí', cta: '/new?template=wedding', look: '/new?template=wedding&amp;variant=hoa-pastel' },
   { path: GUIDE_PATHS.shop, title: /^Làm website bán hàng miễn phí trên điện thoại/, h1: 'Làm website bán hàng miễn phí trên điện thoại', cta: '/new?template=shop', look: '/new?template=shop&amp;variant=quan-ao' },
   { path: GUIDE_PATHS.tet, title: /^Thiệp Tết 2027 online/, h1: 'Thiệp Tết 2027 online', cta: '/new?template=tet', look: '/new?template=tet&amp;variant=clay-hoa-dao' },

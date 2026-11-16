@@ -1,0 +1,39 @@
+{
+  "template": "party",
+  "id": "giang-sinh-am-ap",
+  "label": "Giáng sinh ấm áp",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "lucky",
+  "copy": {
+    "kicker": "Giáng sinh 2026",
+    "title": "Noel nhà mình",
+    "host": "Hội bạn thân Team Sáng Tạo",
+    "intro": "Năm nay tụi mình làm tiệc Noel nho nhỏ: lẩu, bánh khúc cây và trò tráo quà bí mật. Nhớ mang theo một món quà dưới 200k nha!",
+    "dressCode": "Áo len đỏ hoặc xanh lá",
+    "rsvpNote": "Báo trước ngày 22/12 để tụi mình bốc thăm Secret Santa nhé."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "cozy Christmas party table in a warm small apartment, a bubbling hot pot, a chocolate yule log cake, wrapped gifts with red ribbons, a small decorated Christmas tree with warm fairy lights, red and green accents, soft warm bokeh, editorial lifestyle photography, no people, no text, no letters, no logos, no watermark",
+      "seed": 238353085
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a sprig of holly with glossy red berries and a small golden bell, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 2014940052
+    },
+    {
+      "slot": "ornament-2",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a small red gift box tied with a golden ribbon bow, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 2455390517
+    }
+  ]
+}

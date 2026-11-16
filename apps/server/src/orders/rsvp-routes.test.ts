@@ -44,7 +44,7 @@ describe('wedding replies through POST /f/:site', () => {
   it('stores a reply as an RSVP, answers in wedding words with CORS, and notifies like an order', async () => {
     const res = await post(reply({ phone: '0912 345 678' }));
     expect(res.status).toBe(201);
-    expect(res.body).toEqual({ ok: true, message: 'Đã gửi xác nhận. Cô dâu chú rể cảm ơn bạn!' });
+    expect(res.body).toEqual({ ok: true, message: 'Đã gửi xác nhận. Cảm ơn bạn!' });
     expect(res.headers['access-control-allow-origin']).toBe(SITE_ORIGIN);
     const [row] = await stored();
     expect(row?.kind).toBe('rsvp');
@@ -56,7 +56,7 @@ describe('wedding replies through POST /f/:site', () => {
     const res = await post(reply({ attending: 'no', guests: '5', _e: '' }), { json: false });
     expect(res.status).toBe(201);
     expect(res.text).toContain('Đã gửi xác nhận');
-    expect(res.text).toContain(`<a href="${SITE_ORIGIN}/">Quay lại thiệp cưới</a>`);
+    expect(res.text).toContain(`<a href="${SITE_ORIGIN}/">Quay lại thiệp mời</a>`);
     expect((await stored())[0]?.data).toMatchObject({ attending: 'no', guests: 0 });
   });
 

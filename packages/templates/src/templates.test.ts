@@ -143,8 +143,8 @@ describe('reading stored drafts', () => {
     for (const template of TEMPLATE_IDS) {
       const value = sample(template);
       const cover = draftCoverId(value);
-      if (template === 'profile') expect(cover).toBeNull();
-      else expect(cover).toBe(templateImageIds(value)[0]);
+      // Templates that ship no sample photo (their variants bring the pictures) have none.
+      expect(cover).toBe(templateImageIds(value)[0] ?? null);
       expect(draftShareCard(value).photo).toBe(cover);
     }
   });

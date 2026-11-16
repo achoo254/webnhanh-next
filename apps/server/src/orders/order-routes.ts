@@ -3,6 +3,7 @@
  * ones or all, and marking one handled or open again. Every route reaches the site through `ownedSite`.
  */
 import { isUuid, submissionContent, submissions, type Db } from '@webnhanh/db';
+import { takesReplies } from '@webnhanh/templates';
 import { and, count, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import express, { type Router } from 'express';
 import { accountOf, requireAccount } from '../auth/auth-routes';
@@ -92,7 +93,7 @@ export function orderRoutes(config: ServerConfig, db: Db): Router {
       .limit(ORDERS_PAGE + 1);
     const open = (await openOrderCounts(db, [site.id])).get(site.id) ?? 0;
     res.set('Cache-Control', 'no-store');
-    const rsvp = site.template === 'wedding' ? await rsvpSummary(db, site.id) : null;
+    const rsvp = takesReplies(site.template) ? await rsvpSummary(db, site.id) : null;
     res.json({
       site: { name: site.name, template: site.template, published: site.currentReleaseId !== null },
       orders: rows.slice(0, ORDERS_PAGE).map(orderView),

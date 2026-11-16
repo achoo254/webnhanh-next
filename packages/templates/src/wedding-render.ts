@@ -65,11 +65,11 @@ export function daysUntil(iso: string, now: Date): number | null {
   return Math.round((utcDay(iso).getTime() - today) / DAY_MS);
 }
 
-/** "Còn 41 ngày", "Ngày mai", "Hôm nay", or '' once the day has passed. */
-export function countdownText(days: number | null): string {
+/** "Còn 41 ngày", "Ngày mai", "Hôm nay", or '' once the day has passed; `day` names the day ("ngày cưới", "ngày tiệc"). */
+export function countdownText(days: number | null, day = 'ngày cưới'): string {
   if (days === null || days < 0) return '';
-  if (days === 0) return 'Hôm nay là ngày cưới';
-  if (days === 1) return 'Ngày mai là ngày cưới';
+  if (days === 0) return `Hôm nay là ${day}`;
+  if (days === 1) return `Ngày mai là ${day}`;
   return `Còn ${days} ngày`;
 }
 

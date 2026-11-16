@@ -43,8 +43,10 @@ export function isTime(value: string): boolean {
   return /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
 }
 
-const dateField = z.string().refine((v) => v === '' || isIsoDate(v), 'invalid-date');
-const timeField = z.string().refine((v) => v === '' || isTime(v), 'invalid-time');
+/** A day as `<input type="date">` gives it, or '' (shared by the templates with a date). */
+export const dateField = z.string().refine((v) => v === '' || isIsoDate(v), 'invalid-date');
+/** A time as `<input type="time">` gives it, or ''. */
+export const timeField = z.string().refine((v) => v === '' || isTime(v), 'invalid-time');
 
 export const weddingEventSchema = z
   .object({

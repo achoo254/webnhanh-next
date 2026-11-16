@@ -9,7 +9,7 @@ let owner: { accountId: string; cookie: string };
 let stranger: { accountId: string; cookie: string };
 
 beforeEach(async () => {
-  app = await startTestApp({ sitesPerAccount: 5 });
+  app = await startTestApp({ sitesPerAccount: TEMPLATE_IDS.length });
   owner = await app.signIn('owner');
   stranger = await app.signIn('stranger');
 });
@@ -41,7 +41,7 @@ const save = (siteId: string, draft: unknown, who = owner) =>
 const publish = (siteId: string) => app.http().post(`/api/sites/${siteId}/publish`).set('Cookie', owner.cookie).set('Origin', ORIGIN);
 
 /** Photos each new site starts with: the template's samples. */
-const SAMPLE_COUNT: Readonly<Record<TemplateId, number>> = { shop: 3, tet: 1, wedding: 1, cafe: 1, profile: 0 };
+const SAMPLE_COUNT: Readonly<Record<TemplateId, number>> = { shop: 3, tet: 1, wedding: 1, cafe: 1, profile: 0, party: 0 };
 
 describe('sites of every template', () => {
   it('makes each template with its own samples and new draft, all counted against one limit', async () => {
@@ -57,9 +57,9 @@ describe('sites of every template', () => {
     }
     const tet = (await app.http().get('/api/sites').set('Cookie', owner.cookie)).body.sites.find((site: { template: string }) => site.template === 'tet');
     expect(tet.cover).not.toBeNull();
-    const sixth = await app.http().post('/api/sites').set('Cookie', owner.cookie).set('Origin', ORIGIN).send({ name: 'trang-sau', template: 'tet' });
-    expect(sixth.status).toBe(403);
-    expect(sixth.body).toEqual({ error: 'site-limit', limit: 5 });
+    const oneMore = await app.http().post('/api/sites').set('Cookie', owner.cookie).set('Origin', ORIGIN).send({ name: 'trang-them', template: 'tet' });
+    expect(oneMore.status).toBe(403);
+    expect(oneMore.body).toEqual({ error: 'site-limit', limit: TEMPLATE_IDS.length });
   });
 
   it('starts a Tết card with the first greeting and the Tết look, the sender left to the owner', async () => {

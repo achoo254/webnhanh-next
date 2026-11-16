@@ -1996,3 +1996,11 @@ button.bento-card:focus-visible {
   font-size: 14px;
   overflow-wrap: anywhere;
 }
+
+/* Under the editor once Publish was refused: how many fields are left, and a way to the next one. */
+.issue-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}

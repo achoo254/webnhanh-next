@@ -200,6 +200,20 @@ describe('the daily wedding countdown', () => {
     expect(await refreshNextWedding(deps)).toBeNull();
   });
 
+  it('renders a party invitation again with its countdown too', async () => {
+    const site = await templateSite('party', 'tat-nien', (draft) => ({ ...draft, date: '2026-12-26' }));
+    const today = now;
+    now = new Date(now.getTime() - DAY);
+    await publish(site);
+    now = today;
+    const before = await livePage('tat-nien');
+    expect(before).toMatch(/Còn \d+ ngày/);
+    expect(await refreshNextWedding(deps)).toBe('tat-nien');
+    const after = await livePage('tat-nien');
+    expect(after).not.toBe(before);
+    expect(after).toContain('name="kind" value="rsvp"');
+  });
+
   it('starts the day at midnight in Vietnam', () => {
     expect(vietnamDayStart(new Date('2026-11-01T03:00:00Z')).toISOString()).toBe('2026-10-31T17:00:00.000Z');
     expect(vietnamDayStart(new Date('2026-10-31T16:59:59Z')).toISOString()).toBe('2026-10-30T17:00:00.000Z');

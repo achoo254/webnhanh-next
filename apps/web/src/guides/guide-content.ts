@@ -1,6 +1,6 @@
 /**
  * The words of the guide pages: what people search for ("thiệp cưới online", "website bán hàng miễn phí", "thiệp Tết
- * 2027"), answered with what the matching template really does (its schema in @webnhanh/templates: fields, limits,
+ * 2027", "thiệp mời tất niên online"), answered with what the matching template really does (its schema in @webnhanh/templates: fields, limits,
  * the order and RSVP forms), each page ending on that template in /new.
  *
  * Vietnamese only, whatever the visitor's language: these pages answer Vietnamese searches, and crawlers that run
@@ -60,6 +60,60 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
     body: `Tạo tài khoản ${domain} bằng Google, GitHub hoặc Apple. Xong là quay lại đúng mẫu, kiểu và địa chỉ bạn vừa chọn.`,
   };
   return {
+    party: {
+      id: 'party',
+      path: GUIDE_PATHS.party,
+      template: 'party',
+      title: `Thiệp mời tất niên, Giáng sinh online có xác nhận tham dự | ${app}`,
+      description:
+        'Làm thiệp mời tất niên, tiệc Giáng sinh, tiệc công ty online miễn phí: ngày giờ, địa điểm, lịch trình, dress code, đếm ngược và form xác nhận tham dự.',
+      heading: 'Thiệp mời tất niên online',
+      eyebrow: 'Tất niên, Giáng sinh, tiệc công ty',
+      lede: `Cuối năm là mùa tiệc: Noel với hội bạn, tất niên của team, year end party của công ty. Thay vì nhắn từng người trong group rồi tự đếm ai đi, gửi một tấm thiệp có địa chỉ riêng: khách xem ngày giờ, bấm chỉ đường và xác nhận tham dự ngay trên thiệp. Làm trong vài phút với ${app}, ngay trên điện thoại.`,
+      looksHeading: 'Ba kiểu thiệp mời tiệc để bắt đầu',
+      sections: [
+        {
+          heading: 'Thiệp mời tiệc cuối năm có gì',
+          paragraphs: ['Mẫu thiệp mời tiệc có sẵn mọi thứ khách cần biết, bạn chỉ sửa chữ và thay ảnh:'],
+          list: [
+            'Tên bữa tiệc, dòng nhỏ phía trên (ví dụ "Year End Party 2026") và người mời, như "Team Marketing".',
+            'Lời mời của bạn, tối đa 600 ký tự.',
+            'Ngày, giờ và đếm ngược tới ngày tiệc, tự cập nhật mỗi ngày.',
+            'Nơi tổ chức kèm nút Chỉ đường, mở bản đồ từ địa chỉ hoặc link Google Maps bạn dán vào.',
+            'Dress code và lịch trình tối đa tám mục, ví dụ check-in, khai tiệc, văn nghệ, bốc thăm may mắn.',
+            'Form xác nhận tham dự: khách ghi tên, số điện thoại, có đến hay không, số người đi cùng và lời nhắn cho ban tổ chức.',
+            'Ba kiểu thiệp: Giáng sinh ấm áp, tất niên sang trọng và tiệc công ty neon, đổi màu tuỳ ý.',
+          ],
+        },
+        {
+          heading: 'Biết ngay ai đi, đi mấy người',
+          paragraphs: [
+            `Mỗi lời xác nhận vào hộp thư của thiệp trong ${app}, kèm tổng số khách sẽ đến, để bạn chốt số suất với nhà hàng. Bật thông báo trên máy, hoặc nhận tin qua bot trong app Chat của ${domain}, để biết ngay khi có người trả lời. Không cần phần này thì tắt đi; khách vẫn liên hệ được qua Zalo, điện thoại hoặc Facebook bạn điền.`,
+          ],
+        },
+        {
+          heading: 'Gửi thiệp vào group Zalo, Messenger',
+          paragraphs: [
+            `Bấm Đăng là thiệp có địa chỉ dạng ten-cua-ban.${SITES_DOMAIN}. Dán link vào group Zalo, Messenger hay Slack của team: tin nhắn hiện ảnh xem trước của thiệp, ai bấm vào cũng xem được ngay, không cần cài app hay đăng nhập.`,
+            'Đổi giờ, đổi chỗ thì sửa rồi bấm Đăng lại. Địa chỉ giữ nguyên, link đã gửi vẫn mở ra bản mới nhất.',
+          ],
+        },
+      ],
+      steps: [
+        { title: 'Chọn kiểu thiệp', body: 'Chọn một kiểu ở trên rồi sửa thử ngay: tên tiệc, ngày giờ, địa điểm, lịch trình. Bước này chưa cần tài khoản.' },
+        { title: 'Đăng ký khi bấm Đăng', body: `Bấm Đăng website thì tạo tài khoản ${domain} miễn phí và chọn địa chỉ cho thiệp. Bản nháp bạn vừa sửa đi theo.` },
+        { title: 'Gửi link, chờ xác nhận', body: 'Dán link vào group của team. Ai xác nhận là bạn được báo, kèm tổng số khách.' },
+      ],
+      faq: [
+        { question: 'Làm thiệp mời tất niên online có mất tiền không?', answer: 'Không. Tài khoản, thiệp và form xác nhận tham dự đều miễn phí, thiệp không có quảng cáo.' },
+        { question: 'Khách xác nhận có cần tài khoản không?', answer: 'Không. Khách chỉ điền form ngay trên thiệp, lời xác nhận về thẳng hộp thư của bạn.' },
+        { question: 'Dùng cho tiệc Giáng sinh hay sinh nhật công ty được không?', answer: 'Được. Tên bữa tiệc, lời mời, lịch trình và dress code đều do bạn viết, mẫu hợp với mọi bữa tiệc có ngày giờ và địa điểm.' },
+        { question: 'Đếm ngược có tự đổi theo ngày không?', answer: 'Có. Thiệp đã đăng được cập nhật lại mỗi ngày cho tới ngày tiệc, qua ngày tiệc thì dòng đếm ngược tự ẩn.' },
+      ],
+      cta: 'Chọn mẫu thiệp mời tiệc',
+      linkLabel: 'Thiệp mời tất niên online',
+      datePublished: '2026-11-16',
+    },
     wedding: {
       id: 'wedding',
       path: GUIDE_PATHS.wedding,

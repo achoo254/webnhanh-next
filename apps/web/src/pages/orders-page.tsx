@@ -26,6 +26,9 @@ interface InboxWords {
 }
 
 const ORDER_WORDS: InboxWords = { title: 'orders.title', emptyOpen: 'orders.empty.open', emptyAll: 'orders.empty.all', notPublished: 'orders.notPublished', more: 'orders.more' };
+/** Templates whose inbox holds replies to an invitation, not orders. */
+const REPLY_TEMPLATES: ReadonlySet<string | null | undefined> = new Set(['wedding', 'party']);
+
 const RSVP_WORDS: InboxWords = { title: 'rsvp.title', emptyOpen: 'rsvp.empty.open', emptyAll: 'rsvp.empty.all', notPublished: 'rsvp.notPublished', more: 'rsvp.more' };
 
 function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: (handled: boolean) => Promise<void> }): ReactNode {
@@ -148,7 +151,8 @@ function Orders(): ReactNode {
     }
   };
 
-  const words = list?.site.template === 'wedding' ? RSVP_WORDS : ORDER_WORDS;
+  const replies = REPLY_TEMPLATES.has(list?.site.template);
+  const words = replies ? RSVP_WORDS : ORDER_WORDS;
 
   return (
     <section className="home orders" data-id="orders">
@@ -192,7 +196,7 @@ function Orders(): ReactNode {
           {t(words.more)}
         </button>
       ) : null}
-      <NotificationSettingsPanel replies={list?.site.template === 'wedding'} />
+      <NotificationSettingsPanel replies={replies} />
     </section>
   );
 }

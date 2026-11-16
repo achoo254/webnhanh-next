@@ -1,4 +1,4 @@
-import { newCafeDraft, newProfileDraft, newTetDraft, newWeddingDraft, TET_GREETINGS, type TemplateId } from '@webnhanh/templates';
+import { newCafeDraft, newPartyDraft, newProfileDraft, newTetDraft, newWeddingDraft, TET_GREETINGS, type TemplateId } from '@webnhanh/templates';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,7 +91,7 @@ describe('Tết card editor', () => {
   it('asks for the sender and a contact for replies when Publish is pressed', async () => {
     openEditor('tet', newTetDraft({ photo: PHOTO }));
     fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
-    expect((await screen.findByText(/chỗ cần sửa/)).textContent).toBe('Còn 2 chỗ cần sửa trước khi đăng.');
+    expect((await screen.findByText(/ô cần điền/)).textContent).toBe('Còn 2 ô cần điền hoặc sửa trước khi đăng.');
     expect(screen.getByText('Cần ít nhất một cách liên hệ: Zalo, điện thoại hoặc Facebook.')).toBeTruthy();
     expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
   });
@@ -128,6 +128,52 @@ describe('wedding editor', () => {
     const addresses = (await screen.findAllByLabelText('Địa chỉ')) as HTMLInputElement[];
     fireEvent.change(addresses[0] as HTMLInputElement, { target: { value: 'https://evil.example/maps' } });
     expect(screen.getByText('Chưa đúng: gõ địa chỉ hoặc dán link Google Maps.')).toBeTruthy();
+  });
+});
+
+describe('fields left to fill when Publish is pressed', () => {
+  it('goes to the first one, says how many are left and walks to the next one, round to the first', async () => {
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
+    expect((await screen.findByText(/ô cần điền/)).textContent).toBe('Còn 5 ô cần điền hoặc sửa trước khi đăng.');
+    const groom = screen.getByLabelText('Tên chú rể');
+    await waitFor(() => expect(document.activeElement).toBe(groom));
+    const next = screen.getByRole('button', { name: 'Tới ô tiếp theo' });
+    const visited: (string | null | undefined)[] = [];
+    for (let step = 0; step < 5; step += 1) {
+      fireEvent.click(next);
+      visited.push((document.activeElement as HTMLElement | null)?.getAttribute('data-id'));
+    }
+    expect(visited).toEqual(['wedding-bride', 'wedding-date', 'event-0-venue', 'event-1-venue', 'wedding-groom']);
+    // Filled in: one fewer.
+    fireEvent.change(groom, { target: { value: 'Minh' } });
+    expect(screen.getByText(/ô cần điền/).textContent).toBe('Còn 4 ô cần điền hoặc sửa trước khi đăng.');
+    expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
+  });
+});
+
+describe('party editor', () => {
+  it('edits the party, its day and programme, previews the countdown and the reply form, and needs only title, day and place', async () => {
+    openEditor('party', newPartyDraft({ cover: PHOTO }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
+    expect((await screen.findByText(/ô cần điền/)).textContent).toBe('Còn 3 ô cần điền hoặc sửa trước khi đăng.');
+
+    fireEvent.change(screen.getByLabelText('Tên bữa tiệc'), { target: { value: 'Tất niên <Mây Xanh>' } });
+    const date = screen.getByLabelText('Ngày tiệc') as HTMLInputElement;
+    expect(date.type).toBe('date');
+    fireEvent.change(date, { target: { value: '2026-12-26' } });
+    fireEvent.change(screen.getByLabelText('Nơi tổ chức'), { target: { value: 'Nhà hàng Sông Xanh' } });
+    expect(screen.queryByText(/ô cần điền/)).toBeNull();
+    expect(preview()).toContain('Tất niên &lt;Mây Xanh&gt;');
+    expect(preview()).toMatch(/Còn \d+ ngày/);
+    expect(preview()).toContain('<input type="hidden" name="kind" value="rsvp">');
+    expect(preview()).toContain('Lời nhắn cho ban tổ chức');
+
+    expect(screen.getAllByLabelText('Hoạt động')).toHaveLength(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm hoạt động' }));
+    fireEvent.change(screen.getAllByLabelText('Hoạt động')[3] as HTMLInputElement, { target: { value: 'Trao giải nhân viên của năm' } });
+    await waitFor(() => expect(lastSaved()).toMatchObject({ title: 'Tất niên <Mây Xanh>', date: '2026-12-26', venue: 'Nhà hàng Sông Xanh' }), { timeout: 3000 });
+    expect((lastSaved().agenda as { label: string }[]).map((item) => item.label)).toContain('Trao giải nhân viên của năm');
   });
 });
 

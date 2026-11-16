@@ -67,12 +67,13 @@ describe('guide pages in the app', () => {
     expect(screen.getAllByRole('link', { name: 'Chọn mẫu website bán hàng' })[0]?.getAttribute('href')).toBe('/new?template=shop');
   });
 
-  it('links the landing to the three guides', async () => {
+  it('links the landing to every guide', async () => {
     renderAt('/');
     const ideas = await screen.findByRole('heading', { level: 2, name: 'Bạn đang cần' });
     const section = within(ideas.closest('section') ?? document.body);
     expect(section.getByRole('link', { name: 'Thiệp cưới online miễn phí' }).getAttribute('href')).toBe(GUIDE_PATHS.wedding);
     expect(section.getByRole('link', { name: 'Website bán hàng miễn phí trên điện thoại' }).getAttribute('href')).toBe(GUIDE_PATHS.shop);
     expect(section.getByRole('link', { name: 'Thiệp Tết 2027 online' }).getAttribute('href')).toBe(GUIDE_PATHS.tet);
+    expect(section.getByRole('link', { name: 'Thiệp mời tất niên, Giáng sinh online' }).getAttribute('href')).toBe(GUIDE_PATHS.party);
   });
 });

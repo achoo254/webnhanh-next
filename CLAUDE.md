@@ -22,7 +22,7 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   ba; form đặt hàng chỉ gửi về app (`POST /f/<tên>`), CSP trong trang cho phép đúng origin đó.
 - Script của form đặt hàng (`ORDER_SCRIPT` trong `packages/templates/src/order-form.ts`) được CSP cho phép bằng hash
   `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Form xác nhận tham dự của thiệp cưới
-  (`rsvp-form.ts`, `kind=rsvp`) dùng nguyên script đó. Không thêm script nào khác vào trang mẫu.
+  (`rsvp-form.ts`, `kind=rsvp`; cả thiệp mời tiệc) dùng nguyên script đó. Không thêm script nào khác vào trang mẫu.
 - `/f/:site`, `/hooks/chat`, `/hooks/git/:site` và `/api/idp/account-deleted` gắn trước `requireAllowedOrigin` và tự kiểm
   (CORS theo origin của site + token ký; HMAC của bot; secret webhook của từng site; SET ký ES256 của IdP). Route mới của
   app đặt sau, như cũ.
@@ -32,7 +32,7 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
 - Build của lập trình viên chạy trong `webnhanh-builder` (nhóm `docker`); mọi lệnh `docker` chỉ đi qua
   `apps/worker/src/build/run-build.ts` với mảng tham số đã kiểm, không ghép chuỗi lệnh từ input. Builder không ghi
   `SITES_DIR`: output vào `BUILD_OUTPUT_DIR`, worker phát hành.
-- Thiệp cưới được worker render lại mỗi ngày từ `sites.live_page` (bản đã đăng, không phải nháp đang sửa) để đếm
+- Thiệp cưới và thiệp mời tiệc (`RSVP_TEMPLATES`) được worker render lại mỗi ngày từ `sites.live_page` (bản đã đăng, không phải nháp đang sửa) để đếm
   ngược đúng ngày (`apps/worker/src/wedding-refresh.ts`), chỉ khi hàng đợi trống, không tạo job, không báo.
 - Báo đơn (và xác nhận tham dự, báo admin về báo cáo lạm dụng và bản chờ duyệt) đi qua outbox `notification_deliveries` ghi cùng transaction với đơn (`orders/order-store.ts`); mỗi dòng gửi
   và thử lại riêng (`notifications/deliveries.ts`), một kênh lỗi không chặn kênh khác. Gửi từ `webnhanh-server`

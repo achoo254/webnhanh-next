@@ -21,6 +21,8 @@ function placed(value: TemplateDraft): Record<string, string | null | undefined>
       return { cover: value.draft.cover, 'item-1': value.draft.menu[0]?.items[0]?.image, 'item-2': value.draft.menu[0]?.items[1]?.image };
     case 'profile':
       return { avatar: value.draft.avatar };
+    case 'party':
+      return { cover: value.draft.cover, ornament: value.draft.ornaments?.[0], 'ornament-2': value.draft.ornaments?.[1] };
   }
 }
 

@@ -1,0 +1,32 @@
+{
+  "template": "party",
+  "id": "tat-nien-sang-trong",
+  "label": "Tất niên sang trọng",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "ink",
+  "copy": {
+    "kicker": "Year End Party 2026",
+    "title": "Tất niên Mây Xanh",
+    "host": "Công ty Mây Xanh",
+    "intro": "Cảm ơn cả nhà đã cùng chạy hết một năm nhiều deadline. Tối nay mình gác laptop, nâng ly và trao những giải thưởng xứng đáng nhất.",
+    "dressCode": "Đen, trắng hoặc ánh kim",
+    "rsvpNote": "Xác nhận trước ngày 20/12 để ban tổ chức xếp bàn nhé."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "elegant year end gala dinner in a hotel ballroom before guests arrive, round tables with white linen and candles, black and gold balloons, champagne glasses, warm chandelier light, scattered gold confetti, luxurious editorial photography, empty room, no people, no text, no letters, no logos, no watermark",
+      "seed": 805521438
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a small bunch of glossy black and gold party balloons tied with curly gold ribbons, elegant, soft studio lighting, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": 674223622
+    }
+  ]
+}

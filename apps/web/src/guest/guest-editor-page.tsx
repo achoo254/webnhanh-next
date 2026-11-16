@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAccount } from '../account';
 import { signInUrl } from '../api';
+import { IssueSummary } from '../editor/issue-navigator';
 import { EditorTabs, PreviewFrame, TemplateForm, useEditorChecks, visibleIssues } from '../editor/site-editor';
 import { ISSUE_MESSAGES } from '../error-messages';
 import { useI18n } from '../i18n';
@@ -246,11 +247,7 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
       </div>
 
       <div className="editor-publish">
-        {attempted && issues.size > 0 ? (
-          <p className="field-error" role="alert" data-id="publish-issues">
-            {t('issue.summary', { count: issues.size })}
-          </p>
-        ) : null}
+        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} /> : null}
         <section className="publish" data-id="guest-publish">
           {confirmLeave ? (
             <div className="notice notice-warning" role="alert" data-id="guest-confirm-leave">

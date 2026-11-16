@@ -59,10 +59,12 @@ const TEMPLATE_LABELS: Readonly<Record<VariantChoice['template'], MessageKey>> =
   wedding: 'template.wedding',
   cafe: 'template.cafe',
   profile: 'template.profile',
+  party: 'template.party',
 };
 
 /** The guide pages (what people search for), each leading to one template. */
 const IDEAS: readonly { readonly id: GuideId; readonly label: MessageKey }[] = [
+  { id: 'party', label: 'ideas.party' },
   { id: 'wedding', label: 'ideas.wedding' },
   { id: 'shop', label: 'ideas.shop' },
   { id: 'tet', label: 'ideas.tet' },

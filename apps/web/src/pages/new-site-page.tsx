@@ -1,4 +1,5 @@
 import type { TemplateId } from '@webnhanh/templates';
+import partyCover from '@webnhanh/templates/library/party/tiec-cong-ty-neon/cover.webp';
 import cafeCover from '@webnhanh/templates/samples/cafe-cover.webp';
 import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
 import tetPhoto from '@webnhanh/templates/samples/tet-photo.webp';
@@ -21,6 +22,7 @@ import { variantChoices } from './template-variant-choices';
 /** The templates in the order the page offers them, each with its picture. */
 const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey; picture: string }[] = [
   { id: 'shop', label: 'template.shop', note: 'template.shop.note', picture: shopCover },
+  { id: 'party', label: 'template.party', note: 'template.party.note', picture: partyCover },
   { id: 'tet', label: 'template.tet', note: 'template.tet.note', picture: tetPhoto },
   { id: 'wedding', label: 'template.wedding', note: 'template.wedding.note', picture: weddingCover },
   { id: 'cafe', label: 'template.cafe', note: 'template.cafe.note', picture: cafeCover },
@@ -93,7 +95,8 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
         {t(guest ? 'new.guest.back' : 'new.back')}
       </Link>
       <h1 className="page-title">{t('new.title')}</h1>
-      <p className="lede">{t(TRY_FIRST ? 'new.try.lede' : 'new.lede')}</p>
+      {/* "No account needed" is said to visitors only. */}
+      <p className="lede">{t(!TRY_FIRST ? 'new.lede' : guest ? 'new.try.lede' : 'new.try.lede.signedIn')}</p>
       {unfinished ? (
         <p className="notice notice-info" data-id="new-unfinished">
           {t('new.try.unfinished')}{' '}

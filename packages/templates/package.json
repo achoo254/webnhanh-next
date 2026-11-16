@@ -8,6 +8,7 @@
     "./shop-fonts": "./src/shop-fonts.ts",
     "./variants": "./src/variants.ts",
     "./samples/*": "./samples/*",
+    "./library/*": "./library/*",
     "./package.json": "./package.json"
   },
   "scripts": {

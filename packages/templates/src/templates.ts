@@ -6,6 +6,8 @@
 import { cafeImageIds, cafeDraftSchema, cafePublishIssues, CAFE_SAMPLES, CAFE_TEMPLATE, newCafeDraft, sampleCafeDraft, type CafeDraft } from './cafe-schema';
 import { cafeShareCard, renderCafe } from './cafe-render';
 import type { ImageAsset, PageOptions, RenderedPage } from './page';
+import { newPartyDraft, partyDraftSchema, partyImageIds, partyPublishIssues, PARTY_SAMPLES, PARTY_TEMPLATE, samplePartyDraft, type PartyDraft } from './party-schema';
+import { partyShareCard, renderParty } from './party-render';
 import { newProfileDraft, profileDraftSchema, PROFILE_SAMPLES, profileImageIds, profilePublishIssues, PROFILE_TEMPLATE, sampleProfileDraft, type ProfileDraft } from './profile-schema';
 import { profileShareCard, renderProfile } from './profile-render';
 import type { SamplePhoto, TemplateIssue } from './schema-parts';
@@ -17,7 +19,7 @@ import { newTetDraft, sampleTetDraft, tetDraftSchema, tetImageIds, tetPublishIss
 import { renderWedding, weddingShareCard, type WeddingRenderOptions } from './wedding-render';
 import { newWeddingDraft, sampleWeddingDraft, weddingDraftSchema, weddingImageIds, weddingPublishIssues, WEDDING_SAMPLES, WEDDING_TEMPLATE, type WeddingDraft } from './wedding-schema';
 
-export const TEMPLATE_IDS = [SHOP_TEMPLATE, TET_TEMPLATE, WEDDING_TEMPLATE, CAFE_TEMPLATE, PROFILE_TEMPLATE] as const;
+export const TEMPLATE_IDS = [SHOP_TEMPLATE, TET_TEMPLATE, WEDDING_TEMPLATE, CAFE_TEMPLATE, PROFILE_TEMPLATE, PARTY_TEMPLATE] as const;
 export type TemplateId = (typeof TEMPLATE_IDS)[number];
 
 /** What the app calls each template. */
@@ -27,6 +29,7 @@ export const TEMPLATE_LABELS: Readonly<Record<TemplateId, string>> = {
   wedding: 'Thiệp cưới',
   cafe: 'Quán ăn, cửa hàng',
   profile: 'Hồ sơ cá nhân',
+  party: 'Thiệp mời tiệc',
 };
 
 export function isTemplateId(value: unknown): value is TemplateId {
@@ -39,7 +42,8 @@ export type TemplateDraft =
   | { readonly template: 'tet'; readonly draft: TetDraft }
   | { readonly template: 'wedding'; readonly draft: WeddingDraft }
   | { readonly template: 'cafe'; readonly draft: CafeDraft }
-  | { readonly template: 'profile'; readonly draft: ProfileDraft };
+  | { readonly template: 'profile'; readonly draft: ProfileDraft }
+  | { readonly template: 'party'; readonly draft: PartyDraft };
 
 /** The draft schema of each template (what a save is checked against). */
 export const DRAFT_SCHEMAS = {
@@ -48,6 +52,7 @@ export const DRAFT_SCHEMAS = {
   wedding: weddingDraftSchema,
   cafe: cafeDraftSchema,
   profile: profileDraftSchema,
+  party: partyDraftSchema,
 } as const;
 
 /** `draft` read as a draft of `template`, or null when the template is unknown or the draft does not fit it. */
@@ -73,6 +78,10 @@ export function parseDraft(template: string | null, draft: unknown): TemplateDra
       const parsed = profileDraftSchema.safeParse(draft);
       return parsed.success ? { template, draft: parsed.data } : null;
     }
+    case 'party': {
+      const parsed = partyDraftSchema.safeParse(draft);
+      return parsed.success ? { template, draft: parsed.data } : null;
+    }
     default:
       return null;
   }
@@ -91,6 +100,8 @@ export function publishIssues(value: TemplateDraft): TemplateIssue[] {
       return cafePublishIssues(value.draft);
     case 'profile':
       return profilePublishIssues(value.draft);
+    case 'party':
+      return partyPublishIssues(value.draft);
   }
 }
 
@@ -107,6 +118,8 @@ export function templateImageIds(value: TemplateDraft): string[] {
       return cafeImageIds(value.draft);
     case 'profile':
       return profileImageIds(value.draft);
+    case 'party':
+      return partyImageIds(value.draft);
   }
 }
 
@@ -116,6 +129,7 @@ export function draftCoverId(value: TemplateDraft): string | null {
     case 'shop':
     case 'wedding':
     case 'cafe':
+    case 'party':
       return value.draft.cover;
     case 'tet':
       return value.draft.photo;
@@ -133,7 +147,18 @@ export function draftImageIds(template: string | null, draft: unknown): Set<stri
   return parsed ? new Set(templateImageIds(parsed)) : null;
 }
 
-/** Options of every renderer: each template reads the ones it has (`orderForm` the shop, `rsvpForm` and `now` the wedding). */
+/**
+ * Templates whose page takes replies ("Xác nhận tham dự") through the reply form (`rsvp-form.ts`) when the draft's
+ * `rsvp` is on, and shows a countdown to its `date` that the worker renders again each day.
+ */
+export const RSVP_TEMPLATES = [WEDDING_TEMPLATE, PARTY_TEMPLATE] as const;
+
+/** True when `template` is one whose page takes replies (its inbox lists replies, not orders). */
+export function takesReplies(template: string | null | undefined): boolean {
+  return typeof template === 'string' && (RSVP_TEMPLATES as readonly string[]).includes(template);
+}
+
+/** Options of every renderer: each template reads the ones it has (`orderForm` the shop, `rsvpForm` and `now` the wedding and the party). */
 export type TemplateRenderOptions = RenderOptions & WeddingRenderOptions & PageOptions;
 
 export function renderDraft(value: TemplateDraft, assets: ReadonlyMap<string, ImageAsset>, options: TemplateRenderOptions = {}): RenderedPage {
@@ -148,6 +173,8 @@ export function renderDraft(value: TemplateDraft, assets: ReadonlyMap<string, Im
       return renderCafe(value.draft, assets, options);
     case 'profile':
       return renderProfile(value.draft, assets, options);
+    case 'party':
+      return renderParty(value.draft, assets, options);
   }
 }
 
@@ -164,6 +191,8 @@ export function draftShareCard(value: TemplateDraft): ShareCardContent {
       return cafeShareCard(value.draft);
     case 'profile':
       return profileShareCard(value.draft);
+    case 'party':
+      return partyShareCard(value.draft);
   }
 }
 
@@ -174,6 +203,7 @@ export const TEMPLATE_SAMPLES: Readonly<Record<TemplateId, Readonly<Record<strin
   wedding: WEDDING_SAMPLES,
   cafe: CAFE_SAMPLES,
   profile: PROFILE_SAMPLES,
+  party: PARTY_SAMPLES,
 };
 
 /** Turns a sample photo into the id it got in the new site. */
@@ -203,5 +233,7 @@ export function templateDraft(template: TemplateId, photoId: SamplePhotoId, fill
     }
     case 'profile':
       return { template, draft: filled ? sampleProfileDraft() : newProfileDraft() };
+    case 'party':
+      return { template, draft: filled ? samplePartyDraft() : newPartyDraft() };
   }
 }

@@ -39,6 +39,7 @@ import {
   renderDraft,
   SHARE_CARD_SIZE,
   styleFontFiles,
+  takesReplies,
   templateImageIds,
   type ImageAsset,
   type ShareImage,
@@ -254,16 +255,16 @@ type ImageRow = typeof siteImages.$inferSelect;
 /** The share picture of a live page: its file in the release and what `og:image` says of it. */
 export type LiveShareImage = Omit<ShareImage, 'url'> & { file: string };
 
-/** What the form of the live page takes (`sites.order_form`): a shop's products, a wedding's replies, or nothing. */
+/** What the form of the live page takes (`sites.order_form`): a shop's products, replies to a wedding or a party, or nothing. */
 export function formSpecOf(value: TemplateDraft): OrderFormSpec | null {
   if (value.template === 'shop') return { products: orderProducts(value.draft).map(({ key, name }) => ({ key, name })) };
-  if (value.template === 'wedding' && value.draft.rsvp) return { products: [], rsvp: true };
+  if ((value.template === 'wedding' || value.template === 'party') && value.draft.rsvp) return { products: [], rsvp: true };
   return null;
 }
 
 /**
- * The page's HTML as it goes live: its form (orders of a shop, replies of a wedding) posting to the app with a token
- * signed now, its address and share picture, fonts beside it, and a wedding's countdown as of now.
+ * The page's HTML as it goes live: its form (orders of a shop, replies of a wedding or a party) posting to the app with
+ * a token signed now, its address and share picture, fonts beside it, and a wedding's or party's countdown as of now.
  */
 export function renderLivePage(
   deps: Pick<PublishDeps, 'appUrl' | 'formSecret' | 'madeWith' | 'now'>,
@@ -279,7 +280,7 @@ export function renderLivePage(
     madeWith: deps.madeWith,
     reportUrl: reportUrl(deps.appUrl, site.name),
     orderForm: value.template === 'shop' ? form : undefined,
-    rsvpForm: value.template === 'wedding' ? form : undefined,
+    rsvpForm: takesReplies(value.template) ? form : undefined,
     now,
     page: { url: pageUrl, image: shareImage ? { ...shareImage, url: `${pageUrl}${shareImage.file}` } : undefined },
     fontUrl: pageFontUrl,

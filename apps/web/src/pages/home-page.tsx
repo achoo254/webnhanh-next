@@ -16,10 +16,11 @@ function statusOf(site: Site): { key: MessageKey; tone: 'live' | 'draft' | 'busy
   return site.published ? { key: 'status.published', tone: 'live' } : { key: 'status.draft', tone: 'draft' };
 }
 
-/** What a page's form brings in, by template: orders of a shop, replies to a wedding; other pages have no form. */
+/** What a page's form brings in, by template: orders of a shop, replies to a wedding or a party; other pages have no form. */
 const INBOX: Readonly<Record<string, { readonly link: MessageKey; readonly badge: MessageKey }>> = {
   shop: { link: 'home.orders', badge: 'home.newOrders' },
   wedding: { link: 'home.rsvp', badge: 'home.newRsvp' },
+  party: { link: 'home.rsvp', badge: 'home.newRsvp' },
 };
 
 function SiteCard({ site }: { readonly site: Site }): ReactNode {

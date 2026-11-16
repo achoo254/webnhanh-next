@@ -16,6 +16,9 @@ import { VARIANT_SLOTS } from './variant-drafts';
 import cafeCaPheFilm from '../variants/cafe/ca-phe-film.json';
 import cafeQuanComNha from '../variants/cafe/quan-com-nha.json';
 import cafeTraSuaTiemBanh from '../variants/cafe/tra-sua-tiem-banh.json';
+import partyGiangSinhAmAp from '../variants/party/giang-sinh-am-ap.json';
+import partyTatNienSangTrong from '../variants/party/tat-nien-sang-trong.json';
+import partyTiecCongTyNeon from '../variants/party/tiec-cong-ty-neon.json';
 import profileChuyenGia from '../variants/profile/chuyen-gia.json';
 import profileNguoiSangTao from '../variants/profile/nguoi-sang-tao.json';
 import profileThoThuCong from '../variants/profile/tho-thu-cong.json';
@@ -93,6 +96,9 @@ export const VARIANT_FILES: Readonly<Record<string, unknown>> = {
   'cafe/ca-phe-film.json': cafeCaPheFilm,
   'cafe/quan-com-nha.json': cafeQuanComNha,
   'cafe/tra-sua-tiem-banh.json': cafeTraSuaTiemBanh,
+  'party/giang-sinh-am-ap.json': partyGiangSinhAmAp,
+  'party/tat-nien-sang-trong.json': partyTatNienSangTrong,
+  'party/tiec-cong-ty-neon.json': partyTiecCongTyNeon,
   'profile/chuyen-gia.json': profileChuyenGia,
   'profile/nguoi-sang-tao.json': profileNguoiSangTao,
   'profile/tho-thu-cong.json': profileThoThuCong,

@@ -8,8 +8,9 @@ Trước 28/10/2026 tên là Trang Của Tôi (`trang.hoandat.com`, repo `trang-
 chuyển hướng về `webnhanh.hoandat.com` (`docs/deployment-guide.md`, mục "Đổi tên sang Web Nhanh"). GitHub:
 `achoo254/webnhanh-next`.
 
-Đang có: hạ tầng phát site, app ở `webnhanh.hoandat.com` (đăng nhập bằng tài khoản hoandat.com), **tạo website từ năm
-mẫu**: "Bán hàng nhận đơn", "Thiệp chúc Tết" (chọn lời chúc có sẵn hoặc tự viết, gửi lời chúc lại), "Thiệp cưới" (các lễ
+Đang có: hạ tầng phát site, app ở `webnhanh.hoandat.com` (đăng nhập bằng tài khoản hoandat.com), **tạo website từ sáu
+mẫu**: "Bán hàng nhận đơn", "Thiệp mời tiệc" (Giáng sinh, tất niên, tiệc công ty: ngày giờ, đếm ngược tự cập nhật mỗi ngày, địa
+điểm kèm chỉ đường, dress code, lịch trình, **xác nhận tham dự** như thiệp cưới), "Thiệp chúc Tết" (chọn lời chúc có sẵn hoặc tự viết, gửi lời chúc lại), "Thiệp cưới" (các lễ
 kèm chỉ đường, ảnh, đếm ngược tới ngày cưới tự cập nhật mỗi ngày, **xác nhận tham dự** gửi về app như đơn hàng), "Quán ăn,
 cửa hàng" (thực đơn theo nhóm, giờ mở cửa, đặt bàn) và "Hồ sơ cá nhân" (link, mạng xã hội) (chọn mẫu, đặt địa chỉ, sửa chữ, thêm/bớt/xếp sản phẩm, tải ảnh, chọn màu, xem trước ngay trong
 app, bấm Đăng, theo dõi từng bước và nhận link) và **nhận đơn**: website đăng ra có form đặt hàng (chạy cả khi trình
@@ -30,15 +31,15 @@ site kể cả site lập trình viên có `https://<tên>.hoandat.io.vn/.well-k
 trong một thao tác (trang "Website này đã bị gỡ", giữ bản cũ 30 ngày, khôi phục được), khoá tài khoản (không đăng, không
 build), xử lý hoặc bỏ qua báo cáo, xem nhật ký thao tác; trang có ô mật khẩu, hoặc mang tên ngân hàng, ví điện tử, cơ
 quan nhà nước (tiêu đề, hay kèm lời hỏi đăng nhập, mã OTP) **chờ admin duyệt** trước khi lên mạng, chủ trang thấy
-"Đang chờ duyệt". Tạo website mẫu thì chọn thêm một **kiểu** của mẫu (19 kiểu trong `packages/templates/variants/`, thẻ
+"Đang chờ duyệt". Tạo website mẫu thì chọn thêm một **kiểu** của mẫu (22 kiểu trong `packages/templates/variants/`, thẻ
 có ảnh thu nhỏ 240 px tải lười): site mới bắt đầu từ kiểu trang, bảng màu, chữ mẫu và ảnh AI của kiểu đó, chép từ
 `packages/templates/library/` thành ảnh của site (`POST /api/sites` nhận `variant`, không có thì như cũ; bảng ghép slot
-với trường nháp là `variantDraft` trong `variant-drafts.ts`). Hoạ tiết vẽ của kiểu Tết và thiệp cưới nằm ở trường
+với trường nháp là `variantDraft` trong `variant-drafts.ts`). Hoạ tiết vẽ của kiểu Tết, thiệp cưới và thiệp mời tiệc nằm ở trường
 `ornaments` của nháp (ảnh trang trí `alt=""`, `aria-hidden`); nháp không có trường này vẫn vẽ hoạ tiết SVG như cũ.
 
-**Trang gợi ý** cho người tìm trên Google: `/thiep-cuoi-online`, `/website-ban-hang-mien-phi`, `/thiep-tet-2027` (chữ ở
+**Trang gợi ý** cho người tìm trên Google: `/thiep-moi-tat-nien-online`, `/thiep-cuoi-online`, `/website-ban-hang-mien-phi`, `/thiep-tet-2027` (chữ ở
 `apps/web/src/guides/guide-content.ts`, chỉ tiếng Việt), mỗi trang dẫn vào `/new?template=<mẫu>` (thẻ kiểu dẫn kèm
-`&variant=<kiểu>`), landing có mục "Gợi ý" tới cả ba. Máy tìm kiếm cần HTML thật nên lúc build các trang được render sẵn
+`&variant=<kiểu>`), landing có mục "Gợi ý" tới mọi trang. Máy tìm kiếm cần HTML thật nên lúc build các trang được render sẵn
 (cùng cách trang năm của tu-vi-next): `vite build --ssr src/guides/guide-prerender.tsx`, rồi `prerender.ts` ghi
 `dist/<đường dẫn>/index.html` với title, description, canonical, `og:*`, JSON-LD `WebPage` + `FAQPage`
 (`vite-guide-pages.ts`; thiếu thẻ là build hỏng). Build cũng ghi `robots.txt` và `sitemap.xml` (danh sách ở
@@ -61,7 +62,8 @@ trả thêm `slotImages`: ảnh của kiểu thành ảnh nào của site), tả
 nháp chỉ bị quên sau khi lệnh đăng đã nhận. Nhiều tab (`guest-locks.ts`): tab thấy tab khác ghi nháp thì ngừng lưu và hỏi;
 việc chuyển nháp chạy dưới khoá loại trừ (Web Locks, thiếu thì một lease trong localStorage) nên không tạo hai site; ảnh
 không dùng chỉ bị dọn khi không tab nào mở trình sửa. Ảnh khách chọn được đọc kích thước từ header trước (quá 60 MP thì từ
-chối) rồi giải nén thẳng ở cỡ nhỏ.
+chối) rồi giải nén thẳng ở cỡ nhỏ. Bấm Đăng mà còn ô bắt buộc trống hay sai (trình sửa của khách và của site như nhau): trình sửa
+cuộn tới ô đầu tiên, ghi "Còn N ô cần điền hoặc sửa" kèm nút "Tới ô tiếp theo" (`editor/issue-navigator.tsx`).
 
 ## Cấu trúc
 

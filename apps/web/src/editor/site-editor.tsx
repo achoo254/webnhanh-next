@@ -8,6 +8,8 @@ import { editorAsset, saveDraft, type Job, type Site, type SiteImage } from '../
 import { AddressPanel } from './address-panel';
 import { CafeForm } from './forms/cafe-form';
 import type { FormProps } from './forms/form-props';
+import { PartyForm } from './forms/party-form';
+import { focusIssue, IssueSummary } from './issue-navigator';
 import { ProfileForm } from './forms/profile-form';
 import { ShopForm } from './forms/shop-form';
 import { TetForm } from './forms/tet-form';
@@ -150,6 +152,8 @@ export function TemplateForm({
       return (
         <ProfileForm {...common} draft={value.draft} update={(change) => setValue((current) => (current.template === 'profile' ? { template: 'profile', draft: change(current.draft) } : current))} />
       );
+    case 'party':
+      return <PartyForm {...common} draft={value.draft} update={(change) => setValue((current) => (current.template === 'party' ? { template: 'party', draft: change(current.draft) } : current))} />;
   }
 }
 
@@ -176,11 +180,7 @@ export function useEditorChecks(): {
   }, []);
   useEffect(() => {
     if (refusals === 0) return;
-    // A wrong field, or the issue of a whole list ("Cần ít nhất một món").
-    const first = editorRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-issue="true"]');
-    if (!first) return;
-    first.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    first.focus({ preventScroll: true });
+    focusIssue(editorRef.current, null);
   }, [refusals]);
   return { view, setView, attempted, setAttempted, refuse, editorRef };
 }
@@ -271,11 +271,7 @@ export function SiteEditor({
       </div>
 
       <div className="editor-publish">
-        {attempted && issues.size > 0 ? (
-          <p className="field-error" role="alert" data-id="publish-issues">
-            {t('issue.summary', { count: issues.size })}
-          </p>
-        ) : null}
+        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} /> : null}
         <PublishPanel
           key={job?.id ?? 'none'}
           siteId={site.id}

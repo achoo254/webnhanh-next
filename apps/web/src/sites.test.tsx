@@ -85,6 +85,15 @@ function renderAt(path: string): void {
   );
 }
 
+describe('picking a template when signed in', () => {
+  it('does not tell someone with an account that no account is needed', async () => {
+    renderAt('/new');
+    expect(await screen.findByText('Chọn mẫu và kiểu bạn thích rồi sửa thử luôn.')).toBeTruthy();
+    expect(screen.queryByText(/[Cc]hưa cần tài khoản/)).toBeNull();
+    expect(screen.getByRole('button', { name: /Thiệp mời tiệc/ }).querySelector('img')).toBeTruthy();
+  });
+});
+
 describe('home with pages', () => {
   it('lists the pages with their address, state and actions', async () => {
     on('GET', '/api/sites', () => ({
@@ -213,7 +222,7 @@ describe('editor', () => {
     fireEvent.change(await screen.findByLabelText('Số điện thoại'), { target: { value: '123' } });
     expect(screen.getByText('Chưa đúng số điện thoại Việt Nam.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
-    expect((await screen.findByText(/chỗ cần sửa/)).textContent).toBe('Còn 3 chỗ cần sửa trước khi đăng.');
+    expect((await screen.findByText(/ô cần điền/)).textContent).toBe('Còn 3 ô cần điền hoặc sửa trước khi đăng.');
     expect(screen.getAllByText('Cần điền ô này trước khi đăng.')).toHaveLength(2);
     expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
   });

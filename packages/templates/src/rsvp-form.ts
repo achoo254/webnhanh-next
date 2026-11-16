@@ -87,8 +87,11 @@ function field(id: string, label: string, control: string, wide = false): string
   return `<div class="field${wide ? ' wide' : ''}"><label for="${id}">${label}</label>${control}</div>`;
 }
 
-/** The reply form (its section heading comes from the page). Uses `ORDER_CSS` plus `RSVP_CSS`. */
-export function rsvpFormHtml(options: OrderFormOptions): string {
+/**
+ * The reply form (its section heading comes from the page). Uses `ORDER_CSS` plus `RSVP_CSS`. `noteLabel` is who the
+ * note goes to, written by the template (the couple by default; the organisers of a party).
+ */
+export function rsvpFormHtml(options: OrderFormOptions, noteLabel: string = RSVP_LABELS.note): string {
   const f = RSVP_FIELDS;
   return [
     `<form id="order" class="order-form rsvp-form" method="post" action="${escapeHtml(options.action)}" accept-charset="utf-8">`,
@@ -106,7 +109,7 @@ export function rsvpFormHtml(options: OrderFormOptions): string {
     `<label><input type="radio" name="${f.attending}" value="no"> Tiếc quá, mình không đến được</label>`,
     '</fieldset>',
     field('r-guests', RSVP_LABELS.guests, `<input id="r-guests" name="${f.guests}" type="number" inputmode="numeric" min="1" max="${RSVP_LIMITS.guests}" value="1" required>`),
-    field('r-note', RSVP_LABELS.note, `<textarea id="r-note" name="${f.note}" maxlength="${RSVP_LIMITS.note}" rows="2"></textarea>`, true),
+    field('r-note', escapeHtml(noteLabel), `<textarea id="r-note" name="${f.note}" maxlength="${RSVP_LIMITS.note}" rows="2"></textarea>`, true),
     '<p class="order-status" role="status" aria-live="polite"></p>',
     '<button type="submit">Gửi xác nhận</button>',
     '</form>',
