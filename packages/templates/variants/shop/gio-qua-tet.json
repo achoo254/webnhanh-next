@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "gio-qua-tet",
+  "label": "Giỏ quà Tết",
+  "kind": "industry",
+  "style": "tinh-te",
+  "palette": "sunset",
+  "copy": {
+    "name": "Giỏ Quà Nhà Bông",
+    "description": "Giỏ quà Tết gói sẵn và theo yêu cầu: hạt, mứt, trà, rượu vang. Giao tận nơi trong nội thành, xuất hoá đơn cho công ty."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "elegant Lunar New Year gift baskets wrapped in red and gold cloth, filled with nuts, candied fruits and plain tea tins, a sprig of yellow apricot blossoms, warm festive mood, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, unlabeled packaging, no text, no letters, no logos, no watermark",
+      "seed": 1408476515
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "an open red gift box with compartments of roasted cashews, macadamia nuts and dried fruits, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, unlabeled, no text, no letters, no logos, no watermark",
+      "seed": 742583024
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "prompt": "a glass jar of candied ginger and coconut ribbons tied with a red ribbon, unlabeled, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "ref": "product-1",
+      "seed": 2666829681
+    }
+  ]
+}

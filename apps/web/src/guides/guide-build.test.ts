@@ -32,6 +32,7 @@ const CASES = [
   { path: GUIDE_PATHS.wedding, title: /^Thiệp cưới online miễn phí/, h1: 'Thiệp cưới online miễn phí', cta: '/new?template=wedding', look: '/new?template=wedding&amp;variant=hoa-pastel' },
   { path: GUIDE_PATHS.shop, title: /^Làm website bán hàng miễn phí trên điện thoại/, h1: 'Làm website bán hàng miễn phí trên điện thoại', cta: '/new?template=shop', look: '/new?template=shop&amp;variant=quan-ao' },
   { path: GUIDE_PATHS.tet, title: /^Thiệp Tết 2027 online/, h1: 'Thiệp Tết 2027 online', cta: '/new?template=tet', look: '/new?template=tet&amp;variant=clay-hoa-dao' },
+  { path: GUIDE_PATHS.birthday, title: /^Thiệp sinh nhật online miễn phí/, h1: 'Thiệp sinh nhật online', cta: '/new?template=birthday', look: '/new?template=birthday&amp;variant=film-ky-niem' },
 ] as const;
 
 describe('prerendered guide pages', () => {

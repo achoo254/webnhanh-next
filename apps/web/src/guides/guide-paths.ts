@@ -7,12 +7,13 @@ export const GUIDE_PATHS = {
   wedding: '/thiep-cuoi-online',
   shop: '/website-ban-hang-mien-phi',
   tet: '/thiep-tet-2027',
+  birthday: '/thiep-sinh-nhat-online',
 } as const;
 
 export type GuideId = keyof typeof GUIDE_PATHS;
 export type GuidePath = (typeof GUIDE_PATHS)[GuideId];
 
-export const GUIDE_IDS: readonly GuideId[] = ['party', 'wedding', 'shop', 'tet'];
+export const GUIDE_IDS: readonly GuideId[] = ['party', 'wedding', 'shop', 'tet', 'birthday'];
 
 /** The guide at `path` (a trailing slash allowed), or null. */
 export function guideAt(path: string): GuideId | null {

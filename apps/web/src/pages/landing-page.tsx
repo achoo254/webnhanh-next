@@ -60,6 +60,8 @@ const TEMPLATE_LABELS: Readonly<Record<VariantChoice['template'], MessageKey>> =
   cafe: 'template.cafe',
   profile: 'template.profile',
   party: 'template.party',
+  birthday: 'template.birthday',
+  links: 'template.links',
 };
 
 /** The guide pages (what people search for), each leading to one template. */
@@ -68,6 +70,7 @@ const IDEAS: readonly { readonly id: GuideId; readonly label: MessageKey }[] = [
   { id: 'wedding', label: 'ideas.wedding' },
   { id: 'shop', label: 'ideas.shop' },
   { id: 'tet', label: 'ideas.tet' },
+  { id: 'birthday', label: 'ideas.birthday' },
 ];
 
 /** Columns of the template wall (rows on phones). */

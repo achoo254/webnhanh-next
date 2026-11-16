@@ -61,13 +61,19 @@ export const SOCIAL_LINKS: Readonly<Record<SocialKey, { readonly link: (input: s
   email: { link: emailLink, invalid: 'invalid-email' },
 };
 
-export function profilePublishIssues(draft: ProfileDraft): TemplateIssue[] {
-  const issues: TemplateIssue[] = [...requireText(draft.name, 'name')];
-  draft.links.forEach((link, index) => {
+/** Each listed link needs its button text and a working https address (shared by the profile and link-in-bio pages). */
+export function linkListIssues(links: readonly ProfileLink[]): TemplateIssue[] {
+  const issues: TemplateIssue[] = [];
+  links.forEach((link, index) => {
     issues.push(...requireText(link.label, `links.${index}.label`));
     if (!link.url.trim()) issues.push({ field: `links.${index}.url`, code: 'required' });
     else if (!webLink(link.url)) issues.push({ field: `links.${index}.url`, code: 'invalid-url' });
   });
+  return issues;
+}
+
+export function profilePublishIssues(draft: ProfileDraft): TemplateIssue[] {
+  const issues: TemplateIssue[] = [...requireText(draft.name, 'name'), ...linkListIssues(draft.links)];
   let socials = 0;
   for (const key of SOCIAL_KEYS) {
     const value = draft.socials[key];

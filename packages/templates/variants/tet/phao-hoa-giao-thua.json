@@ -1,0 +1,28 @@
+{
+  "template": "tet",
+  "id": "phao-hoa-giao-thua",
+  "label": "Pháo hoa giao thừa",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "lucky",
+  "copy": {
+    "title": "Chào Đinh Mùi 2027",
+    "greeting": "Countdown xong rồi! Chúc bạn năm mới bung xoã hết cỡ: tin nhắn nào cũng được rep, ví lúc nào cũng dày, deadline biết điều và ngày nào cũng có một niềm vui nho nhỏ."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "colorful fireworks bursting in red and gold over a calm river and a city skyline at midnight on Lunar New Year eve, reflections on the water, vivid long exposure photography, festive and joyful, no people, no signs, no text, no letters, no logos, no watermark",
+      "seed": 3928649222
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a single golden firework burst with red sparks, glowing, festive, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 4084890274
+    }
+  ]
+}

@@ -80,7 +80,10 @@ export function renderParty(draft: PartyDraft, assets: ReadonlyMap<string, Image
     .filter((item) => item.label.trim())
     .map(
       (item) =>
-        `<li>${item.time ? `<span class="pa-time">${escapeHtml(item.time)}</span>` : '<span class="pa-time" aria-hidden="true">·</span>'}<span class="pa-label">${escapeHtml(item.label.trim())}</span></li>`,
+        // Without a time the item takes the whole row (no empty time column).
+        item.time
+          ? `<li><span class="pa-time">${escapeHtml(item.time)}</span><span class="pa-label">${escapeHtml(item.label.trim())}</span></li>`
+          : `<li class="pa-untimed"><span class="pa-label">${escapeHtml(item.label.trim())}</span></li>`,
     );
 
   const place =
@@ -125,7 +128,7 @@ export function renderParty(draft: PartyDraft, assets: ReadonlyMap<string, Image
       '<main class="wrap">',
       intro ? `<section class="card pt-intro" aria-label="Lời mời"><p>${escapeHtml(intro)}</p>${second ? decorationImg(second, 'pt-orn pt-orn-2', '112px') : ''}</section>` : '',
       place,
-      agenda.length > 0 ? `<section aria-labelledby="lt"><h2 id="lt">Lịch trình</h2><ol class="pt-agenda">${agenda.join('')}</ol></section>` : '',
+      agenda.length > 0 ? `<section class="pt-program" aria-labelledby="lt"><h2 id="lt">Lịch trình</h2><ol class="pt-agenda">${agenda.join('')}</ol></section>` : '',
       rsvp,
       '</main>',
     ],

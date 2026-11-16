@@ -34,7 +34,7 @@ change.
 ## Decorations
 
 The lanterns, apricot blossoms, sprigs, bursts and hearts (`src/ornaments.ts`, `src/tet-styles.ts`) are drawn for this
-package in inline SVG and CSS. A Tết, wedding or party page made from a variant shows the variant's drawn ornaments
+package in inline SVG and CSS. A Tết, wedding, party or birthday page made from a variant shows the variant's drawn ornaments
 (`library/`, see Pictures) in their place.
 
 ## Sample copy

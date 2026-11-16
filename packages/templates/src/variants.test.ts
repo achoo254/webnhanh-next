@@ -18,9 +18,10 @@ describe('template variants', () => {
 
   it('has the planned sets', () => {
     const count = (template: string) => variants.filter((v) => v.template === template).length;
-    expect(count('shop')).toBe(6);
+    expect(count('shop')).toBe(9);
     expect(count('wedding')).toBe(4);
-    expect(count('tet')).toBeGreaterThanOrEqual(2);
+    expect(count('tet')).toBe(6);
+    for (const template of ['party', 'birthday', 'links']) expect(count(template), template).toBe(3);
     expect(count('cafe')).toBeGreaterThanOrEqual(2);
     expect(count('profile')).toBeGreaterThanOrEqual(2);
   });
@@ -34,8 +35,9 @@ describe('template variants', () => {
   });
 
   it('refuses art that could draw words, a reference drawn later, or klein-edit without one', () => {
-    const [first] = variants;
-    if (!first) throw new Error('no variants');
+    // A variant whose template's first slot is `cover`, so the art below fits it.
+    const first = variants.find((variant) => variant.template === 'shop');
+    if (!first) throw new Error('no shop variants');
     const art = { slot: 'cover', model: 'qwen', size: '1104x1472', prompt: 'a bowl of noodles on a table, warm light', seed: null };
     expect(variantSchema.safeParse({ ...first, art: [art] }).success).toBe(false);
     const ok = { ...art, prompt: `${art.prompt}, no text` };

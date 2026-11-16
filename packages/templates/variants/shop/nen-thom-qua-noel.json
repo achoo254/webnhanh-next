@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "nen-thom-qua-noel",
+  "label": "Nến thơm, quà Noel",
+  "kind": "industry",
+  "style": "am-cung",
+  "palette": "leaf",
+  "copy": {
+    "name": "Tiệm Nến Mùa Đông",
+    "description": "Nến thơm sáp đậu nành rót tay, hương quế, thông và cam. Có set quà Noel gói sẵn, giao nhanh trong ngày ở nội thành."
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "handmade scented soy candles in amber glass jars among pine branches, cinnamon sticks, dried orange slices and small wrapped gifts, cozy Christmas mood, warm glow, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, unlabeled jars, no text, no letters, no logos, no watermark",
+      "seed": 2306057299
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a single lit scented candle in an amber glass jar with a wooden lid beside it, a cinnamon stick and a pine sprig, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, unlabeled, no text, no letters, no logos, no watermark",
+      "seed": 4062904720
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "prompt": "a Christmas gift set of two small candles in an open kraft box with a red ribbon, unlabeled, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "ref": "product-1",
+      "seed": 596195352
+    }
+  ]
+}

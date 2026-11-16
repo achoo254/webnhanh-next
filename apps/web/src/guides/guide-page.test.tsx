@@ -75,5 +75,6 @@ describe('guide pages in the app', () => {
     expect(section.getByRole('link', { name: 'Website bán hàng miễn phí trên điện thoại' }).getAttribute('href')).toBe(GUIDE_PATHS.shop);
     expect(section.getByRole('link', { name: 'Thiệp Tết 2027 online' }).getAttribute('href')).toBe(GUIDE_PATHS.tet);
     expect(section.getByRole('link', { name: 'Thiệp mời tất niên, Giáng sinh online' }).getAttribute('href')).toBe(GUIDE_PATHS.party);
+    expect(section.getByRole('link', { name: 'Thiệp sinh nhật online' }).getAttribute('href')).toBe(GUIDE_PATHS.birthday);
   });
 });

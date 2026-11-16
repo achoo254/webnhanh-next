@@ -1,0 +1,28 @@
+{
+  "template": "tet",
+  "id": "mai-vang-sum-vay",
+  "label": "Mai vàng sum vầy",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "leaf",
+  "copy": {
+    "title": "Xuân Sum Vầy",
+    "greeting": "Tết này về nhà, chúc cả nhà mình mạnh khoẻ, bình an, bữa cơm nào cũng đông đủ tiếng cười, năm mới việc gì cũng thuận và lòng lúc nào cũng nhẹ."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "branches of yellow apricot blossoms in a tall ceramic vase on a wooden table in a sunlit Vietnamese living room, a tray of candied fruits and a clay teapot with small cups, Lunar New Year morning, warm natural window light, calm editorial photography, no people, no text, no letters, no logos, no watermark",
+      "seed": 3878054855
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a small branch of yellow apricot blossoms with a few buds, delicate watercolor painting, soft edges, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 3012869089
+    }
+  ]
+}

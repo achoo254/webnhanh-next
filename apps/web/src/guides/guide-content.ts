@@ -1,6 +1,6 @@
 /**
  * The words of the guide pages: what people search for ("thiệp cưới online", "website bán hàng miễn phí", "thiệp Tết
- * 2027", "thiệp mời tất niên online"), answered with what the matching template really does (its schema in @webnhanh/templates: fields, limits,
+ * 2027", "thiệp mời tất niên online", "thiệp sinh nhật online"), answered with what the matching template really does (its schema in @webnhanh/templates: fields, limits,
  * the order and RSVP forms), each page ending on that template in /new.
  *
  * Vietnamese only, whatever the visitor's language: these pages answer Vietnamese searches, and crawlers that run
@@ -182,7 +182,7 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
       heading: 'Làm website bán hàng miễn phí trên điện thoại',
       eyebrow: 'Bán hàng nhận đơn',
       lede: `Đang bán qua Facebook, Zalo và muốn có một trang riêng để khách xem hết sản phẩm rồi đặt hàng? Mẫu Bán hàng nhận đơn của ${app} cho bạn trang đó, làm ngay trên điện thoại, không tốn tiền, không cần biết làm web.`,
-      looksHeading: 'Sáu kiểu theo ngành hàng để bắt đầu',
+      looksHeading: 'Chín kiểu theo ngành hàng để bắt đầu',
       sections: [
         {
           heading: 'Trang bán hàng có những gì',
@@ -235,7 +235,7 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
       heading: 'Thiệp Tết 2027 online',
       eyebrow: 'Xuân Đinh Mùi 2027',
       lede: 'Mùng 1 Tết Đinh Mùi là thứ Bảy, 6/2/2027. Thay vì gửi tấm hình chúc Tết giống hệt mọi người, gửi một tấm thiệp có địa chỉ riêng, lời chúc của chính bạn, ảnh của nhà mình và nút để người nhận chúc lại.',
-      looksHeading: 'Ba kiểu thiệp Tết để bắt đầu',
+      looksHeading: 'Sáu kiểu thiệp Tết để bắt đầu',
       sections: [
         {
           heading: 'Thiệp Tết online có gì',
@@ -245,7 +245,7 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
             'Lời chúc: chọn một trong sáu lời chúc viết sẵn (an khang, gia đình, làm ăn, bạn bè, đồng nghiệp, con cháu) rồi sửa lại, hoặc tự viết, tối đa 600 ký tự.',
             'Tên người gửi và một tấm ảnh của bạn.',
             'Nút "Gửi lời chúc lại": người nhận bấm là mở Zalo, gọi điện hoặc Facebook của bạn.',
-            'Ba kiểu thiệp (đất sét đỏ vàng, đất sét hoa đào, thiệp giấy đỏ) và các màu đỏ, vàng ngày Tết.',
+            'Sáu kiểu thiệp (đất sét đỏ vàng, đất sét hoa đào, thiệp giấy đỏ, mai vàng sum vầy, pháo hoa giao thừa, Tết dân văn phòng) và các màu ngày Tết.',
           ],
         },
         {
@@ -277,6 +277,52 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
       cta: 'Chọn mẫu thiệp Tết',
       linkLabel: 'Thiệp Tết 2027 online',
       datePublished: PUBLISHED,
+    },
+    birthday: {
+      id: 'birthday',
+      path: GUIDE_PATHS.birthday,
+      template: 'birthday',
+      title: `Thiệp sinh nhật online miễn phí, có ảnh và lời chúc | ${app}`,
+      description:
+        'Làm thiệp sinh nhật online miễn phí trên điện thoại: lời chúc của bạn, ảnh kỷ niệm, nút để bạn bè gửi lời chúc qua Zalo, Facebook. Gửi một link là xong.',
+      heading: 'Thiệp sinh nhật online',
+      eyebrow: 'Thiệp sinh nhật',
+      lede: `Sinh nhật bạn thân, đồng nghiệp hay chính mình: thay vì một dòng "HPBD" giữa group chat, gửi một tấm thiệp có địa chỉ riêng, lời chúc thật lòng, vài tấm ảnh kỷ niệm và nút để ai mở thiệp cũng chúc mừng được ngay. Làm trong vài phút với ${app}.`,
+      looksHeading: 'Ba kiểu thiệp sinh nhật để bắt đầu',
+      sections: [
+        {
+          heading: 'Thiệp sinh nhật online có gì',
+          paragraphs: ['Mẫu thiệp sinh nhật có sẵn mọi phần, bạn chỉ viết lời chúc và thay ảnh:'],
+          list: [
+            'Tên người được chúc mừng, dòng tiêu đề và một dòng nhỏ phía trên, ví dụ "Tuổi 25 rực rỡ".',
+            'Lời chúc của bạn, tối đa 600 ký tự, và tên người gửi như "Hội bạn thân K18".',
+            'Một ảnh chính và tối đa chín ảnh kỷ niệm.',
+            'Nút "Gửi lời chúc": ai mở thiệp cũng bấm được để nhắn Zalo, gọi điện hoặc vào Facebook của bạn.',
+            'Ba kiểu thiệp: bánh kem pastel, tiệc bóng bay và film kỷ niệm, đổi màu tuỳ ý.',
+          ],
+        },
+        {
+          heading: 'Gửi thiệp qua Zalo, Messenger',
+          paragraphs: [
+            `Bấm Đăng là thiệp có địa chỉ dạng ten-cua-ban.${SITES_DOMAIN}. Dán link vào Zalo, Messenger hay Facebook: tin nhắn hiện ảnh xem trước của thiệp, người nhận bấm vào là xem, không cần cài app hay đăng nhập.`,
+            'Ảnh bạn tải lên được chuyển sang WebP và bỏ hết thông tin đi kèm (như vị trí chụp) trước khi lưu, nên thiệp mở nhanh và không lộ gì ngoài tấm ảnh.',
+          ],
+        },
+      ],
+      steps: [
+        { title: 'Chọn kiểu thiệp', body: 'Chọn một kiểu ở trên rồi sửa thử ngay: tên, lời chúc, ảnh. Bước này chưa cần tài khoản.' },
+        { title: 'Đăng ký khi bấm Đăng', body: `Bấm Đăng website thì tạo tài khoản ${domain} miễn phí và chọn địa chỉ cho thiệp. Bản nháp bạn vừa sửa đi theo.` },
+        { title: 'Gửi link', body: 'Dán link vào Zalo, Messenger hay group của hội bạn. Sửa và đăng lại lúc nào cũng được, link giữ nguyên.' },
+      ],
+      faq: [
+        { question: 'Làm thiệp sinh nhật online có mất tiền không?', answer: 'Không. Tài khoản và thiệp đều miễn phí, thiệp không có quảng cáo.' },
+        { question: 'Người nhận có cần cài app không?', answer: 'Không. Thiệp mở bằng trình duyệt có sẵn trên điện thoại, kể cả trong Zalo và Messenger.' },
+        { question: 'Bạn bè gửi lời chúc lại bằng cách nào?', answer: 'Bật nút "Gửi lời chúc" và điền Zalo, số điện thoại hoặc Facebook của bạn: ai mở thiệp bấm vào là nhắn được cho bạn.' },
+        { question: 'Một thiệp gửi cho nhiều người được không?', answer: 'Được, một link gửi cho bao nhiêu người cũng được. Muốn mỗi người một lời chúc riêng thì làm nhiều thiệp.' },
+      ],
+      cta: 'Chọn mẫu thiệp sinh nhật',
+      linkLabel: 'Thiệp sinh nhật online',
+      datePublished: '2026-11-16',
     },
   };
 }

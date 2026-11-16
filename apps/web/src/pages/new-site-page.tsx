@@ -1,4 +1,6 @@
 import type { TemplateId } from '@webnhanh/templates';
+import birthdayHero from '@webnhanh/templates/library/birthday/tiec-bong-bay/hero.webp';
+import linksAvatar from '@webnhanh/templates/library/links/gen-z-sticker/avatar.webp';
 import partyCover from '@webnhanh/templates/library/party/tiec-cong-ty-neon/cover.webp';
 import cafeCover from '@webnhanh/templates/samples/cafe-cover.webp';
 import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
@@ -26,7 +28,9 @@ const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey;
   { id: 'tet', label: 'template.tet', note: 'template.tet.note', picture: tetPhoto },
   { id: 'wedding', label: 'template.wedding', note: 'template.wedding.note', picture: weddingCover },
   { id: 'cafe', label: 'template.cafe', note: 'template.cafe.note', picture: cafeCover },
+  { id: 'birthday', label: 'template.birthday', note: 'template.birthday.note', picture: birthdayHero },
   { id: 'profile', label: 'template.profile', note: 'template.profile.note', picture: profileCard },
+  { id: 'links', label: 'template.links', note: 'template.links.note', picture: linksAvatar },
 ];
 
 /**

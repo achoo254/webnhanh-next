@@ -104,7 +104,7 @@ describe('making a page', () => {
     on('POST', '/api/sites', () => ({ status: 201, body: { site: site() } }));
     on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
     renderAt('/new');
-    for (const name of [/Thiệp chúc Tết/, /Thiệp cưới/, /Quán, cửa hàng/, /Hồ sơ cá nhân/]) expect(await screen.findByRole('button', { name })).toBeTruthy();
+    for (const name of [/Thiệp mời tiệc/, /Thiệp chúc Tết/, /Thiệp cưới/, /Quán, cửa hàng/, /Thiệp sinh nhật/, /Hồ sơ cá nhân/, /Trang link-in-bio/]) expect(await screen.findByRole('button', { name })).toBeTruthy();
     expect(screen.queryByText('Sắp có')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }));
     expect(screen.getByRole('button', { name: /Bán hàng nhận đơn/ }).getAttribute('aria-pressed')).toBe('true');
@@ -112,9 +112,9 @@ describe('making a page', () => {
     // The shop's looks, as a radio group with the first one picked; each has its thumbnail, loaded lazily.
     const looks = screen.getByRole('group', { name: 'Chọn kiểu' });
     const radios = within(looks).getAllByRole('radio') as HTMLInputElement[];
-    expect(radios.map((radio) => radio.value)).toEqual(['cay-canh', 'do-an-vat', 'handmade', 'my-pham', 'nong-san', 'quan-ao']);
+    expect(radios.map((radio) => radio.value)).toEqual(['banh-quy-nha-lam', 'cay-canh', 'do-an-vat', 'gio-qua-tet', 'handmade', 'my-pham', 'nen-thom-qua-noel', 'nong-san', 'quan-ao']);
     expect(radios[0]?.checked).toBe(true);
-    expect(looks.querySelectorAll('img[loading="lazy"]')).toHaveLength(6);
+    expect(looks.querySelectorAll('img[loading="lazy"]')).toHaveLength(9);
     fireEvent.click(within(looks).getByLabelText('Mỹ phẩm'));
     expect((within(looks).getByLabelText('Mỹ phẩm') as HTMLInputElement).checked).toBe(true);
 

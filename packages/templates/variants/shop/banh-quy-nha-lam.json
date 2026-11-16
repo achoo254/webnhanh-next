@@ -1,0 +1,36 @@
+{
+  "template": "shop",
+  "id": "banh-quy-nha-lam",
+  "label": "Bánh quy, mứt nhà làm",
+  "kind": "industry",
+  "style": "ruc-ro",
+  "palette": "rose",
+  "copy": {
+    "name": "Bếp Nhà Mây",
+    "description": "Bánh quy bơ, bánh gừng và mứt dâu nhà làm, ít ngọt, đóng hộp thiếc xinh để biếu dịp cuối năm. Đặt trước 2 ngày nha!"
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "homemade butter cookies, gingerbread shapes and jars of strawberry jam on a festive table with ribbons and pine sprigs, bright cheerful mood, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, unlabeled jars, no text, no letters, no logos, no watermark",
+      "seed": 2669596047
+    },
+    {
+      "slot": "product-1",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "a round tin box filled with assorted homemade butter cookies, seen from above, plain lid beside it, studio product photography, soft daylight, clean seamless backdrop, shallow depth of field, high detail, no text, no letters, no logos, no watermark",
+      "seed": 1171890022
+    },
+    {
+      "slot": "product-2",
+      "model": "klein-edit",
+      "size": "1328x1328",
+      "prompt": "a glass jar of homemade strawberry jam with a gingham cloth cover tied with twine, unlabeled, same lighting, framing and style as the reference, no text, no letters, no logos, no watermark",
+      "ref": "product-1",
+      "seed": 80570179
+    }
+  ]
+}

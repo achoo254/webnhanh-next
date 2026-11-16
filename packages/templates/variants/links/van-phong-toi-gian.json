@@ -1,0 +1,28 @@
+{
+  "template": "links",
+  "id": "van-phong-toi-gian",
+  "label": "Văn phòng tối giản",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "ink",
+  "copy": {
+    "handle": "@hoang.nam.work",
+    "bio": "Product designer ở Sài Gòn. Viết về thiết kế, chuyện công sở và những buổi sáng cà phê."
+  },
+  "art": [
+    {
+      "slot": "avatar",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "professional head and shoulders portrait of a smiling young Vietnamese man in a light grey shirt, soft window light, plain neutral background, editorial portrait photography, hands not visible, no text, no letters, no logos, no watermark",
+      "seed": 2228691713
+    },
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1472x832",
+      "prompt": "minimal tidy desk seen from above with a closed laptop, a blank notebook, a cup of coffee and a small plant, flat lay, soft daylight, neutral tones, no screens, no text, no letters, no logos, no watermark",
+      "seed": 2144381111
+    }
+  ]
+}

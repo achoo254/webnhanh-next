@@ -41,7 +41,7 @@ const save = (siteId: string, draft: unknown, who = owner) =>
 const publish = (siteId: string) => app.http().post(`/api/sites/${siteId}/publish`).set('Cookie', owner.cookie).set('Origin', ORIGIN);
 
 /** Photos each new site starts with: the template's samples. */
-const SAMPLE_COUNT: Readonly<Record<TemplateId, number>> = { shop: 3, tet: 1, wedding: 1, cafe: 1, profile: 0, party: 0 };
+const SAMPLE_COUNT: Readonly<Record<TemplateId, number>> = { shop: 3, tet: 1, wedding: 1, cafe: 1, profile: 0, party: 0, birthday: 0, links: 0 };
 
 describe('sites of every template', () => {
   it('makes each template with its own samples and new draft, all counted against one limit', async () => {

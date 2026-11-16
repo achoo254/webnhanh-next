@@ -1,0 +1,28 @@
+{
+  "template": "links",
+  "id": "freelancer-am-ap",
+  "label": "Freelancer ấm áp",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "sunset",
+  "copy": {
+    "handle": "@an.ve.tranh",
+    "bio": "Vẽ minh hoạ, nhận đặt tranh chân dung và thiệp. Xem portfolio, đặt lịch hoặc nhắn mình qua Zalo nhé."
+  },
+  "art": [
+    {
+      "slot": "avatar",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "head and shoulders portrait of a smiling young Vietnamese woman illustrator in a cozy sunlit studio with plants behind her, warm tones, film photography look, soft grain, hands not visible, no text, no letters, no logos, no watermark",
+      "seed": 2245024572
+    },
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1472x832",
+      "prompt": "cozy illustrator desk seen from above with watercolor paints, brushes, open sketchbooks with abstract colour swatches and a small plant, warm afternoon light, flat lay, no text, no letters, no logos, no watermark",
+      "seed": 1449175802
+    }
+  ]
+}

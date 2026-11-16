@@ -1,0 +1,35 @@
+{
+  "template": "birthday",
+  "id": "banh-kem-pastel",
+  "label": "Bánh kem pastel",
+  "kind": "style",
+  "style": "am-cung",
+  "palette": "blush",
+  "copy": {
+    "kicker": "Tuổi mới dịu dàng",
+    "message": "Chúc bạn tuổi mới thật nhiều niềm vui nhỏ xinh: cà phê sáng nào cũng ngon, việc gì cũng suôn, người thương luôn ở cạnh và ngày nào cũng được là chính mình."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a pastel pink birthday cake with lit candles and fresh berries on a cake stand, plain smooth frosting with no writing, pastel balloons and confetti around, soft dreamy studio photography, no people, no text, no letters, no logos, no watermark",
+      "seed": 2375320813
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a bunch of pastel pink, peach and lilac balloons with curly ribbons, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": 803627972
+    },
+    {
+      "slot": "ornament-2",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a pastel polka dot party hat with a fluffy pompom, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light green background, no text, no letters, no logos, no watermark",
+      "seed": 480109104
+    }
+  ]
+}

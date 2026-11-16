@@ -1,0 +1,28 @@
+{
+  "template": "birthday",
+  "id": "tiec-bong-bay",
+  "label": "Tiệc bóng bay",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "sunset",
+  "copy": {
+    "kicker": "Level up!",
+    "message": "Chúc mừng sinh nhật! Tuổi mới chúc bạn ăn không lo béo, tiêu không lo hết, deadline không dí và tấm ảnh nào chụp cũng ăn ảnh. Quẩy lên!"
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a playful birthday party scene with bright colorful balloons, wrapped gift boxes, a cake with lit candles, streamers and confetti, bold cheerful colors, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, plain cake with no writing, no people, no text, no letters, no logos, no watermark",
+      "seed": 532220645
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a colorful gift box with a big ribbon bow and a few confetti pieces, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 1989007904
+    }
+  ]
+}

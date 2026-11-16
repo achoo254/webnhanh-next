@@ -4,6 +4,8 @@
  * variant's look, palette and sample copy over the template's new draft).
  */
 import { newCafeDraft } from './cafe-schema';
+import { newBirthdayDraft } from './birthday-schema';
+import { newLinksDraft } from './links-schema';
 import { newPartyDraft } from './party-schema';
 import { newProfileDraft } from './profile-schema';
 import type { SamplePhoto } from './schema-parts';
@@ -22,7 +24,9 @@ import { newWeddingDraft } from './wedding-schema';
  * - wedding: `cover` the cover, `ornament` a decoration;
  * - cafe: `cover` the cover, `item-1`/`item-2` the first two dishes' photos;
  * - profile: `avatar` the avatar;
- * - party: `cover` the cover, `ornament`/`ornament-2` decorations.
+ * - party: `cover` the cover, `ornament`/`ornament-2` decorations;
+ * - birthday: `hero` the card's photo, `ornament`/`ornament-2` decorations;
+ * - links: `avatar` the avatar, `cover` the banner.
  */
 export const VARIANT_SLOTS = {
   shop: ['cover', 'product-1', 'product-2'],
@@ -31,6 +35,8 @@ export const VARIANT_SLOTS = {
   cafe: ['cover', 'item-1', 'item-2'],
   profile: ['avatar'],
   party: ['cover', 'ornament', 'ornament-2'],
+  birthday: ['hero', 'ornament', 'ornament-2'],
+  links: ['avatar', 'cover'],
 } as const satisfies Readonly<Record<TemplateId, readonly [string, ...string[]]>>;
 
 /** Slots that are decoration (transparent ornaments), not photos for the owner to replace. */
@@ -110,6 +116,12 @@ export function variantDraft(variant: TemplateVariant, photoId: (slot: string) =
       break;
     case 'party':
       base = { ...newPartyDraft({ cover: photo('cover') }), ...decorated };
+      break;
+    case 'birthday':
+      base = { ...newBirthdayDraft({ photo: photo('hero') }), ...decorated };
+      break;
+    case 'links':
+      base = newLinksDraft({ avatar: photo('avatar'), cover: photo('cover') });
       break;
   }
   const parsed = parseDraft(variant.template, { ...base, ...variant.copy, style: variant.style, palette: variant.palette });

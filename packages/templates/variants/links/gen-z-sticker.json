@@ -1,0 +1,28 @@
+{
+  "template": "links",
+  "id": "gen-z-sticker",
+  "label": "Gen Z sticker",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "berry",
+  "copy": {
+    "handle": "@minhthu.daily",
+    "bio": "Học, làm, ăn, quẩy. Mọi link quan trọng của mình ở đây hết, bấm thoải mái nha."
+  },
+  "art": [
+    {
+      "slot": "avatar",
+      "model": "qwen",
+      "size": "1328x1328",
+      "prompt": "head and shoulders 3D clay avatar of a cheerful young Vietnamese woman with short hair and headphones around her neck, smiling, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, pastel lilac background, hands not visible, no text, no letters, no logos, no watermark",
+      "seed": 932148814
+    },
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1472x832",
+      "prompt": "a playful flat sticker collage background of stars, hearts, sparkles and squiggles in purple, pink and yellow, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, evenly spread pattern, no text, no letters, no logos, no watermark",
+      "seed": 1930674501
+    }
+  ]
+}

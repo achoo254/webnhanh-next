@@ -6,8 +6,10 @@ import { ISSUE_MESSAGES } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
 import { editorAsset, saveDraft, type Job, type Site, type SiteImage } from '../sites-api';
 import { AddressPanel } from './address-panel';
+import { BirthdayForm } from './forms/birthday-form';
 import { CafeForm } from './forms/cafe-form';
 import type { FormProps } from './forms/form-props';
+import { LinksForm } from './forms/links-form';
 import { PartyForm } from './forms/party-form';
 import { focusIssue, IssueSummary } from './issue-navigator';
 import { ProfileForm } from './forms/profile-form';
@@ -154,6 +156,12 @@ export function TemplateForm({
       );
     case 'party':
       return <PartyForm {...common} draft={value.draft} update={(change) => setValue((current) => (current.template === 'party' ? { template: 'party', draft: change(current.draft) } : current))} />;
+    case 'birthday':
+      return (
+        <BirthdayForm {...common} draft={value.draft} update={(change) => setValue((current) => (current.template === 'birthday' ? { template: 'birthday', draft: change(current.draft) } : current))} />
+      );
+    case 'links':
+      return <LinksForm {...common} draft={value.draft} update={(change) => setValue((current) => (current.template === 'links' ? { template: 'links', draft: change(current.draft) } : current))} />;
   }
 }
 

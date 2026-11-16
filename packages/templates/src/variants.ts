@@ -13,24 +13,36 @@ import { STYLE_IDS } from './looks';
 import { ALL_PALETTE_IDS } from './palettes';
 import { TEMPLATE_IDS, type TemplateId } from './templates';
 import { VARIANT_SLOTS } from './variant-drafts';
+import birthdayBanhKemPastel from '../variants/birthday/banh-kem-pastel.json';
+import birthdayFilmKyNiem from '../variants/birthday/film-ky-niem.json';
+import birthdayTiecBongBay from '../variants/birthday/tiec-bong-bay.json';
 import cafeCaPheFilm from '../variants/cafe/ca-phe-film.json';
 import cafeQuanComNha from '../variants/cafe/quan-com-nha.json';
 import cafeTraSuaTiemBanh from '../variants/cafe/tra-sua-tiem-banh.json';
+import linksFreelancerAmAp from '../variants/links/freelancer-am-ap.json';
+import linksGenZSticker from '../variants/links/gen-z-sticker.json';
+import linksVanPhongToiGian from '../variants/links/van-phong-toi-gian.json';
 import partyGiangSinhAmAp from '../variants/party/giang-sinh-am-ap.json';
 import partyTatNienSangTrong from '../variants/party/tat-nien-sang-trong.json';
 import partyTiecCongTyNeon from '../variants/party/tiec-cong-ty-neon.json';
 import profileChuyenGia from '../variants/profile/chuyen-gia.json';
 import profileNguoiSangTao from '../variants/profile/nguoi-sang-tao.json';
 import profileThoThuCong from '../variants/profile/tho-thu-cong.json';
+import shopBanhQuyNhaLam from '../variants/shop/banh-quy-nha-lam.json';
 import shopCayCanh from '../variants/shop/cay-canh.json';
 import shopDoAnVat from '../variants/shop/do-an-vat.json';
+import shopGioQuaTet from '../variants/shop/gio-qua-tet.json';
 import shopHandmade from '../variants/shop/handmade.json';
 import shopMyPham from '../variants/shop/my-pham.json';
+import shopNenThomQuaNoel from '../variants/shop/nen-thom-qua-noel.json';
 import shopNongSan from '../variants/shop/nong-san.json';
 import shopQuanAo from '../variants/shop/quan-ao.json';
 import tetClayDoVang from '../variants/tet/clay-do-vang.json';
 import tetClayHoaDao from '../variants/tet/clay-hoa-dao.json';
 import tetGiayDoVienVang from '../variants/tet/giay-do-vien-vang.json';
+import tetMaiVangSumVay from '../variants/tet/mai-vang-sum-vay.json';
+import tetPhaoHoaGiaoThua from '../variants/tet/phao-hoa-giao-thua.json';
+import tetVanPhongDeThuong from '../variants/tet/van-phong-de-thuong.json';
 import weddingHoaPastel from '../variants/wedding/hoa-pastel.json';
 import weddingToiGian from '../variants/wedding/toi-gian.json';
 import weddingTruyenThong from '../variants/wedding/truyen-thong.json';
@@ -93,24 +105,36 @@ export type VariantArt = z.infer<typeof artSchema>;
 
 /** Every variant file, by its path under `variants/`, as read (unchecked). */
 export const VARIANT_FILES: Readonly<Record<string, unknown>> = {
+  'birthday/banh-kem-pastel.json': birthdayBanhKemPastel,
+  'birthday/film-ky-niem.json': birthdayFilmKyNiem,
+  'birthday/tiec-bong-bay.json': birthdayTiecBongBay,
   'cafe/ca-phe-film.json': cafeCaPheFilm,
   'cafe/quan-com-nha.json': cafeQuanComNha,
   'cafe/tra-sua-tiem-banh.json': cafeTraSuaTiemBanh,
+  'links/freelancer-am-ap.json': linksFreelancerAmAp,
+  'links/gen-z-sticker.json': linksGenZSticker,
+  'links/van-phong-toi-gian.json': linksVanPhongToiGian,
   'party/giang-sinh-am-ap.json': partyGiangSinhAmAp,
   'party/tat-nien-sang-trong.json': partyTatNienSangTrong,
   'party/tiec-cong-ty-neon.json': partyTiecCongTyNeon,
   'profile/chuyen-gia.json': profileChuyenGia,
   'profile/nguoi-sang-tao.json': profileNguoiSangTao,
   'profile/tho-thu-cong.json': profileThoThuCong,
+  'shop/banh-quy-nha-lam.json': shopBanhQuyNhaLam,
   'shop/cay-canh.json': shopCayCanh,
   'shop/do-an-vat.json': shopDoAnVat,
+  'shop/gio-qua-tet.json': shopGioQuaTet,
   'shop/handmade.json': shopHandmade,
   'shop/my-pham.json': shopMyPham,
+  'shop/nen-thom-qua-noel.json': shopNenThomQuaNoel,
   'shop/nong-san.json': shopNongSan,
   'shop/quan-ao.json': shopQuanAo,
   'tet/clay-do-vang.json': tetClayDoVang,
   'tet/clay-hoa-dao.json': tetClayHoaDao,
   'tet/giay-do-vien-vang.json': tetGiayDoVienVang,
+  'tet/mai-vang-sum-vay.json': tetMaiVangSumVay,
+  'tet/phao-hoa-giao-thua.json': tetPhaoHoaGiaoThua,
+  'tet/van-phong-de-thuong.json': tetVanPhongDeThuong,
   'wedding/hoa-pastel.json': weddingHoaPastel,
   'wedding/toi-gian.json': weddingToiGian,
   'wedding/truyen-thong.json': weddingTruyenThong,

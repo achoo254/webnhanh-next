@@ -1,0 +1,29 @@
+{
+  "template": "tet",
+  "id": "van-phong-de-thuong",
+  "label": "Tết dân văn phòng",
+  "kind": "style",
+  "style": "ruc-ro",
+  "palette": "berry",
+  "copy": {
+    "title": "Năm Mới Hết Deadline",
+    "recipient": "Gửi cả team thân yêu",
+    "greeting": "Chúc cả team năm Đinh Mùi deadline nào cũng xong sớm, họp ngắn gọn, lương tăng đều, KPI về đích nhẹ tênh và cuối tuần nào cũng được nghỉ trọn vẹn."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a cute baby goat character wearing a tiny cozy hoodie and a lanyard badge without writing, sitting on a swivel chair holding a red envelope, beside a small wooden desk with an open paper planner, a cup of tea and a small pot of yellow apricot blossoms, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, festive Vietnamese Lunar New Year, pastel lilac background, no computer, no laptop, no devices, no brand marks, no text, no letters, no logos, no watermark",
+      "seed": 30366086
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a plain red envelope decorated only with a simple gold flower pattern, cute 3D clay render, soft rounded shapes, matte plasticine texture, warm studio lighting, isolated on a flat plain light blue background, no characters, no symbols, no text, no letters, no logos, no watermark",
+      "seed": 3423422107
+    }
+  ]
+}

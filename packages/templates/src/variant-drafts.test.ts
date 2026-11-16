@@ -23,6 +23,10 @@ function placed(value: TemplateDraft): Record<string, string | null | undefined>
       return { avatar: value.draft.avatar };
     case 'party':
       return { cover: value.draft.cover, ornament: value.draft.ornaments?.[0], 'ornament-2': value.draft.ornaments?.[1] };
+    case 'birthday':
+      return { hero: value.draft.photo, ornament: value.draft.ornaments?.[0], 'ornament-2': value.draft.ornaments?.[1] };
+    case 'links':
+      return { avatar: value.draft.avatar, cover: value.draft.cover };
   }
 }
 

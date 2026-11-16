@@ -60,6 +60,7 @@ describe('renderParty', () => {
     expect(html).toContain('<p class="countdown">Còn 40 ngày</p>');
     expect(html).toContain(`href="https://www.google.com/maps/search/?api=1&amp;query=${encodeURIComponent('88 Nguyễn Huệ, Phường Sài Gòn, TP. Hồ Chí Minh')}"`);
     expect(html).toContain('<span class="pa-time">19:00</span><span class="pa-label">Khai tiệc, cả nhà nâng ly</span>');
+    expect(renderParty(newPartyDraft(), assets, { now: NOW }).html).toContain('<li class="pa-untimed"><span class="pa-label">Khai tiệc</span></li>');
     expect(renderParty(sample(), assets, { now: new Date('2026-12-26T01:00:00Z') }).html).toContain('Hôm nay là ngày tiệc');
     expect(renderParty(sample(), assets, { now: new Date('2027-01-01T00:00:00Z') }).html).not.toContain('class="countdown"');
   });

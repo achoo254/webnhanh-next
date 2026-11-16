@@ -1,0 +1,28 @@
+{
+  "template": "birthday",
+  "id": "film-ky-niem",
+  "label": "Film kỷ niệm",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "sepia",
+  "copy": {
+    "kicker": "Thêm một năm bên nhau",
+    "message": "Cảm ơn vì đã có mặt trong biết bao khoảnh khắc của tụi mình. Chúc bạn tuổi mới bình yên, đủ đầy và luôn giữ được nụ cười như trong những tấm ảnh cũ."
+  },
+  "art": [
+    {
+      "slot": "hero",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "a small homemade birthday cake with a single lit candle on a wooden cafe table, a few blank instant photo frames and dried flowers beside it, warm afternoon light, film photography look, Kodak Portra 400, soft grain, plain cake with no writing, no people, no text, no letters, no logos, no watermark",
+      "seed": 1447247235
+    },
+    {
+      "slot": "ornament",
+      "model": "zimage-transparent",
+      "size": "1024x1024",
+      "prompt": "a small bouquet of dried flowers tied with twine, delicate watercolor painting, soft edges, isolated on a flat plain light blue background, no text, no letters, no logos, no watermark",
+      "seed": 3868630646
+    }
+  ]
+}

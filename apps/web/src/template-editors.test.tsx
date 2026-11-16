@@ -1,4 +1,4 @@
-import { newCafeDraft, newPartyDraft, newProfileDraft, newTetDraft, newWeddingDraft, TET_GREETINGS, type TemplateId } from '@webnhanh/templates';
+import { newBirthdayDraft, newCafeDraft, newLinksDraft, newPartyDraft, newProfileDraft, newTetDraft, newWeddingDraft, TET_GREETINGS, type TemplateId } from '@webnhanh/templates';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -174,6 +174,37 @@ describe('party editor', () => {
     fireEvent.change(screen.getAllByLabelText('Hoạt động')[3] as HTMLInputElement, { target: { value: 'Trao giải nhân viên của năm' } });
     await waitFor(() => expect(lastSaved()).toMatchObject({ title: 'Tất niên <Mây Xanh>', date: '2026-12-26', venue: 'Nhà hàng Sông Xanh' }), { timeout: 3000 });
     expect((lastSaved().agenda as { label: string }[]).map((item) => item.label)).toContain('Trao giải nhân viên của năm');
+  });
+});
+
+describe('birthday editor', () => {
+  it('needs the name, the wish and somewhere for wishes to go, and previews the card', async () => {
+    openEditor('birthday', newBirthdayDraft({ photo: PHOTO }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Đăng website' }));
+    expect((await screen.findByText(/ô cần điền/)).textContent).toBe('Còn 3 ô cần điền hoặc sửa trước khi đăng.');
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-id')).toBe('birthday-name'));
+    fireEvent.change(screen.getByLabelText('Chúc mừng sinh nhật ai?'), { target: { value: 'Minh <Thư>' } });
+    fireEvent.change(screen.getByLabelText('Lời chúc'), { target: { value: 'Tuổi mới rực rỡ nha!' } });
+    fireEvent.click(screen.getByLabelText('Hiện nút "Gửi lời chúc"'));
+    expect(screen.queryByText(/ô cần điền/)).toBeNull();
+    expect(preview()).toContain('<span class="b-name">Minh &lt;Thư&gt;</span>');
+    expect(preview()).not.toContain('gui-loi-chuc');
+    await waitFor(() => expect(lastSaved()).toMatchObject({ name: 'Minh <Thư>', message: 'Tuổi mới rực rỡ nha!', reply: false }), { timeout: 3000 });
+  });
+});
+
+describe('link-in-bio editor', () => {
+  it('edits the name, links and contact buttons, and needs one thing to tap', async () => {
+    openEditor('links', newLinksDraft({ avatar: PHOTO, cover: null }));
+    fireEvent.change(await screen.findByLabelText('Tên'), { target: { value: 'Minh Thư' } });
+    fireEvent.change(screen.getByLabelText('Tên tài khoản (không bắt buộc)'), { target: { value: '@minhthu.daily' } });
+    for (const remove of screen.getAllByRole('button', { name: /Xoá/ })) fireEvent.click(remove);
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
+    expect(await screen.findByText(/ô cần điền/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/^Zalo/), { target: { value: '0912345678' } });
+    expect(screen.queryByText(/ô cần điền/)).toBeNull();
+    expect(preview()).toContain('<p class="l-handle">@minhthu.daily</p>');
+    expect(preview()).toContain('href="https://zalo.me/0912345678"');
   });
 });
 

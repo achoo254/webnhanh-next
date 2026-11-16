@@ -27,6 +27,8 @@ export const PARTY_CSS = `.pt-hero{display:grid}
 .pt-place .map{margin-top:10px}
 .pt-agenda{list-style:none;margin:0 auto;padding:0;display:grid;gap:10px;max-width:640px}
 .pt-agenda li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:14px;align-items:baseline;padding:14px 16px;background:var(--surface)}
+.pt-agenda li.pa-untimed{grid-template-columns:minmax(0,1fr)}
+.pt-program{width:100%;max-width:640px;margin:0 auto}
 .pa-time{font:700 18px/1.2 var(--display);color:var(--accent);font-variant-numeric:tabular-nums}
 .pa-label{font-weight:600;overflow-wrap:anywhere}
 .rsvp-note{text-align:center;color:var(--muted);margin:-6px auto 18px;max-width:40ch}
