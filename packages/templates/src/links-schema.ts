@@ -11,7 +11,8 @@ import { contactIssues, contactsSchema, EMPTY_CONTACTS, hasContact, imageRef, li
 
 export const LINKS_TEMPLATE = 'links';
 
-export const LINKS_LIMITS = { name: 80, handle: 40, bio: 300, links: 20 } as const;
+/** `photos`: the most pictures a page shows (the avatar and the banner). */
+export const LINKS_LIMITS = { name: 80, handle: 40, bio: 300, links: 20, photos: 2 } as const;
 
 export const LINKS_DEFAULT_STYLE: StyleId = 'ruc-ro';
 

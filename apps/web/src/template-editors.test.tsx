@@ -150,6 +150,23 @@ describe('fields left to fill when Publish is pressed', () => {
     expect(screen.getByText(/ô cần điền/).textContent).toBe('Còn 4 ô cần điền hoặc sửa trước khi đăng.');
     expect(calls.some((c) => c.url.endsWith('/publish'))).toBe(false);
   });
+
+  it('goes back from the Preview tab to the form before focusing a field (phones show one tab at a time)', async () => {
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
+    await screen.findByLabelText('Tên chú rể');
+    fireEvent.click(document.querySelector('[data-id="tab-preview"]') as HTMLButtonElement);
+    expect(document.querySelector('[data-id="editor"]')?.getAttribute('data-view')).toBe('preview');
+    fireEvent.click(screen.getByRole('button', { name: 'Đăng website' }));
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-id')).toBe('wedding-groom'));
+    expect(document.querySelector('[data-id="editor"]')?.getAttribute('data-view')).toBe('edit');
+
+    fireEvent.click(document.querySelector('[data-id="tab-preview"]') as HTMLButtonElement);
+    expect(document.querySelector('[data-id="editor"]')?.getAttribute('data-view')).toBe('preview');
+    fireEvent.click(screen.getByRole('button', { name: 'Tới ô tiếp theo' }));
+    expect(document.querySelector('[data-id="editor"]')?.getAttribute('data-view')).toBe('edit');
+    // Tapping a tab does not take focus (as on iOS Safari): "next" carries on from the field last focused.
+    expect(document.activeElement?.getAttribute('data-id')).toBe('wedding-bride');
+  });
 });
 
 describe('party editor', () => {

@@ -1,4 +1,5 @@
 import type { ReactNode, RefObject } from 'react';
+import { flushSync } from 'react-dom';
 import { useI18n } from '../i18n';
 
 /** A field the publish check refused, or the issue of a whole list ("Cần ít nhất một món"). */
@@ -22,7 +23,16 @@ export function focusIssue(root: HTMLElement | null, from: Element | null): bool
  * "Còn N ô cần điền…" under the editor once Publish was refused, with a button that walks through the refused fields
  * one by one (from the field being edited, so it never stops on the same one twice in a row).
  */
-export function IssueSummary({ count, editorRef }: { readonly count: number; readonly editorRef: RefObject<HTMLElement | null> }): ReactNode {
+export function IssueSummary({
+  count,
+  editorRef,
+  onShowForm,
+}: {
+  readonly count: number;
+  readonly editorRef: RefObject<HTMLElement | null>;
+  /** Shows the form (on a phone the Preview tab hides it): the fields must be on screen before one can take focus. */
+  readonly onShowForm: () => void;
+}): ReactNode {
   const { t } = useI18n();
   if (count === 0) return null;
   return (
@@ -36,6 +46,7 @@ export function IssueSummary({ count, editorRef }: { readonly count: number; rea
         // Keeps focus where it is until the click, so "next" counts from the field being edited.
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => {
+          flushSync(onShowForm);
           const active = document.activeElement;
           focusIssue(editorRef.current, active && editorRef.current?.contains(active) ? active : null);
         }}

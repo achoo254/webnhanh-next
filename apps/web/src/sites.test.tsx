@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountProvider } from './account';
+import { bentoCell } from './pages/new-site-page';
 import { App } from './app';
 import { I18nProvider } from './i18n';
 
@@ -91,6 +92,19 @@ describe('picking a template when signed in', () => {
     expect(await screen.findByText('Chọn mẫu và kiểu bạn thích rồi sửa thử luôn.')).toBeTruthy();
     expect(screen.queryByText(/[Cc]hưa cần tài khoản/)).toBeNull();
     expect(screen.getByRole('button', { name: /Thiệp mời tiệc/ }).querySelector('img')).toBeTruthy();
+    // Two columns, the first card two rows tall: the last card spans the row so no cell stays empty.
+    const cells = [...document.querySelectorAll('.bento > li')];
+    expect(cells[0]?.className).toBe('bento-tall');
+    expect(cells[cells.length - 1]?.className).toBe('bento-wide');
+  });
+
+  it('fills every cell of the two-column grid whatever the number of cards', () => {
+    for (const count of [5, 6, 7, 8]) {
+      const cells = Array.from({ length: count }, (_, index) => bentoCell(index, count));
+      const used = cells.reduce((sum, cell) => sum + (cell ? 2 : 1), 0);
+      expect(used % 2, String(count)).toBe(0);
+      expect(cells.filter((cell) => cell === 'bento-wide').length).toBeLessThanOrEqual(1);
+    }
   });
 });
 

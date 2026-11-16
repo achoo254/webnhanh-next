@@ -5,7 +5,7 @@
  * the template fresh, but nothing is deleted on a failed read: photos are only removed once their draft went into an
  * account, or by a sweep run when no guest editor is open in any tab (`guest-locks.ts`).
  */
-import { BIRTHDAY_LIMITS, CAFE_LIMITS, LIMITS, parseDraft, PARTY_LIMITS, TET_LIMITS, WEDDING_LIMITS, type TemplateDraft } from '@webnhanh/templates';
+import { BIRTHDAY_LIMITS, CAFE_LIMITS, LIMITS, LINKS_LIMITS, parseDraft, PARTY_LIMITS, TET_LIMITS, WEDDING_LIMITS, type TemplateDraft } from '@webnhanh/templates';
 import { artFile, type TemplateVariant } from '@webnhanh/templates/variants';
 import { z } from 'zod';
 import { libraryUrl, pickedLook, type GuestPhoto } from './guest-library';
@@ -24,7 +24,7 @@ const UUIDS = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
  * shop's products, a wedding's or a birthday card's gallery and ornaments, a Tết card's or a party invitation's
  * ornaments, a link-in-bio page's avatar and banner. A stored list longer than this is not a draft of ours.
  */
-export const MAX_DRAFT_PHOTOS = Math.max(1 + CAFE_LIMITS.items, 1 + LIMITS.products, 1 + WEDDING_LIMITS.gallery + WEDDING_LIMITS.ornaments, 1 + TET_LIMITS.ornaments, 1 + PARTY_LIMITS.ornaments, 1 + BIRTHDAY_LIMITS.gallery + BIRTHDAY_LIMITS.ornaments, 2);
+export const MAX_DRAFT_PHOTOS = Math.max(1 + CAFE_LIMITS.items, 1 + LIMITS.products, 1 + WEDDING_LIMITS.gallery + WEDDING_LIMITS.ornaments, 1 + TET_LIMITS.ornaments, 1 + PARTY_LIMITS.ornaments, 1 + BIRTHDAY_LIMITS.gallery + BIRTHDAY_LIMITS.ornaments, LINKS_LIMITS.photos);
 
 const storedPhoto = z.object({
   id: z.string().regex(UUID),

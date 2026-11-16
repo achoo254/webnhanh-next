@@ -462,6 +462,9 @@ label.pill:has(+ input:focus-visible) {
 .bento-tall {
   grid-row: span 2;
 }
+.bento-wide {
+  grid-column: 1 / -1;
+}
 .bento-card {
   position: relative;
   display: flex;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { linksShareCard, renderLinks } from './links-render';
-import { linksDraftSchema, linksImageIds, linksPublishIssues, newLinksDraft, sampleLinksDraft, type LinksDraft } from './links-schema';
+import { LINKS_LIMITS, linksDraftSchema, linksImageIds, linksPublishIssues, newLinksDraft, sampleLinksDraft, type LinksDraft } from './links-schema';
 import { imageAsset } from './page';
 
 const AVATAR = '11111111-1111-4111-8111-111111111111';
@@ -36,6 +36,7 @@ describe('link-in-bio draft', () => {
 
   it('lists the avatar then the banner', () => {
     expect(linksImageIds(sample())).toEqual([AVATAR, COVER]);
+    expect(linksImageIds(sample()).length).toBeLessThanOrEqual(LINKS_LIMITS.photos);
     expect(linksImageIds(sample({ cover: null }))).toEqual([AVATAR]);
   });
 });

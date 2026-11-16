@@ -1,6 +1,6 @@
 import type { TemplateId } from '@webnhanh/templates';
 import birthdayHero from '@webnhanh/templates/library/birthday/tiec-bong-bay/hero.webp';
-import linksAvatar from '@webnhanh/templates/library/links/gen-z-sticker/avatar.webp';
+import linksCover from '@webnhanh/templates/library/links/gen-z-sticker/cover.webp';
 import partyCover from '@webnhanh/templates/library/party/tiec-cong-ty-neon/cover.webp';
 import cafeCover from '@webnhanh/templates/samples/cafe-cover.webp';
 import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
@@ -30,8 +30,18 @@ const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey;
   { id: 'cafe', label: 'template.cafe', note: 'template.cafe.note', picture: cafeCover },
   { id: 'birthday', label: 'template.birthday', note: 'template.birthday.note', picture: birthdayHero },
   { id: 'profile', label: 'template.profile', note: 'template.profile.note', picture: profileCard },
-  { id: 'links', label: 'template.links', note: 'template.links.note', picture: linksAvatar },
+  { id: 'links', label: 'template.links', note: 'template.links.note', picture: linksCover },
 ];
+
+/**
+ * The grid cell of the card at `index` among `count` in two columns: the first is tall (two rows), and when that leaves
+ * the last row with one card, the last one spans both columns, so the grid has no empty cell.
+ */
+export function bentoCell(index: number, count: number): string | undefined {
+  if (index === 0) return 'bento-tall';
+  if (index === count - 1 && (count + 1) % 2 === 1) return 'bento-wide';
+  return undefined;
+}
 
 /**
  * What the person picked before signing up (`/new?template=…&variant=…&name=…`), checked against the templates and
@@ -111,7 +121,7 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
       ) : null}
       <ul className="bento" aria-label={t('new.title')}>
         {TEMPLATES.map((template, index) => (
-          <li key={template.id} className={index === 0 ? 'bento-tall' : undefined}>
+          <li key={template.id} className={bentoCell(index, TEMPLATES.length)}>
             <button
               type="button"
               className={`bento-card bento-${template.id}`}

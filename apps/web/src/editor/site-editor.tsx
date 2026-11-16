@@ -279,7 +279,7 @@ export function SiteEditor({
       </div>
 
       <div className="editor-publish">
-        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} /> : null}
+        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} onShowForm={() => setView('edit')} /> : null}
         <PublishPanel
           key={job?.id ?? 'none'}
           siteId={site.id}

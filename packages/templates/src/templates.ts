@@ -14,6 +14,7 @@ import { newPartyDraft, partyDraftSchema, partyImageIds, partyPublishIssues, PAR
 import { partyShareCard, renderParty } from './party-render';
 import { newProfileDraft, profileDraftSchema, PROFILE_SAMPLES, profileImageIds, profilePublishIssues, PROFILE_TEMPLATE, sampleProfileDraft, type ProfileDraft } from './profile-schema';
 import { profileShareCard, renderProfile } from './profile-render';
+import { takesReplies, type RsvpTemplateId } from './rsvp-templates';
 import type { SamplePhoto, TemplateIssue } from './schema-parts';
 import { shopShareCard, type ShareCardContent } from './share-card';
 import { renderShop, type RenderOptions } from './shop-render';
@@ -175,15 +176,13 @@ export function draftImageIds(template: string | null, draft: unknown): Set<stri
   return parsed ? new Set(templateImageIds(parsed)) : null;
 }
 
-/**
- * Templates whose page takes replies ("Xác nhận tham dự") through the reply form (`rsvp-form.ts`) when the draft's
- * `rsvp` is on, and shows a countdown to its `date` that the worker renders again each day.
- */
-export const RSVP_TEMPLATES = [WEDDING_TEMPLATE, PARTY_TEMPLATE] as const;
+export { RSVP_TEMPLATES, takesReplies, type RsvpTemplateId } from './rsvp-templates';
 
-/** True when `template` is one whose page takes replies (its inbox lists replies, not orders). */
-export function takesReplies(template: string | null | undefined): boolean {
-  return typeof template === 'string' && (RSVP_TEMPLATES as readonly string[]).includes(template);
+/** A draft of a template that takes replies and counts down to its day (`RSVP_TEMPLATES`). */
+export type RsvpDraft = Extract<TemplateDraft, { readonly template: RsvpTemplateId }>;
+
+export function isRsvpDraft(value: TemplateDraft | null): value is RsvpDraft {
+  return value !== null && takesReplies(value.template);
 }
 
 /** Options of every renderer: each template reads the ones it has (`orderForm` the shop, `rsvpForm` and `now` the wedding and the party). */

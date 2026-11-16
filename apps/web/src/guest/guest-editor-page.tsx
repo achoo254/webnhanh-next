@@ -247,7 +247,7 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
       </div>
 
       <div className="editor-publish">
-        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} /> : null}
+        {attempted ? <IssueSummary count={issues.size} editorRef={editorRef} onShowForm={() => setView('edit')} /> : null}
         <section className="publish" data-id="guest-publish">
           {confirmLeave ? (
             <div className="notice notice-warning" role="alert" data-id="guest-confirm-leave">

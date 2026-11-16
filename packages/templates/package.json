@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./shop-fonts": "./src/shop-fonts.ts",
     "./variants": "./src/variants.ts",
+    "./rsvp-templates": "./src/rsvp-templates.ts",
     "./samples/*": "./samples/*",
     "./library/*": "./library/*",
     "./package.json": "./package.json"

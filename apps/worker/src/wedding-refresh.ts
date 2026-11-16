@@ -16,7 +16,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { imageFileName, releases, sites, type Db, type LivePage } from '@webnhanh/db';
 import { publishRelease } from '@webnhanh/publish';
-import { daysUntil, imageAsset, parseDraft, RSVP_TEMPLATES } from '@webnhanh/templates';
+import { daysUntil, imageAsset, isRsvpDraft, parseDraft, RSVP_TEMPLATES } from '@webnhanh/templates';
 import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import { renderLivePage, type PublishDeps } from './publish-job';
 
@@ -73,7 +73,7 @@ async function staleWeddings(db: Db, now: Date): Promise<Candidate[]> {
 /** Renders `site`'s live page again into a new release; the site's row only gets the new release. */
 async function refresh(deps: RefreshDeps, site: Candidate): Promise<boolean> {
   const value = parseDraft(site.template, site.livePage.draft);
-  if (value?.template !== 'wedding' && value?.template !== 'party') {
+  if (!isRsvpDraft(value)) {
     deps.log.warn(`countdown refresh ${site.name}: the live page cannot be read`);
     return false;
   }

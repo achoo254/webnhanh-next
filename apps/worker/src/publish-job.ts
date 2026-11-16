@@ -32,6 +32,7 @@ import { deleteRelease, publishRelease, PublishError, removeSite } from '@webnha
 import {
   draftShareCard,
   imageAsset,
+  isRsvpDraft,
   orderProducts,
   parseDraft,
   publishIssues,
@@ -258,7 +259,7 @@ export type LiveShareImage = Omit<ShareImage, 'url'> & { file: string };
 /** What the form of the live page takes (`sites.order_form`): a shop's products, replies to a wedding or a party, or nothing. */
 export function formSpecOf(value: TemplateDraft): OrderFormSpec | null {
   if (value.template === 'shop') return { products: orderProducts(value.draft).map(({ key, name }) => ({ key, name })) };
-  if ((value.template === 'wedding' || value.template === 'party') && value.draft.rsvp) return { products: [], rsvp: true };
+  if (isRsvpDraft(value) && value.draft.rsvp) return { products: [], rsvp: true };
   return null;
 }
 
