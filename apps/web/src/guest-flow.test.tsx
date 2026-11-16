@@ -114,7 +114,8 @@ function frame(): HTMLIFrameElement {
 describe('picking a template, no account needed', () => {
   it('offers every template with its picture, the developer deploy as a link below, and no address field', async () => {
     renderAt('/new');
-    const profile = await screen.findByRole('button', { name: /Hồ sơ cá nhân/ });
+    // Eight template cards with pictures: a slow CI runner takes over a second to name them all.
+    const profile = await screen.findByRole('button', { name: /Hồ sơ cá nhân/ }, { timeout: 5000 });
     expect(profile.querySelector('img')).toBeTruthy();
     expect(screen.queryByRole('link', { name: /Cho lập trình viên/ })).toBeNull();
     expect(screen.getByRole('link', { name: /Bạn là lập trình viên/ }).getAttribute('href')).toBe('/new/developer');
