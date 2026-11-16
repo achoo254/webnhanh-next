@@ -20,7 +20,7 @@ const SOCIALS: Readonly<Record<SocialKey, { readonly label: MessageKey; readonly
 };
 
 /** The personal page: photo, name, a line and a short bio, a list of links, social accounts, the look and colours. */
-export function ProfileForm({ siteId, draft, update, images, onImage, issueText }: FormProps<ProfileDraft>): ReactNode {
+export function ProfileForm({ photos, draft, update, images, onImage, issueText }: FormProps<ProfileDraft>): ReactNode {
   const { t } = useI18n();
   const edit = (patch: Partial<ProfileDraft>): void => update((current) => ({ ...current, ...patch }));
   const editLinks = (change: (links: readonly ProfileLink[]) => ProfileLink[]): void => update((current) => ({ ...current, links: change(current.links) }));
@@ -32,7 +32,7 @@ export function ProfileForm({ siteId, draft, update, images, onImage, issueText 
           {t('editor.profile')}
         </h2>
         <ImageField
-          siteId={siteId}
+          photos={photos}
           label={t('editor.profile.avatar')}
           image={draft.avatar ? (images.get(draft.avatar) ?? null) : null}
           onUploaded={(image) => {

@@ -41,16 +41,25 @@ afterEach(() => {
 });
 
 describe('web app', () => {
-  it('shows a visitor the landing with the sign-in card, going through the server sign-in', async () => {
+  it('shows a visitor the landing whose one call to action picks a template, sign-in only in the header', async () => {
     stubMe(401, { error: 'sign-in-required' });
     renderAt('/');
-    const cta = await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' });
-    expect(cta.getAttribute('href')).toBe('/auth/login?return=%2F&lang=vi');
+    const cta = await screen.findByRole('link', { name: 'Chọn mẫu miễn phí' });
+    expect(cta.getAttribute('href')).toBe('/new');
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Có website riêng mà không cần biết làm web');
-    expect(screen.getByText(/App không bao giờ thấy mật khẩu của bạn/)).toBeTruthy();
-    // The header's pill leads to /login; the templates' looks fill the wall beside the hero.
+    expect(screen.queryByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeNull();
+    // The header's pill leads to /login.
     expect(within(screen.getByRole('banner')).getByRole('link', { name: 'Đăng ký miễn phíĐăng ký' }).getAttribute('href')).toBe('/login');
-    expect(document.querySelectorAll('[data-id="template-wall"] img').length).toBeGreaterThan(0);
+    // Every look on the wall opens that look; the second copy of each moving list is out of the tab order.
+    const wall = screen.getByRole('navigation', { name: 'Các mẫu website' });
+    const look = within(wall).getByRole('link', { name: 'Hoa pastel, Thiệp cưới' });
+    expect(look.getAttribute('href')).toBe('/new?template=wedding&variant=hoa-pastel');
+    const copies = [...wall.querySelectorAll('a')].filter((link) => link.getAttribute('href') === '/new?template=wedding&variant=hoa-pastel');
+    expect(copies).toHaveLength(2);
+    expect(copies[1]?.getAttribute('tabindex')).toBe('-1');
+    expect(copies[1]?.closest('li')?.getAttribute('aria-hidden')).toBe('true');
+    // The steps no longer start with signing in.
+    expect(screen.getByRole('heading', { level: 3, name: 'Chọn mẫu' })).toBeTruthy();
   });
 
   it('frames every page in the app\'s own header and footer: one theme, language in the header, hoandat.com and legal links below', async () => {
@@ -73,12 +82,12 @@ describe('web app', () => {
     stubMe(401, { error: 'sign-in-required' });
     renderAt('/');
     // The landing replaces the frame shown while the session check runs: switch once it is there.
-    await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' });
+    await screen.findByRole('link', { name: 'Chọn mẫu miễn phí' });
     fireEvent.click(screen.getByRole('button', { name: 'English' }));
     expect(await screen.findByText('Your own website, no web skills needed')).toBeTruthy();
     expect(document.cookie).toContain('hd_lang=en');
     expect(screen.getByRole('link', { name: 'An app from hoandat.com' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Sign in with hoandat.com' }).getAttribute('href')).toBe('/auth/login?return=%2F&lang=en');
+    expect(screen.getByRole('link', { name: 'Pick a free template' }).getAttribute('href')).toBe('/new');
     expect(document.documentElement.lang).toBe('en');
   });
 
@@ -116,7 +125,7 @@ describe('web app', () => {
     expect(header.querySelector('img.shell-avatar')).toBeNull();
     expect(within(header).getByRole('link', { name: 'Quản trị' }).getAttribute('href')).toBe('/admin');
     fireEvent.click(within(header).getByRole('button', { name: 'Đăng xuất' }));
-    expect(await screen.findByRole('link', { name: 'Đăng nhập bằng hoandat.com' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: 'Chọn mẫu miễn phí' })).toBeTruthy();
     const calls = vi.mocked(fetch).mock.calls.map(([input, init]) => `${init?.method ?? 'GET'} ${String(input)}`);
     expect(calls).toContain('POST /auth/logout');
   });

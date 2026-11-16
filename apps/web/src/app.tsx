@@ -1,6 +1,7 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Route, Routes } from 'react-router';
 import { useAccount } from './account';
+import { TRY_FIRST } from './features';
 import { GUIDES } from './guides/guide-content';
 import { GuidePage } from './guides/guide-page';
 import { GUIDE_IDS } from './guides/guide-paths';
@@ -18,6 +19,8 @@ const HomePage = lazy(() => import('./pages/home-page').then((m) => ({ default: 
 const NewSitePage = lazy(() => import('./pages/new-site-page').then((m) => ({ default: m.NewSitePage })));
 const EditorPage = lazy(() => import('./pages/editor-page').then((m) => ({ default: m.EditorPage })));
 const OrdersPage = lazy(() => import('./pages/orders-page').then((m) => ({ default: m.OrdersPage })));
+const GuestEditorPage = lazy(() => import('./guest/guest-editor-page').then((m) => ({ default: m.GuestEditorPage })));
+const GuestPublishPage = lazy(() => import('./guest/guest-publish-page').then((m) => ({ default: m.GuestPublishPage })));
 const DeployNewPage = lazy(() => import('./pages/deploy-new-page').then((m) => ({ default: m.DeployNewPage })));
 const DeployPage = lazy(() => import('./pages/deploy-page').then((m) => ({ default: m.DeployPage })));
 const AdminPage = lazy(() => import('./pages/admin-page').then((m) => ({ default: m.AdminPage })));
@@ -44,6 +47,8 @@ export function App(): ReactNode {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/new" element={<NewSitePage />} />
+        {TRY_FIRST ? <Route path="/new/edit" element={<GuestEditorPage />} /> : null}
+        {TRY_FIRST ? <Route path="/new/publish" element={<GuestPublishPage />} /> : null}
         <Route path="/new/developer" element={<DeployNewPage />} />
         <Route path="/sites/:siteId" element={<EditorPage />} />
         <Route path="/sites/:siteId/orders" element={<OrdersPage />} />

@@ -173,7 +173,7 @@ export function CreditsPage(): ReactNode {
           {fonts}
           <h2>Ảnh</h2>
           <p>
-            Ảnh mẫu, ảnh và hoạ tiết của từng kiểu mẫu được vẽ bằng AI cho các app của {domain}, trên máy của chính {domain}, bằng các mô hình
+            Ảnh mẫu, ảnh minh hoạ các mẫu ở trang chọn mẫu, ảnh và hoạ tiết của từng kiểu mẫu được vẽ bằng AI cho các app của {domain}, trên máy của chính {domain}, bằng các mô hình
             mã nguồn mở (Qwen-Image, Z-Image, FLUX.2 klein, giấy phép Apache-2.0; BiRefNet, giấy phép MIT, để tách nền). Ảnh thuộc về {domain},
             giữ mọi quyền (không phải CC0). Không ảnh nào có chữ (riêng hoạ tiết thiệp cưới truyền thống có hình chữ Song Hỷ): mọi chữ trên
             website là chữ bạn sửa được.
@@ -196,7 +196,7 @@ export function CreditsPage(): ReactNode {
           {fonts}
           <h2>Pictures</h2>
           <p>
-            The sample pictures and the pictures and ornaments of each template look are AI-generated for the {domain} apps on {domain}&apos;s
+            The sample pictures, the pictures of the template picker and the pictures and ornaments of each template look are AI-generated for the {domain} apps on {domain}&apos;s
             own machine with open models (Qwen-Image, Z-Image, FLUX.2 klein under Apache-2.0; BiRefNet under MIT for background removal). They
             are owned by {domain}, all rights reserved (not CC0). None contains text (only the traditional wedding ornament shows the
             double-happiness sign): every word on a website is one you can change.

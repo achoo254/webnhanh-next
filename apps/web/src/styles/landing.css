@@ -367,3 +367,31 @@
     transition: none;
   }
 }
+
+/* The landing's call to action: pick a template, no account needed (signing in is in the header). */
+.hero-try {
+  display: grid;
+  gap: var(--space-2);
+  width: min(100%, 420px);
+  margin-top: var(--space-2);
+}
+.hero-try .pill-cta {
+  min-height: 64px;
+  font-size: 20px;
+}
+/* Each window of the wall opens its look; the wall stops moving under the pointer and while a window has focus. */
+.wall-tile-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.wall-tile-link:focus-visible {
+  outline: none;
+}
+.wall-tile:has(.wall-tile-link:focus-visible) {
+  box-shadow: var(--shadow-block), var(--shadow-focus-primary);
+}
+.wall-track:hover,
+.wall-track:focus-within {
+  animation-play-state: paused;
+}

@@ -1,5 +1,5 @@
 import { publishIssues, renderDraft, templateImageIds, type ImageAsset, type IssueCode, type TemplateDraft } from '@webnhanh/templates';
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { brand } from '../brand';
 import { ISSUE_MESSAGES } from '../error-messages';
@@ -12,6 +12,7 @@ import { ProfileForm } from './forms/profile-form';
 import { ShopForm } from './forms/shop-form';
 import { TetForm } from './forms/tet-form';
 import { WeddingForm } from './forms/wedding-form';
+import { sitePhotoStore } from './photo-store';
 import { PublishPanel } from './publish-panel';
 import { previewFontUrl } from './style-picker';
 import { DeleteSitePanel } from '../delete-site-panel';
@@ -85,16 +86,17 @@ function SaveStatus({ dirty, state }: { readonly dirty: boolean; readonly state:
 
 /**
  * The page as visitors will see it: the same renderer as the published page, its form (a shop's orders, a wedding's
- * replies) and fonts included, in a frame that runs no script and sends no form (the form's token is a stand-in; the
- * frame cannot submit anyway).
+ * replies) and fonts included. The form's token is a stand-in; the frame cannot submit anyway.
  */
-function Preview({ value, assets, siteName }: { readonly value: TemplateDraft; readonly assets: ReadonlyMap<string, ImageAsset>; readonly siteName: string }): ReactNode {
+export function previewHtml(value: TemplateDraft, assets: ReadonlyMap<string, ImageAsset>, siteName: string): string {
+  const origin = window.location.origin;
+  const form = { action: `${origin}/f/${siteName}`, token: 'preview' };
+  return renderDraft(value, assets, { madeWith: { name: brand.appName, url: origin }, orderForm: form, rsvpForm: form, fontUrl: previewFontUrl }).html;
+}
+
+/** The preview frame: runs no script and sends no form. */
+export function PreviewFrame({ html }: { readonly html: string }): ReactNode {
   const { t } = useI18n();
-  const html = useMemo(() => {
-    const origin = window.location.origin;
-    const form = { action: `${origin}/f/${siteName}`, token: 'preview' };
-    return renderDraft(value, assets, { madeWith: { name: brand.appName, url: origin }, orderForm: form, rsvpForm: form, fontUrl: previewFontUrl }).html;
-  }, [value, assets, siteName]);
   return (
     <iframe
       className="preview-frame"
@@ -108,8 +110,13 @@ function Preview({ value, assets, siteName }: { readonly value: TemplateDraft; r
   );
 }
 
+function Preview({ value, assets, siteName }: { readonly value: TemplateDraft; readonly assets: ReadonlyMap<string, ImageAsset>; readonly siteName: string }): ReactNode {
+  const html = useMemo(() => previewHtml(value, assets, siteName), [value, assets, siteName]);
+  return <PreviewFrame html={html} />;
+}
+
 /** Issues to show beside their fields: wrong links and contacts as soon as they are typed, the rest after a publish attempt. */
-function visibleIssues(value: TemplateDraft, attempted: boolean): Map<string, IssueCode> {
+export function visibleIssues(value: TemplateDraft, attempted: boolean): Map<string, IssueCode> {
   const shown = new Map<string, IssueCode>();
   for (const issue of publishIssues(value)) {
     if (attempted || issue.code.startsWith('invalid-')) shown.set(issue.field, issue.code);
@@ -118,7 +125,7 @@ function visibleIssues(value: TemplateDraft, attempted: boolean): Map<string, Is
 }
 
 /** The form of the draft's template, editing that draft only. */
-function TemplateForm({
+export function TemplateForm({
   value,
   setValue,
   common,
@@ -147,6 +154,52 @@ function TemplateForm({
 }
 
 /**
+ * The editor's Edit/Preview tab and its publish checks: once Publish was pressed every issue shows, and on each
+ * refusal the first wrong field is brought into view (even far above the button) and focused.
+ */
+export function useEditorChecks(): {
+  view: 'edit' | 'preview';
+  setView: (view: 'edit' | 'preview') => void;
+  attempted: boolean;
+  setAttempted: (attempted: boolean) => void;
+  refuse: () => void;
+  editorRef: RefObject<HTMLDivElement | null>;
+} {
+  const [view, setView] = useState<'edit' | 'preview'>('edit');
+  const [attempted, setAttempted] = useState(false);
+  const [refusals, setRefusals] = useState(0);
+  const editorRef = useRef<HTMLDivElement>(null);
+  const refuse = useCallback((): void => {
+    setAttempted(true);
+    setView('edit');
+    setRefusals((count) => count + 1);
+  }, []);
+  useEffect(() => {
+    if (refusals === 0) return;
+    // A wrong field, or the issue of a whole list ("Cần ít nhất một món").
+    const first = editorRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-issue="true"]');
+    if (!first) return;
+    first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    first.focus({ preventScroll: true });
+  }, [refusals]);
+  return { view, setView, attempted, setAttempted, refuse, editorRef };
+}
+
+/** The Edit and Preview tabs, shown on phones only (side by side on a wide screen). */
+export function EditorTabs({ view, onChange }: { readonly view: 'edit' | 'preview'; readonly onChange: (view: 'edit' | 'preview') => void }): ReactNode {
+  const { t } = useI18n();
+  return (
+    <div className="tabs" role="group" aria-label={t('editor.tab.preview')}>
+      {(['edit', 'preview'] as const).map((tab) => (
+        <button key={tab} type="button" className="tab" aria-pressed={view === tab} onClick={() => onChange(tab)} data-id={`tab-${tab}`}>
+          {t(tab === 'edit' ? 'editor.tab.edit' : 'editor.tab.preview')}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
  * The editor of a template page (any template): on a phone, Edit and Preview are two tabs; on a wide screen, side by
  * side. The draft saves itself; Publish saves, checks and starts the publish job.
  */
@@ -164,13 +217,10 @@ export function SiteEditor({
   const [job, setJob] = useState<Job | null>(initialSite.job);
   const [value, setValue] = useState(initialValue);
   const [images, setImages] = useState<ReadonlyMap<string, SiteImage>>(() => new Map(initialImages.map((image) => [image.id, image])));
-  const [view, setView] = useState<'edit' | 'preview'>('edit');
-  const [attempted, setAttempted] = useState(false);
-  // Bumped on every refused publish: the first wrong field is then brought into view, even far above the button.
-  const [refusals, setRefusals] = useState(0);
-  const editorRef = useRef<HTMLDivElement>(null);
+  const { view, setView, attempted, setAttempted, refuse, editorRef } = useEditorChecks();
   const { dirty, state, flush } = useAutosave(site.id, value.draft, initialValue.draft);
 
+  const photos = useMemo(() => sitePhotoStore(site.id), [site.id]);
   const assets = useMemo(() => new Map([...images].map(([id, image]) => [id, editorAsset(site.id, image)])), [images, site.id]);
   const issues = visibleIssues(value, attempted);
   const issueText = (field: string): string | null => {
@@ -179,20 +229,6 @@ export function SiteEditor({
   };
   const usesSamples = templateImageIds(value).some((id) => images.get(id)?.sample);
   const addImage = useCallback((image: SiteImage): void => setImages((current) => new Map(current).set(image.id, image)), []);
-
-  const refuse = useCallback((): void => {
-    setAttempted(true);
-    setView('edit');
-    setRefusals((count) => count + 1);
-  }, []);
-  useEffect(() => {
-    if (refusals === 0) return;
-    // A wrong field, or the issue of a whole list ("Cần ít nhất một món").
-    const first = editorRef.current?.querySelector<HTMLElement>('[aria-invalid="true"], [data-issue="true"]');
-    if (!first) return;
-    first.scrollIntoView({ block: 'center', behavior: 'smooth' });
-    first.focus({ preventScroll: true });
-  }, [refusals]);
 
   const prepare = async (): Promise<boolean> => {
     if (publishIssues(value).length > 0) {
@@ -212,13 +248,7 @@ export function SiteEditor({
         </Link>
         <SaveStatus dirty={dirty} state={state} />
       </div>
-      <div className="tabs" role="group" aria-label={t('editor.tab.preview')}>
-        {(['edit', 'preview'] as const).map((tab) => (
-          <button key={tab} type="button" className="tab" aria-pressed={view === tab} onClick={() => setView(tab)} data-id={`tab-${tab}`}>
-            {t(tab === 'edit' ? 'editor.tab.edit' : 'editor.tab.preview')}
-          </button>
-        ))}
-      </div>
+      <EditorTabs view={view} onChange={setView} />
 
       <div className="editor-columns">
         <div className="editor-form">
@@ -232,7 +262,7 @@ export function SiteEditor({
 
           {usesSamples ? <p className="notice notice-info">{t('editor.samples')}</p> : null}
 
-          <TemplateForm value={value} setValue={setValue} common={{ siteId: site.id, images, onImage: addImage, issueText }} />
+          <TemplateForm value={value} setValue={setValue} common={{ photos, images, onImage: addImage, issueText }} />
         </div>
 
         <div className="editor-preview">

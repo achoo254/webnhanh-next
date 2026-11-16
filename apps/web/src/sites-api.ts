@@ -87,6 +87,14 @@ export async function createSite(name: string, template: string, variant?: strin
   return parse(z.object({ site: siteSchema }), await call('/api/sites', sendJson('POST', variant ? { name, template, variant } : { name, template }))).site;
 }
 
+/**
+ * Makes a template site of one of its looks, with the image id each of the look's pictures became, by slot (for a
+ * draft made before the site, in the browser of a visitor who just signed up).
+ */
+export async function createSiteFromLook(name: string, template: string, variant: string): Promise<{ site: Site; slotImages: Record<string, string> }> {
+  return parse(z.object({ site: siteSchema, slotImages: z.record(z.string(), z.string()) }), await call('/api/sites', sendJson('POST', { name, template, variant })));
+}
+
 export async function getSite(siteId: string): Promise<SiteDetail> {
   return parse(detailSchema, await call(`/api/sites/${encodeURIComponent(siteId)}`));
 }

@@ -15,7 +15,7 @@ import type { FormProps } from './form-props';
  * The wedding invitation: the couple and the day, the events (ceremony, party) each with its place and directions,
  * the photos, "Xác nhận tham dự" (replies come into the app), the couple's contacts, the look and colours.
  */
-export function WeddingForm({ siteId, draft, update, images, onImage, issueText }: FormProps<WeddingDraft>): ReactNode {
+export function WeddingForm({ photos, draft, update, images, onImage, issueText }: FormProps<WeddingDraft>): ReactNode {
   const { t } = useI18n();
   const edit = (patch: Partial<WeddingDraft>): void => update((current) => ({ ...current, ...patch }));
   const editEvents = (change: (events: readonly WeddingEvent[]) => WeddingEvent[]): void => update((current) => ({ ...current, events: change(current.events) }));
@@ -27,7 +27,7 @@ export function WeddingForm({ siteId, draft, update, images, onImage, issueText 
           {t('editor.wedding')}
         </h2>
         <ImageField
-          siteId={siteId}
+          photos={photos}
           label={t('editor.cover')}
           image={draft.cover ? (images.get(draft.cover) ?? null) : null}
           onUploaded={(image) => {
@@ -153,7 +153,7 @@ export function WeddingForm({ siteId, draft, update, images, onImage, issueText 
           {t('editor.wedding.gallery')}
         </h2>
         <GalleryField
-          siteId={siteId}
+          photos={photos}
           ids={draft.gallery}
           max={WEDDING_LIMITS.gallery}
           images={images}

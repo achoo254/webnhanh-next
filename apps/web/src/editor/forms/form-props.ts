@@ -1,8 +1,9 @@
 import type { SiteImage } from '../../sites-api';
+import type { PhotoStore } from '../photo-store';
 
 /** What every template's form gets from the editor. */
 export interface FormProps<D> {
-  readonly siteId: string;
+  readonly photos: PhotoStore;
   readonly draft: D;
   /** Takes an updater: an upload finishing seconds later must apply to the draft as it is then, not as it was. */
   readonly update: (change: (draft: D) => D) => void;

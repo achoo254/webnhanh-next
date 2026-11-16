@@ -14,12 +14,15 @@ export function AppSignInCard({
   description,
   returnTo,
   headingLevel,
+  signUp = false,
 }: {
   readonly title: string;
   readonly description: string;
   readonly returnTo: string;
   /** 2 beside the landing's hero, whose title is the h1. */
   readonly headingLevel?: 1 | 2;
+  /** The account service opens on making an account (a visitor publishing a draft), carrying where they came from. */
+  readonly signUp?: boolean;
 }): ReactNode {
   const { locale, t } = useI18n();
   const [params] = useSearchParams();
@@ -31,8 +34,8 @@ export function AppSignInCard({
         <Heading className="sign-in-title">{title}</Heading>
         <p className="sign-in-body">{description}</p>
       </div>
-      <a className="pill pill-cta" href={signInUrl(returnTo, locale)} data-id="sign-in-cta">
-        {t('chrome.signInWith')}
+      <a className="pill pill-cta" href={signInUrl(returnTo, locale, signUp)} data-id="sign-in-cta">
+        {t(signUp ? 'chrome.signUpWith' : 'chrome.signInWith')}
       </a>
       <p className="sign-in-note">{t('chrome.signInNote')}</p>
       {result === 'fail' || result === 'unavailable' ? (

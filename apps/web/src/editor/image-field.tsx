@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { errorMessage } from '../error-messages';
 import { useI18n, type MessageKey } from '../i18n';
-import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES, thumbUrl, uploadImage, type SiteImage } from '../sites-api';
+import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES, type SiteImage } from '../sites-api';
+import type { PhotoStore } from './photo-store';
 
 /**
  * One photo slot of the draft: the current photo (marked when it is a template sample), a button to choose a new
@@ -9,7 +10,7 @@ import { ACCEPTED_IMAGE_TYPES, MAX_UPLOAD_BYTES, thumbUrl, uploadImage, type Sit
  * the server checks again by the file's bytes.
  */
 export function ImageField({
-  siteId,
+  photos,
   label,
   image,
   onUploaded,
@@ -17,7 +18,7 @@ export function ImageField({
   dataId,
   wide = false,
 }: {
-  readonly siteId: string;
+  readonly photos: PhotoStore;
   readonly label: string;
   readonly image: SiteImage | null;
   readonly onUploaded: (image: SiteImage) => void;
@@ -49,7 +50,8 @@ export function ImageField({
     abort.current?.abort();
     const controller = new AbortController();
     abort.current = controller;
-    uploadImage(siteId, file, setProgress, controller.signal)
+    photos
+      .upload(file, setProgress, controller.signal)
       .then((uploaded) => {
         setProgress(null);
         onUploaded(uploaded);
@@ -65,7 +67,7 @@ export function ImageField({
   return (
     <div className={`image-field${wide ? ' image-field-wide' : ''}`} data-id={dataId}>
       <div className="image-field-media">
-        {image ? <img src={thumbUrl(siteId, image, wide ? 960 : 300)} alt="" /> : <span className="image-field-none">{t('image.none')}</span>}
+        {image ? <img src={photos.thumb(image, wide ? 960 : 300)} alt="" /> : <span className="image-field-none">{t('image.none')}</span>}
         {image?.sample ? <span className="badge badge-sample">{t('image.sample')}</span> : null}
       </div>
       <div className="image-field-controls">

@@ -1,18 +1,19 @@
 import type { ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { SiteImage } from '../sites-api';
+import type { PhotoStore } from './photo-store';
 import { ImageField } from './image-field';
 
 /** A list of photos (a wedding's "Khoảnh khắc"): each can be changed or removed, more added up to `max`. */
 export function GalleryField({
-  siteId,
+  photos,
   ids,
   max,
   images,
   onChange,
   onImage,
 }: {
-  readonly siteId: string;
+  readonly photos: PhotoStore;
   readonly ids: readonly string[];
   readonly max: number;
   readonly images: ReadonlyMap<string, SiteImage>;
@@ -26,7 +27,7 @@ export function GalleryField({
       {ids.map((id, index) => (
         <ImageField
           key={id}
-          siteId={siteId}
+          photos={photos}
           label={t('editor.gallery.photo', { n: index + 1 })}
           image={images.get(id) ?? null}
           onUploaded={(image) => {
@@ -41,7 +42,7 @@ export function GalleryField({
         <ImageField
           // A new slot after each upload, so the next photo starts fresh.
           key={`add-${ids.length}`}
-          siteId={siteId}
+          photos={photos}
           label={t('editor.gallery.add', { count: ids.length, max })}
           image={null}
           onUploaded={(image) => {

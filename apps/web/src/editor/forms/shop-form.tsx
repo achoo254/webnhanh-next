@@ -11,7 +11,7 @@ import { TextField } from '../text-field';
 import type { FormProps } from './form-props';
 
 /** The shop page: the shop, its products, how to reach it, its look and colours. */
-export function ShopForm({ siteId, draft, update, images, onImage, issueText }: FormProps<ShopDraft>): ReactNode {
+export function ShopForm({ photos, draft, update, images, onImage, issueText }: FormProps<ShopDraft>): ReactNode {
   const { t } = useI18n();
   const edit = (patch: Partial<ShopDraft>): void => update((current) => ({ ...current, ...patch }));
   const nameErrors = new Map<number, string>();
@@ -26,7 +26,7 @@ export function ShopForm({ siteId, draft, update, images, onImage, issueText }: 
           {t('editor.shop')}
         </h2>
         <ImageField
-          siteId={siteId}
+          photos={photos}
           label={t('editor.cover')}
           image={draft.cover ? (images.get(draft.cover) ?? null) : null}
           onUploaded={(image) => {
@@ -63,7 +63,7 @@ export function ShopForm({ siteId, draft, update, images, onImage, issueText }: 
         </h2>
         <PanelIssue text={issueText('products')} />
         <ProductList
-          siteId={siteId}
+          photos={photos}
           products={draft.products}
           images={images}
           onChange={(change) => update((current) => ({ ...current, products: change(current.products) }))}

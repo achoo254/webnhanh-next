@@ -45,6 +45,20 @@ với trường nháp là `variantDraft` trong `variant-drafts.ts`). Hoạ tiế
 `src/guides/guide-paths.ts`). nginx phục vụ `$uri/index.html` trước khi rơi về SPA: đổi cấu hình nginx nên cần một lần
 `deploy.sh release` tay (CI không đổi nginx; trước đó các trang vẫn chạy như SPA).
 
+**Thử trước, đăng ký khi bấm Đăng** (cờ `TRY_FIRST` ở `apps/web/src/features.ts`, mặc định bật; build với
+`VITE_TRY_FIRST=0` là về luồng cũ: đăng ký rồi mới vào trình sửa). Nút chính của landing là "Chọn mẫu miễn phí" (`/new`),
+đăng nhập chỉ còn ở header; mỗi ảnh trên tường mẫu mở thẳng kiểu đó (`/new?template=…&variant=…`). `/new` chọn mẫu và
+kiểu, không hỏi địa chỉ; "Sửa mẫu này" mở `/new/edit` (`src/guest/`): trình sửa như của site (cùng form, cùng
+`renderDraft` trong `iframe` không script) nhưng bản nháp chỉ ở trình duyệt: nháp và danh sách ảnh trong localStorage, ảnh
+khách chọn (thu nhỏ còn cạnh dài 1600 px, JPEG) trong IndexedDB; mọi lần đọc ghi đều bắt lỗi, nháp đọc lại không trọn thì
+mở mẫu mới. Ảnh của kiểu là file của app; ảnh khách chọn hiện trong bản xem trước bằng URL `data:` (CSP của khung chỉ
+thêm `data:` cho ảnh, `guest-preview.ts`). Server không nhận gì trước khi đăng nhập. Bấm "Đăng website": khách chưa đăng
+nhập đi tới đăng ký (`/auth/login?signup=1`) kèm `utm_source`, `utm_medium`, `utm_campaign` của địa chỉ khách vào trang
+đầu tiên (giữ trong sessionStorage, mỗi thẻ một giá trị đầu; server chuyển tiếp nguyên cho IdP, `signUpSource` trong
+`auth-routes.ts`), quay về `/new/publish`: chọn địa chỉ, rồi `guest-transfer.ts` tạo site từ cùng kiểu (`POST /api/sites`
+trả thêm `slotImages`: ảnh của kiểu thành ảnh nào của site), tải ảnh khách chọn lên (server kiểm và làm sạch như mọi
+ảnh), lưu nháp, xếp lệnh đăng, mở trang sửa của site. Mỗi bước được ghi lại, tải lại giữa chừng thì làm tiếp với cùng site.
+
 ## Cấu trúc
 
 | Thư mục | Vai trò |

@@ -13,7 +13,7 @@ import type { FormProps } from './form-props';
  * The Tết card: who sends it (and to whom), the greeting (one of the ready ones, then changed at will, or the
  * sender's own), a photo, "Gửi lời chúc lại" with the sender's contacts, the look and colours.
  */
-export function TetForm({ siteId, draft, update, images, onImage, issueText }: FormProps<TetDraft>): ReactNode {
+export function TetForm({ photos, draft, update, images, onImage, issueText }: FormProps<TetDraft>): ReactNode {
   const { t } = useI18n();
   const edit = (patch: Partial<TetDraft>): void => update((current) => ({ ...current, ...patch }));
   const picked = TET_GREETINGS.find((greeting) => greeting.text === draft.greeting)?.id ?? null;
@@ -74,7 +74,7 @@ export function TetForm({ siteId, draft, update, images, onImage, issueText }: F
           {t('editor.tet.photo')}
         </h2>
         <ImageField
-          siteId={siteId}
+          photos={photos}
           label={t('editor.tet.photo')}
           image={draft.photo ? (images.get(draft.photo) ?? null) : null}
           onUploaded={(image) => {

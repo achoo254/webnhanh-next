@@ -19,7 +19,7 @@ const allItems = (menu: readonly CafeSection[]): CafeItem[] => menu.flatMap((sec
  * The restaurant or café page: the place, its menu in sections, opening hours, address with directions, booking by
  * phone or Zalo, the look and colours.
  */
-export function CafeForm({ siteId, draft, update, images, onImage, issueText }: FormProps<CafeDraft>): ReactNode {
+export function CafeForm({ photos, draft, update, images, onImage, issueText }: FormProps<CafeDraft>): ReactNode {
   const { t } = useI18n();
   const edit = (patch: Partial<CafeDraft>): void => update((current) => ({ ...current, ...patch }));
   const editMenu = (change: (menu: readonly CafeSection[]) => CafeSection[]): void => update((current) => ({ ...current, menu: change(current.menu) }));
@@ -36,7 +36,7 @@ export function CafeForm({ siteId, draft, update, images, onImage, issueText }: 
           {t('editor.cafe')}
         </h2>
         <ImageField
-          siteId={siteId}
+          photos={photos}
           label={t('editor.cover')}
           image={draft.cover ? (images.get(draft.cover) ?? null) : null}
           onUploaded={(image) => {
@@ -114,7 +114,7 @@ export function CafeForm({ siteId, draft, update, images, onImage, issueText }: 
                       dataId={`item-${s}-${i}-description`}
                     />
                     <ImageField
-                      siteId={siteId}
+                      photos={photos}
                       label={t('editor.cafe.item.image')}
                       image={item.image ? (images.get(item.image) ?? null) : null}
                       onUploaded={(image) => {

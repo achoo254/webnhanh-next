@@ -22,6 +22,10 @@ import { BrowserRouter } from 'react-router';
 import { AccountProvider } from './account';
 import { App } from './app';
 import { I18nProvider } from './i18n';
+import { rememberSignUpSource } from './signup-source';
+
+// The ad or post that brought the visitor here, for the sign-up they may start later in this tab.
+rememberSignUpSource(window.location.search);
 
 const container = document.getElementById('root');
 if (!container) throw new Error('#root missing in index.html');

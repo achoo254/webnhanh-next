@@ -5,6 +5,7 @@ import { GUIDES } from '../guides/guide-content';
 import type { GuideId } from '../guides/guide-paths';
 import { useI18n, type MessageKey } from '../i18n';
 import { AppPage } from '../public-page';
+import { TRY_FIRST } from '../features';
 import { AppSignInCard } from '../sign-in';
 import { interleavedVariantChoices, type VariantChoice } from './template-variant-choices';
 
@@ -39,11 +40,26 @@ const FEATURES: readonly { id: string; title: MessageKey; body: MessageKey }[] =
   { id: 'developer', title: 'features.developer.title', body: 'features.developer.body' },
 ];
 
-const STEPS: readonly { id: string; title: MessageKey; body: MessageKey }[] = [
-  { id: 'sign-in', title: 'how.signIn.title', body: 'how.signIn.body' },
-  { id: 'make', title: 'how.make.title', body: 'how.make.body' },
-  { id: 'publish', title: 'how.publish.title', body: 'how.publish.body' },
-];
+const STEPS: readonly { id: string; title: MessageKey; body: MessageKey }[] = TRY_FIRST
+  ? [
+      { id: 'pick', title: 'how.pick.title', body: 'how.pick.body' },
+      { id: 'edit', title: 'how.edit.title', body: 'how.edit.body' },
+      { id: 'publish', title: 'how.publish.title', body: 'how.publishSignUp.body' },
+    ]
+  : [
+      { id: 'sign-in', title: 'how.signIn.title', body: 'how.signIn.body' },
+      { id: 'make', title: 'how.make.title', body: 'how.make.body' },
+      { id: 'publish', title: 'how.publish.title', body: 'how.publish.body' },
+    ];
+
+/** The template names, read after a look's name on the wall ("Hoa pastel, Thiệp cưới"). */
+const TEMPLATE_LABELS: Readonly<Record<VariantChoice['template'], MessageKey>> = {
+  shop: 'template.shop',
+  tet: 'template.tet',
+  wedding: 'template.wedding',
+  cafe: 'template.cafe',
+  profile: 'template.profile',
+};
 
 /** The guide pages (what people search for), each leading to one template. */
 const IDEAS: readonly { readonly id: GuideId; readonly label: MessageKey }[] = [
@@ -78,12 +94,23 @@ export function LandingPage(): ReactNode {
           <p className="eyebrow">{brand.appName}</p>
           <h1 className="hero-title">{t('hero.title')}</h1>
           <p className="hero-lede">{t('hero.lede')}</p>
-          <AppSignInCard headingLevel={2} title={t('signIn.title')} description={t('signIn.body')} returnTo="/" />
-          <p className="hint">
-            <Link to="/new" data-id="hero-try">
-              {t('hero.try')}
-            </Link>
-          </p>
+          {TRY_FIRST ? (
+            <div className="hero-try">
+              <Link className="pill pill-cta" to="/new" data-id="hero-try">
+                {t('hero.try.cta')}
+              </Link>
+              <p className="hint">{t('hero.try.note')}</p>
+            </div>
+          ) : (
+            <>
+              <AppSignInCard headingLevel={2} title={t('signIn.title')} description={t('signIn.body')} returnTo="/" />
+              <p className="hint">
+                <Link to="/new" data-id="hero-try">
+                  {t('hero.try')}
+                </Link>
+              </p>
+            </>
+          )}
         </div>
         <TemplateWall />
       </section>
@@ -145,37 +172,51 @@ export function LandingPage(): ReactNode {
 
 /**
  * The looks of every template as small browser windows in moving columns (rows on phones), each list twice so the
- * movement loops without a jump. Decoration: the template picker after sign-in is where they are chosen.
+ * movement loops without a jump. Each window opens its look (`/new?template=…&variant=…`); the second copy of each
+ * list is hidden from screen readers and the tab order. The movement pauses under the pointer and on focus.
  */
 function TemplateWall(): ReactNode {
   const { t } = useI18n();
   const choices = interleavedVariantChoices();
   const columns = Array.from({ length: MOSAIC_COLUMNS }, (_, column) => choices.filter((_, index) => index % MOSAIC_COLUMNS === column));
   return (
-    <div className="wall" aria-hidden="true" data-id="template-wall">
+    <nav className="wall" aria-label={t('hero.wall')} data-id="template-wall">
       {columns.map((column, columnIndex) => (
         <div key={columnIndex} className={`wall-lane wall-lane-${columnIndex + 1}`}>
           <ul className="wall-track">
             {[...column, ...column].map((choice, index) => (
-              <WallTile key={`${choice.label}-${index}`} choice={choice} label={t(choice.label)} eager={columnIndex === 0 && index < EAGER_TILES} />
+              <WallTile
+                key={`${choice.label}-${index}`}
+                choice={choice}
+                label={t(choice.label)}
+                eager={columnIndex === 0 && index < EAGER_TILES}
+                copy={index >= column.length}
+              />
             ))}
           </ul>
         </div>
       ))}
-    </div>
+    </nav>
   );
 }
 
-function WallTile({ choice, label, eager }: { readonly choice: VariantChoice; readonly label: string; readonly eager: boolean }): ReactNode {
+function WallTile({ choice, label, eager, copy }: { readonly choice: VariantChoice; readonly label: string; readonly eager: boolean; readonly copy: boolean }): ReactNode {
+  const { t } = useI18n();
+  const href = `/new?${new URLSearchParams({ template: choice.template, variant: choice.id }).toString()}`;
   return (
-    <li className="wall-tile">
-      <span className="wall-tile-bar">
-        <i />
-        <i />
-        <i />
-      </span>
-      <img src={choice.thumb} alt="" width={240} height={320} loading={eager ? 'eager' : 'lazy'} decoding="async" />
-      <span className="wall-tile-label">{label}</span>
+    <li className="wall-tile" aria-hidden={copy || undefined}>
+      <Link className="wall-tile-link" to={href} tabIndex={copy ? -1 : undefined} data-id={copy ? undefined : `wall-${choice.template}-${choice.id}`}>
+        <span className="wall-tile-bar">
+          <i />
+          <i />
+          <i />
+        </span>
+        <img src={choice.thumb} alt="" width={240} height={320} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+        <span className="wall-tile-label">
+          {label}
+          <span className="visually-hidden">, {t(TEMPLATE_LABELS[choice.template])}</span>
+        </span>
+      </Link>
     </li>
   );
 }

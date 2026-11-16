@@ -495,23 +495,6 @@ button.bento-card:focus-visible {
 .bento-tall button.bento-card {
   min-height: 300px;
 }
-/* The profile template has no sample photo yet: a drawn avatar stands for it. */
-.bento-avatar {
-  position: absolute;
-  top: var(--space-4);
-  left: 50%;
-  translate: -50% 0;
-  display: grid;
-  place-items: center;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-full);
-  background: var(--c-surface);
-  color: var(--c-primary-solid);
-  font-size: 26px;
-  font-weight: 800;
-  box-shadow: var(--shadow-sm);
-}
 .bento-card .badge {
   position: absolute;
   top: var(--space-3);
@@ -528,6 +511,12 @@ button.bento-card:focus-visible {
   font-weight: 800;
   font-size: 15px;
   line-height: 1.25;
+}
+/* Under the templates: the developer deploy and the credits, as plain links. */
+.new-site-more {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
 }
 .bento-label small {
   font-weight: 400;

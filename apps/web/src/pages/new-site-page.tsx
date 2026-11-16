@@ -1,35 +1,31 @@
-import { checkSiteName } from '@webnhanh/db/site-name';
 import type { TemplateId } from '@webnhanh/templates';
 import cafeCover from '@webnhanh/templates/samples/cafe-cover.webp';
 import shopCover from '@webnhanh/templates/samples/shop-cover.webp';
 import tetPhoto from '@webnhanh/templates/samples/tet-photo.webp';
 import weddingCover from '@webnhanh/templates/samples/wedding-cover.webp';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
+import profileCard from '../assets/template-profile-card.webp';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useAccount } from '../account';
 import { signInUrl } from '../api';
-import { SITES_DOMAIN } from '../brand';
 import { errorMessage } from '../error-messages';
+import { TRY_FIRST } from '../features';
+import { storedGuestLook } from '../guest/guest-draft-storage';
 import { useI18n, type MessageKey } from '../i18n';
 import { AppPage } from '../public-page';
 import { SignedInPage } from '../signed-in-page';
 import { createSite } from '../sites-api';
+import { SiteNameField, useSiteName } from './site-name-field';
 import { variantChoices } from './template-variant-choices';
 
-/** The templates in the order the page offers them, each with its sample picture (a profile shows a drawn avatar). */
-const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey; picture: string | null }[] = [
+/** The templates in the order the page offers them, each with its picture. */
+const TEMPLATES: readonly { id: TemplateId; label: MessageKey; note: MessageKey; picture: string }[] = [
   { id: 'shop', label: 'template.shop', note: 'template.shop.note', picture: shopCover },
   { id: 'tet', label: 'template.tet', note: 'template.tet.note', picture: tetPhoto },
   { id: 'wedding', label: 'template.wedding', note: 'template.wedding.note', picture: weddingCover },
   { id: 'cafe', label: 'template.cafe', note: 'template.cafe.note', picture: cafeCover },
-  { id: 'profile', label: 'template.profile', note: 'template.profile.note', picture: null },
+  { id: 'profile', label: 'template.profile', note: 'template.profile.note', picture: profileCard },
 ];
-
-const NAME_REASONS: Readonly<Record<'format' | 'reserved' | 'sensitive', MessageKey>> = {
-  format: 'name.format',
-  reserved: 'name.reserved',
-  sensitive: 'name.sensitive',
-};
 
 /**
  * What the person picked before signing up (`/new?template=…&variant=…&name=…`), checked against the templates and
@@ -43,8 +39,9 @@ function pickedBefore(params: URLSearchParams): { template: TemplateId | null; v
 }
 
 /**
- * `/new`: choose a template, then one of its looks and the page's address. A visitor without an account picks the
- * same way; making the page is where they sign up, and they come back here with what they picked.
+ * `/new`: choose a template, then one of its looks, then edit it (`/new/edit`; the address comes when publishing). A
+ * visitor without an account does the same and signs up when they publish. With TRY_FIRST off: the address is picked
+ * here, and making the page is where a visitor signs up, coming back here with what they picked.
  */
 export function NewSitePage(): ReactNode {
   const { account } = useAccount();
@@ -65,31 +62,27 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
   const [before] = useState(() => pickedBefore(params));
   const [chosen, setChosen] = useState<TemplateId | null>(before.template);
   const [variant, setVariant] = useState<string | null>(before.variant);
-  const [name, setName] = useState(before.name);
-  const [error, setError] = useState<MessageKey | null>(null);
+  const field = useSiteName(before.name);
   const [busy, setBusy] = useState(false);
-  const inputId = useId();
-  const helpId = useId();
-  const check = name.trim() === '' ? null : checkSiteName(name);
-  const localError = check && !check.ok ? NAME_REASONS[check.reason] : null;
-  const shown = localError ?? error;
-  const picked = new URLSearchParams({ ...(chosen ? { template: chosen } : {}), ...(variant ? { variant } : {}), name: name.trim() });
-  const signUpHref = signInUrl(`/new?${picked.toString()}`, locale, true);
+  // A draft started earlier in this browser: offered again rather than lost by picking another template.
+  const [unfinished] = useState(() => (TRY_FIRST ? storedGuestLook() : null));
+  const picked = new URLSearchParams({ ...(chosen ? { template: chosen } : {}), ...(variant ? { variant } : {}) });
+  const signUpHref = signInUrl(`/new?${new URLSearchParams({ ...Object.fromEntries(picked), name: field.name.trim() }).toString()}`, locale, true);
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault();
-    if (!check?.ok || busy || !chosen) return;
+    if (!field.valid || busy || !chosen) return;
     if (guest) {
       window.location.assign(signUpHref);
       return;
     }
     setBusy(true);
-    setError(null);
+    field.setError(null);
     try {
-      const site = await createSite(check.name, chosen, variant ?? undefined);
+      const site = await createSite(field.valid, chosen, variant ?? undefined);
       navigate(`/sites/${site.id}`);
     } catch (failure) {
-      setError(errorMessage(failure));
+      field.setError(errorMessage(failure));
       setBusy(false);
     }
   };
@@ -100,7 +93,15 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
         {t(guest ? 'new.guest.back' : 'new.back')}
       </Link>
       <h1 className="page-title">{t('new.title')}</h1>
-      <p className="lede">{t('new.lede')}</p>
+      <p className="lede">{t(TRY_FIRST ? 'new.try.lede' : 'new.lede')}</p>
+      {unfinished ? (
+        <p className="notice notice-info" data-id="new-unfinished">
+          {t('new.try.unfinished')}{' '}
+          <Link to="/new/edit" data-id="new-unfinished-open">
+            {t('new.try.unfinished.open')}
+          </Link>
+        </p>
+      ) : null}
       <ul className="bento" aria-label={t('new.title')}>
         {TEMPLATES.map((template, index) => (
           <li key={template.id} className={index === 0 ? 'bento-tall' : undefined}>
@@ -111,17 +112,11 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
               onClick={() => {
                 setChosen(template.id);
                 setVariant(variantChoices(template.id)[0]?.id ?? null);
-                setError(null);
+                field.setError(null);
               }}
               data-id={`template-${template.id}`}
             >
-              {template.picture ? (
-                <img src={template.picture} alt="" />
-              ) : (
-                <span className="bento-avatar" aria-hidden="true">
-                  {t('template.profile.initials')}
-                </span>
-              )}
+              <img src={template.picture} alt="" />
               <span className="bento-label">
                 {t(template.label)}
                 <small>{t(template.note)}</small>
@@ -129,58 +124,30 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
             </button>
           </li>
         ))}
-        <li>
-          <Link className="bento-card bento-developer" to="/new/developer" data-id="template-developer">
-            <span className="bento-code" aria-hidden="true">
-              {'</>'}
-            </span>
-            <span className="bento-label">
-              {t('new.developer')}
-              <small>{t('new.developer.note')}</small>
-            </span>
-          </Link>
-        </li>
       </ul>
 
-      {chosen ? (
+      {chosen && TRY_FIRST ? (
+        <div className="panel name-form" data-id="new-try">
+          <VariantPicker template={chosen} value={variant} onChange={setVariant} />
+          <Link className="pill pill-cta" to={`/new/edit?${picked.toString()}`} data-id="new-edit">
+            {t('new.try.edit')}
+          </Link>
+          <p className="hint" data-id="new-try-note">
+            {t(guest ? 'new.try.guestNote' : 'new.try.note')}
+          </p>
+        </div>
+      ) : null}
+      {chosen && !TRY_FIRST ? (
         <form className="panel name-form" onSubmit={(event) => void submit(event)} data-id="new-name-form" noValidate>
           <VariantPicker template={chosen} value={variant} onChange={setVariant} />
-          <label className="field-label" htmlFor={inputId}>
-            {t('new.name.label')}
-          </label>
-          <div className="address-input">
-            <input
-              id={inputId}
-              className="input"
-              value={name}
-              onChange={(event) => {
-                setName(event.target.value);
-                setError(null);
-              }}
-              autoCapitalize="none"
-              autoComplete="off"
-              spellCheck={false}
-              inputMode="url"
-              maxLength={30}
-              // The form only appears after the person picked the template: the address is the next thing to type.
-              // eslint-disable-next-line jsx-a11y/no-autofocus
-              autoFocus
-              aria-invalid={shown !== null}
-              aria-describedby={helpId}
-              data-id="new-name"
-            />
-            <span className="address-suffix">.{SITES_DOMAIN}</span>
-          </div>
-          <p id={helpId} className={shown ? 'field-error' : 'hint'} role={shown ? 'alert' : undefined}>
-            {shown ? t(shown) : t('new.name.help')}
-          </p>
-          {guest && check?.ok ? (
+          <SiteNameField field={field} />
+          {guest && field.valid ? (
             // A plain link: /auth/login is a server route.
             <a className="pill pill-cta" href={signUpHref} data-id="new-sign-up">
               {t('new.guest.submit')}
             </a>
           ) : (
-            <button type="submit" className="pill pill-cta" disabled={!check?.ok || busy} aria-busy={busy} data-id="new-submit">
+            <button type="submit" className="pill pill-cta" disabled={!field.valid || busy} aria-busy={busy} data-id="new-submit">
               {t(guest ? 'new.guest.submit' : 'new.name.submit')}
             </button>
           )}
@@ -191,7 +158,10 @@ function NewSite({ guest }: { readonly guest: boolean }): ReactNode {
           ) : null}
         </form>
       ) : null}
-      <p className="hint">
+      <p className="hint new-site-more">
+        <Link to="/new/developer" data-id="template-developer">
+          {t('new.developer.link')}
+        </Link>
         <Link to="/credits" data-id="new-credits">
           {t('credits.link')}
         </Link>

@@ -2,6 +2,7 @@ import { LIMITS, type ShopProduct } from '@webnhanh/templates';
 import type { ReactNode } from 'react';
 import { useI18n } from '../i18n';
 import type { SiteImage } from '../sites-api';
+import type { PhotoStore } from './photo-store';
 import { ImageField } from './image-field';
 import { ItemActions, moveItem, newKey } from './list-items';
 import { TextField } from './text-field';
@@ -11,14 +12,14 @@ import { TextField } from './text-field';
  * than dragging on a phone, and usable with a keyboard), removed, or added up to the template's limit.
  */
 export function ProductList({
-  siteId,
+  photos,
   products,
   images,
   onChange,
   onImage,
   nameErrors,
 }: {
-  readonly siteId: string;
+  readonly photos: PhotoStore;
   readonly products: readonly ShopProduct[];
   readonly images: ReadonlyMap<string, SiteImage>;
   /** Takes an updater: an upload finishing seconds later must apply to the list as it is then, not as it was. */
@@ -38,7 +39,7 @@ export function ProductList({
           <li key={product.key} className="product-edit" data-id={`product-${index}`}>
             <h3 className="product-edit-title">{t('editor.product', { n: index + 1 })}</h3>
             <ImageField
-              siteId={siteId}
+              photos={photos}
               label={t('editor.product.image')}
               image={product.image ? (images.get(product.image) ?? null) : null}
               onUploaded={(image) => {

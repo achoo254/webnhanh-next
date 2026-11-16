@@ -1,3 +1,5 @@
+import { signUpSource } from './signup-source';
+
 /** A refused API call: the server's stable error code, and the fields it named (an incomplete draft). */
 export class ApiError extends Error {
   constructor(
@@ -75,7 +77,10 @@ export async function signOut(): Promise<void> {
   await call('/auth/logout', { method: 'POST' });
 }
 
-/** Sign-in at the account service, coming back to `returnTo`. */
+/**
+ * Sign-in at the account service, coming back to `returnTo`. A sign-up carries where the visitor came from
+ * (`signup-source.ts`), for the IdP to keep on the new account.
+ */
 export function signInUrl(returnTo: string, lang: string, signUp = false): string {
-  return `/auth/login?${new URLSearchParams({ return: returnTo, lang, ...(signUp ? { signup: '1' } : {}) }).toString()}`;
+  return `/auth/login?${new URLSearchParams({ return: returnTo, lang, ...(signUp ? { signup: '1', ...signUpSource() } : {}) }).toString()}`;
 }

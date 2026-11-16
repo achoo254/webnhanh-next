@@ -10,11 +10,18 @@ import { isMessageKey, type MessageKey } from '../i18n';
 const THUMBS = import.meta.glob<string>('../../../../packages/templates/thumbs/*/*.webp', { eager: true, query: '?url', import: 'default' });
 
 export interface VariantChoice {
+  readonly template: TemplateId;
   readonly id: string;
   /** `variant.<template>.<id>` in messages.ts. */
   readonly label: MessageKey;
   readonly thumb: string;
 }
+
+/**
+ * A thumbnail folder that is a template: every template has its name in messages.ts (`template.<id>`). Checked this way
+ * rather than with the templates package, whose renderers would otherwise come into the landing's bundle.
+ */
+const isTemplateFolder = (name: string): name is TemplateId => isMessageKey(`template.${name}`);
 
 const THUMB_PATH = /\/thumbs\/([a-z]+)\/([a-z0-9-]+)\.webp$/;
 
@@ -24,10 +31,10 @@ const CHOICES: ReadonlyMap<string, readonly VariantChoice[]> = (() => {
   for (const [file, thumb] of Object.entries(THUMBS).sort(([a], [b]) => (a < b ? -1 : 1))) {
     const match = THUMB_PATH.exec(file);
     const [, template, id] = match ?? [];
-    if (!template || !id) continue;
+    if (!template || !id || !isTemplateFolder(template)) continue;
     const label = `variant.${template}.${id}`;
     if (!isMessageKey(label)) continue;
-    byTemplate.set(template, [...(byTemplate.get(template) ?? []), { id, label, thumb }]);
+    byTemplate.set(template, [...(byTemplate.get(template) ?? []), { template, id, label, thumb }]);
   }
   return byTemplate;
 })();
