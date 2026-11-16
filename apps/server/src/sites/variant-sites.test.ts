@@ -48,6 +48,9 @@ describe('sites made from a variant', () => {
 
       // One picture per drawn slot, every one used by the draft; ornaments are not samples to replace.
       expect(images).toHaveLength(variant.art.length);
+      // Each drawn slot names the image it became, so a draft made in the browser can point at them.
+      expect(Object.keys(res.body.slotImages as Record<string, string>).sort()).toEqual(variant.art.map((art) => art.slot).sort());
+      expect(new Set(Object.values(res.body.slotImages as Record<string, string>))).toEqual(new Set(images.map((image) => image.id)));
       expect(new Set(templateImageIds(parsed))).toEqual(new Set(images.map((image) => image.id)));
       expect(images.filter((image) => !image.sample)).toHaveLength(variant.art.filter((art) => isDecorationSlot(art.slot)).length);
       expect(site.cover?.sample, variant.id).toBe(true);
@@ -86,6 +89,7 @@ describe('sites made from a variant', () => {
     expect(res.status).toBe(201);
     const { images } = await read(res.body.site.id as string);
     expect(images).toHaveLength(3);
+    expect(res.body.slotImages).toEqual({});
     expect(images.every((image) => image.sample)).toBe(true);
   });
 });

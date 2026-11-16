@@ -93,7 +93,7 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
   router.post('/api/sites', signedIn, noStore, json, async (req, res) => {
     const account = accountOf(res.locals);
     const { name, template, variant } = body(req);
-    const site = await createTemplateSite(
+    const { site, slotImages } = await createTemplateSite(
       db,
       {
         accountId: account.id,
@@ -106,7 +106,8 @@ export function siteRoutes(config: ServerConfig, db: Db): Router {
       },
       new Date(),
     );
-    res.status(201).json({ site: siteView(site, undefined, undefined) });
+    // `slotImages`: the image id of each picture of the chosen variant, by slot (empty without a variant).
+    res.status(201).json({ site: siteView(site, undefined, undefined), slotImages });
   });
 
   router.get('/api/sites/:siteId', signedIn, noStore, async (req, res) => {

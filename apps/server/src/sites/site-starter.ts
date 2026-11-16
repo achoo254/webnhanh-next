@@ -31,12 +31,14 @@ interface StarterPhoto {
   readonly height: number;
   /** A sample photo for the owner to replace (a variant's ornaments are not). */
   readonly sample: boolean;
+  /** The variant's slot it fills (`VARIANT_SLOTS`); null for a template sample. */
+  readonly slot: string | null;
 }
 
 /** The pictures and draft of a new site: the template's samples, or the chosen variant's library pictures. */
 export function starter(template: TemplateId, variant: TemplateVariant | null): { photos: StarterPhoto[]; draft: TemplateDraft } {
   if (variant) {
-    const photos = variantPhotos(variant).map((photo) => ({ ...photo, id: randomUUID(), source: path.join(TEMPLATES_DIR, photo.file), sample: !photo.decoration }));
+    const photos = variantPhotos(variant).map((photo) => ({ ...photo, id: randomUUID(), source: path.join(TEMPLATES_DIR, photo.file), sample: !photo.decoration, slot: photo.slot }));
     const idOf = new Map(photos.map((photo) => [photo.slot, photo.id]));
     const draft = variantDraft(variant, (slot) => {
       const id = idOf.get(slot);
@@ -45,7 +47,7 @@ export function starter(template: TemplateId, variant: TemplateVariant | null): 
     });
     return { photos, draft };
   }
-  const photos = samplesOf(template).map((sample) => ({ ...sample, id: randomUUID(), source: path.join(SAMPLES_DIR, sample.file), sample: true }));
+  const photos = samplesOf(template).map((sample) => ({ ...sample, id: randomUUID(), source: path.join(SAMPLES_DIR, sample.file), sample: true, slot: null }));
   const idOf = new Map(photos.map((photo) => [photo.file, photo.id]));
   const draft = templateDraft(template, (photo) => {
     const id = idOf.get(photo.file);

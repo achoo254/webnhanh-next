@@ -33,6 +33,25 @@ import {
 
 const STATE_COOKIE = 'webnhanh_login';
 
+/** Where a sign-up came from, passed on to the IdP as the app received it (the IdP keeps them on a new account). */
+const SIGN_UP_SOURCE_KEYS = ['utm_source', 'utm_medium', 'utm_campaign'] as const;
+/** Longer values are never kept by the IdP; they are not passed on. */
+const SOURCE_MAX_LENGTH = 200;
+
+/**
+ * The sign-up source tags of `/auth/login`'s query, each its first value only: the IdP refuses an authorization
+ * request with a repeated parameter, so `?utm_source=a&utm_source=b` passes on `a`.
+ */
+export function signUpSource(query: Record<string, unknown>): Record<string, string> {
+  const source: Record<string, string> = {};
+  for (const key of SIGN_UP_SOURCE_KEYS) {
+    const raw = query[key];
+    const first: unknown = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof first === 'string' && first !== '' && first.length <= SOURCE_MAX_LENGTH) source[key] = first;
+  }
+  return source;
+}
+
 /** What the app asks the IdP for: the account's key, then the name, picture and email of the account menu. */
 const LOGIN_SCOPE = 'openid profile email';
 
@@ -133,6 +152,7 @@ export function authRoutes(config: ServerConfig, db: Db, idp: IdpMetadata | null
         code_challenge_method: 'S256',
         ui_locales: lang,
         ...(signUp ? { prompt: 'create' } : {}),
+        ...signUpSource(req.query),
       }).toString();
       res.redirect(url.href);
     } catch (error) {

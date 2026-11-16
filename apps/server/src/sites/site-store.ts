@@ -66,7 +66,7 @@ export async function createTemplateSite(
   db: Db,
   input: { accountId: string; name: string; template: string; variant?: unknown; uploadsDir: string; sitesPerAccount: number },
   now: Date,
-): Promise<Site> {
+): Promise<{ site: Site; slotImages: Record<string, string> }> {
   const template = input.template;
   if (!isTemplateId(template)) throw new HttpError(400, 'unknown-template');
   const variant = chosenVariant(template, input.variant);
@@ -92,6 +92,10 @@ export async function createTemplateSite(
         .values({ id: siteId, accountId: input.accountId, name: input.name, kind: 'template', template, status: 'draft', draft, createdAt: now, updatedAt: now })
         .returning();
       if (!site) throw new Error('site insert returned no row');
+      // Which image each picture of the variant became, by slot: a draft made elsewhere (the editor of a visitor
+      // without an account) points its pictures at these.
+      const slotImages: Record<string, string> = {};
+      for (const photo of photos) if (photo.slot) slotImages[photo.slot] = photo.id;
       if (photos.length > 0) {
         await tx.insert(siteImages).values(
           photos.map((photo, index) => ({
@@ -106,7 +110,7 @@ export async function createTemplateSite(
           })),
         );
       }
-      return site;
+      return { site, slotImages };
     });
   } catch (error) {
     await rm(dir, { recursive: true, force: true });

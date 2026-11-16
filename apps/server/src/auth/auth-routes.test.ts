@@ -150,6 +150,17 @@ describe('sign-in with the account service', () => {
     const authorize = new URL((await http.get('/auth/login?return=/new&signup=1')).headers.location ?? '');
     expect(authorize.searchParams.get('prompt')).toBe('create');
     expect(authorize.searchParams.get('client_id')).toBe('webnhanh-web');
+    expect(authorize.searchParams.has('utm_source')).toBe(false);
+
+    // Where the sign-up came from goes on to the IdP, each tag once (its first value): a repeated one is refused there.
+    const tagged = new URL(
+      (await http.get('/auth/login?return=/new/publish&signup=1&utm_source=fb&utm_source=zalo&utm_medium=cpc&utm_campaign=thiep-cuoi&utm_term=x')).headers.location ?? '',
+    );
+    expect(tagged.searchParams.getAll('utm_source')).toEqual(['fb']);
+    expect(tagged.searchParams.get('utm_medium')).toBe('cpc');
+    expect(tagged.searchParams.get('utm_campaign')).toBe('thiep-cuoi');
+    expect(tagged.searchParams.has('utm_term')).toBe(false);
+    expect(tagged.searchParams.get('prompt')).toBe('create');
   });
 
   it('refreshes the profile at each sign-in, and keeps it when userinfo cannot be read', async () => {
