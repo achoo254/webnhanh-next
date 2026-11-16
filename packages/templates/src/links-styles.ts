@@ -20,7 +20,7 @@ export const LINKS_CSS = `.l-head{max-width:560px;margin:0 auto;padding:40px 18p
 .l-main{max-width:560px;margin:0 auto;padding:28px 18px 56px}
 .l-links{list-style:none;margin:0;padding:0;display:grid;gap:14px}
 .l-link{display:grid;gap:2px;justify-items:center;min-height:62px;padding:14px 20px;text-align:center;text-decoration:none;transition:transform .15s,box-shadow .15s}
-.l-pending{opacity:.55;border-style:dashed!important}
+.l-pending{opacity:.55}
 .l-label{font-weight:700;font-size:18px;overflow-wrap:anywhere}
 .l-host{font-size:13px;opacity:.75;overflow-wrap:anywhere}
 .made{padding-top:0}
@@ -38,6 +38,7 @@ export const LINKS_LOOK_CSS = {
 .s-ruc-ro .l-links li:first-child .l-link{background:var(--accent);color:#fff}
 .s-ruc-ro .l-link:active,.s-ruc-ro .l-contact:active{transform:translate(3px,3px);box-shadow:none}
 .s-ruc-ro .l-label{font-weight:800}
+.s-ruc-ro .l-pending{border-style:dashed}
 @media (min-width:600px){.s-ruc-ro .l-cover img{border:var(--line)}}`,
   'tinh-te': `.s-tinh-te .l-avatar{width:112px;height:112px}
 .s-tinh-te .l-initials{background:none;color:var(--accent);border:1px solid var(--accent);font-weight:500}
