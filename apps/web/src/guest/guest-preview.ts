@@ -2,12 +2,13 @@
  * The preview of a visitor's draft. The renderer only takes plain relative asset URLs (`assertAssetUrl`), and the
  * page's CSP only allows its own pictures; a visitor's photos live in the browser as `data:` URLs. So the page is
  * rendered with a stand-in URL per photo (`/guest-photo/<id>-<width>.webp`, made here from an id the app generated),
- * then each stand-in is swapped for the photo's real URL and the frame's CSP allows `data:` pictures. The frame still
- * runs no script; the published page is rendered on the server from the uploaded photos, never from this.
+ * then each stand-in is swapped for the photo's real URL and the frame's CSP allows `data:` pictures. The frame runs
+ * only the template's fixed scripts, sandboxed away from the app (`PreviewFrame`); the published page is rendered on
+ * the server from the uploaded photos, never from this.
  */
 import { imageAsset, type ImageAsset, type TemplateDraft } from '@webnhanh/templates';
 import type { SiteImage } from '../sites-api';
-import { previewHtml } from '../editor/site-editor';
+import { previewHtml, type PreviewSide } from '../editor/site-editor';
 
 /** A photo the browser read (`FileReader`): base64 only, so nothing in it can leave the attribute it is put in. */
 const PHOTO_DATA_URL = /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
@@ -26,8 +27,14 @@ const IMG_SRC_SELF = 'img-src &#39;self&#39;';
  * The preview page of a visitor's draft: rendered like any preview, then the stand-ins swapped for `urls` (a library
  * picture's app URL, or a `data:` URL of a chosen photo).
  */
-export function guestPreviewHtml(value: TemplateDraft, images: ReadonlyMap<string, SiteImage>, urls: ReadonlyMap<string, string>, siteName: string): string {
-  let html = previewHtml(value, guestAssets(images), siteName);
+export function guestPreviewHtml(
+  value: TemplateDraft,
+  images: ReadonlyMap<string, SiteImage>,
+  urls: ReadonlyMap<string, string>,
+  siteName: string,
+  previewSide?: PreviewSide,
+): string {
+  let html = previewHtml(value, guestAssets(images), siteName, previewSide);
   let hasData = false;
   for (const [id, image] of images) {
     const url = urls.get(id);

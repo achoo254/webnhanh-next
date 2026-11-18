@@ -114,6 +114,31 @@ describe('reply inbox of a wedding', () => {
     await waitFor(() => expect(screen.queryByText('Hà')).toBeNull());
   });
 
+  it('names each guest\'s family and invitation, and counts the people coming by family', async () => {
+    const fromLink = { ...reply, side: 'trai', invitedAs: 'Chị Hà' };
+    const other = { ...reply, id: '77777777-7777-4777-8777-777777777777', name: 'Nam', guests: 2, side: 'gai', invitedAs: '' };
+    routes.set(`GET /api/sites/${SITE_ID}/orders`, () => ({
+      status: 200,
+      body: {
+        site: { name: 'minh-thao', template: 'wedding', published: true },
+        orders: [fromLink, other],
+        more: false,
+        open: 2,
+        rsvp: { yes: 3, guests: 6, no: 1, sides: { trai: 3, gai: 2, none: 1 } },
+      },
+    }));
+    renderAt(`/sites/${SITE_ID}/orders`);
+    expect(await screen.findByText('Nhà trai: 3 người đến')).toBeTruthy();
+    expect(screen.getByText('Nhà gái: 2 người đến')).toBeTruthy();
+    expect(screen.getByText('Chưa rõ bên: 1 người đến')).toBeTruthy();
+    expect(screen.getByText('1 khách không đến được')).toBeTruthy();
+    expect(screen.queryByText(/khách sẽ đến/)).toBeNull();
+    expect(document.querySelector(`[data-id="order-${ORDER_ID}-side"]`)?.textContent).toBe('Nhà trai');
+    expect(screen.getByText('Mời')).toBeTruthy();
+    expect(screen.getByText('Chị Hà')).toBeTruthy();
+    expect(screen.getAllByText('Mời')).toHaveLength(1);
+  });
+
   it('shows new replies on the wedding card, with a link named for them', async () => {
     const site = { id: SITE_ID, name: 'minh-thao', kind: 'template', template: 'wedding', status: 'published', published: true, createdAt: NOW, updatedAt: NOW, cover: null, job: null, newOrders: 2 };
     const card = { ...site, id: '66666666-6666-4666-8666-666666666666', name: 'lan-anh', template: 'profile', newOrders: 0 };

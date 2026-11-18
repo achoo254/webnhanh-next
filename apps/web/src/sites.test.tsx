@@ -156,7 +156,7 @@ describe('editor', () => {
     return element;
   }
 
-  it('previews the draft with the published renderer in a frame that runs no script, and saves on its own', async () => {
+  it('previews the draft with the published renderer in a frame sandboxed away from the app, and saves on its own', async () => {
     let saved: unknown = null;
     on('GET', `/api/sites/${SITE_ID}`, () => ({ status: 200, body: { site: site(), draft: emptyDraft(), images, usedBytes: 100 } }));
     on('PUT', `/api/sites/${SITE_ID}/draft`, (init) => {
@@ -165,7 +165,8 @@ describe('editor', () => {
     });
     renderAt(`/sites/${SITE_ID}`);
     const name = await screen.findByLabelText('Tên tiệm');
-    expect(frame().getAttribute('sandbox')).toBe('allow-same-origin');
+    // Scripts run (the template's fixed ones, by hash), in an opaque origin: no allow-same-origin, no forms, no popups.
+    expect(frame().getAttribute('sandbox')).toBe('allow-scripts');
     expect(frame().getAttribute('srcdoc')).toContain(`/api/sites/${SITE_ID}/images/${COVER}-675.webp`);
     expect(screen.getAllByText('Ảnh mẫu').length).toBeGreaterThan(0);
 

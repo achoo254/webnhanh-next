@@ -158,6 +158,14 @@ describe('renderWeddingCinema', () => {
     }
   });
 
+  it('marks the app\'s preview only, with the guest it shows', () => {
+    expect(page()).toContain('<main id="main" tabindex="-1">');
+    expect(renderWedding(cinema(), assets, { now: NOW, previewSide: 'trai' }).html).toContain('<main id="main" tabindex="-1" data-preview-side="trai">');
+    const odd = { now: NOW, previewSide: '"><x>' } as unknown as { now: Date };
+    expect(renderWedding(cinema(), assets, odd).html).toContain('<main id="main" tabindex="-1">');
+    expect(CINEMA_SCRIPT).toContain("getAttribute('data-preview-side')");
+  });
+
   it('renders directly too', () => {
     expect(renderWeddingCinema(cinema(), assets, { now: NOW }).html).toContain('<body class="cinema">');
   });

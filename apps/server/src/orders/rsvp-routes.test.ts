@@ -133,6 +133,17 @@ describe('wedding replies through POST /f/:site', () => {
 });
 
 describe('the reply inbox', () => {
+  it('shows each reply\'s family and invitation name, and counts the people coming by family', async () => {
+    await post(reply({ name: 'Hà', guests: '3', side: 'trai', invitedAs: 'Chị Hà' }));
+    await post(reply({ name: 'Nam', guests: '2', side: 'gai' })).set('X-Forwarded-For', '203.0.113.7');
+    await post(reply({ name: 'Vy', guests: '1' })).set('X-Forwarded-For', '203.0.113.8');
+    await post(reply({ name: 'Tú', attending: 'no', side: 'trai' })).set('X-Forwarded-For', '203.0.113.9');
+    const list = await app.http().get(`/api/sites/${wedding.siteId}/orders`).set('Cookie', owner.cookie);
+    expect(list.body.rsvp).toEqual({ yes: 3, guests: 6, no: 1, sides: { trai: 3, gai: 2, none: 1 } });
+    expect(list.body.orders.find((o: { name: string }) => o.name === 'Hà')).toMatchObject({ side: 'trai', invitedAs: 'Chị Hà' });
+    expect(list.body.orders.find((o: { name: string }) => o.name === 'Vy')).toMatchObject({ side: '', invitedAs: '' });
+  });
+
   it('lists replies with a head count, marks one handled, and is the owner\'s only', async () => {
     await post(reply({ name: 'Hà', guests: '3' }));
     await post(reply({ name: 'Nam', guests: '1' })).set('X-Forwarded-For', '203.0.113.7');
@@ -140,7 +151,7 @@ describe('the reply inbox', () => {
     const list = await app.http().get(`/api/sites/${wedding.siteId}/orders`).set('Cookie', owner.cookie);
     expect(list.status).toBe(200);
     expect(list.body.site).toEqual({ name: SITE, template: 'wedding', published: true });
-    expect(list.body.rsvp).toEqual({ yes: 2, guests: 4, no: 1 });
+    expect(list.body.rsvp).toEqual({ yes: 2, guests: 4, no: 1, sides: { trai: 0, gai: 0, none: 4 } });
     expect(list.body.open).toBe(3);
     expect(list.body.orders[0]).toMatchObject({ kind: 'rsvp', name: 'Vy', attending: 'no', guests: 0, handledAt: null });
     expect(list.body.orders.map((o: { name: string }) => o.name)).toEqual(['Vy', 'Nam', 'Hà']);

@@ -13,16 +13,20 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
 - Mọi chữ người dùng gõ vào trang đều qua `escapeHtml` trong `@webnhanh/templates`; link chỉ được dựng bởi
   `zaloLink`/`phoneLink`/`facebookLink` (`contact-links.ts`) và `mapLink`/`webLink`/`emailLink`/... (`web-links.ts`).
   Mọi mẫu đi qua `parseDraft`/`publishIssues`/`renderDraft` (`templates.ts`); xem trước trong app dùng đúng `renderDraft`
-  trong `iframe` `sandbox` không có `allow-scripts`.
+  trong `iframe` `sandbox="allow-scripts"` (không bao giờ thêm `allow-same-origin`): app không đọc vào khung, chỉ nhận
+  `postMessage` có `event.source` đúng khung đó; ảnh và phông vào khung bằng `data:` (`editor/preview-files.ts`).
 - Ảnh tải lên không bao giờ lưu nguyên bản: kiểm magic bytes, ffmpeg làm sạch ra WebP không metadata
   (`apps/server/src/sites/image-processing.ts`).
 - Tên site kiểm bằng `checkSiteName`; regex `server_name` trong `infra/nginx/hoandat.io.vn.conf` phải cùng hình với
   `SITE_NAME_PATTERN`.
 - Không đặt cookie nào trên `hoandat.io.vn`: site người dùng chạy JavaScript tuỳ ý ở đó. Trang mẫu không gọi bên thứ
   ba; form đặt hàng chỉ gửi về app (`POST /f/<tên>`), CSP trong trang cho phép đúng origin đó.
-- Script của form đặt hàng (`ORDER_SCRIPT` trong `packages/templates/src/order-form.ts`) được CSP cho phép bằng hash
-  `ORDER_SCRIPT_HASH`; sửa script thì `order-form.test.ts` báo hash mới. Form xác nhận tham dự của thiệp cưới
-  (`rsvp-form.ts`, `kind=rsvp`; cả thiệp mời tiệc) dùng nguyên script đó. Không thêm script nào khác vào trang mẫu.
+- Trang mẫu chỉ có hai script cố định, CSP cho phép bằng hash: `ORDER_SCRIPT`/`ORDER_SCRIPT_HASH` của form đặt hàng
+  (`packages/templates/src/order-form.ts`; form xác nhận tham dự `rsvp-form.ts` dùng nguyên script đó) và
+  `CINEMA_SCRIPT`/`CINEMA_SCRIPT_HASH` của thiệp cưới kiểu Rạp phim (`wedding-cinema-script.ts`, đọc dữ liệu từ `data-*`,
+  không chứa nội dung thiệp). Sửa script thì test báo hash mới, và phải sửa cả hash trong `script-src` của
+  `infra/nginx/webnhanh.hoandat.com.conf` (khung xem trước kế thừa CSP của app; `index-html.test.ts` giữ hai bên khớp).
+  Không thêm script nào khác vào trang mẫu.
 - `/f/:site`, `/hooks/chat`, `/hooks/git/:site` và `/api/idp/account-deleted` gắn trước `requireAllowedOrigin` và tự kiểm
   (CORS theo origin của site + token ký; HMAC của bot; secret webhook của từng site; SET ký ES256 của IdP). Route mới của
   app đặt sau, như cũ.

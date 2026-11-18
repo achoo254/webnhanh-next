@@ -39,7 +39,14 @@ function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: 
   return (
     <li className={`order-card${handled ? ' order-card-done' : ''}`} data-id={`order-${order.id}`}>
       <div className="order-card-head">
-        <strong className="order-card-name">{order.name}</strong>
+        <strong className="order-card-name">
+          {order.name}
+          {order.kind === 'rsvp' && order.side ? (
+            <span className="badge order-card-side" data-id={`order-${order.id}-side`}>
+              {t(order.side === 'trai' ? 'rsvp.side.trai' : 'rsvp.side.gai')}
+            </span>
+          ) : null}
+        </strong>
         <time className="hint" dateTime={order.createdAt}>
           {when}
         </time>
@@ -62,6 +69,12 @@ function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: 
           <>
             <dt>{t('orders.address')}</dt>
             <dd>{order.address}</dd>
+          </>
+        ) : null}
+        {order.kind === 'rsvp' && order.invitedAs ? (
+          <>
+            <dt>{t('rsvp.invitedAs')}</dt>
+            <dd>{order.invitedAs}</dd>
           </>
         ) : null}
         {order.note ? (
@@ -163,7 +176,15 @@ function Orders(): ReactNode {
       {list ? <p className="home-account">{siteHost(list.site.name)}</p> : null}
       {list?.rsvp ? (
         <ul className="rsvp-summary" data-id="rsvp-summary">
-          <li>{t('rsvp.summary.yes', { n: list.rsvp.yes, guests: list.rsvp.guests })}</li>
+          {list.rsvp.sides.trai + list.rsvp.sides.gai > 0 ? (
+            <>
+              <li>{t('rsvp.summary.trai', { guests: list.rsvp.sides.trai })}</li>
+              <li>{t('rsvp.summary.gai', { guests: list.rsvp.sides.gai })}</li>
+              {list.rsvp.sides.none > 0 ? <li>{t('rsvp.summary.none', { guests: list.rsvp.sides.none })}</li> : null}
+            </>
+          ) : (
+            <li>{t('rsvp.summary.yes', { n: list.rsvp.yes, guests: list.rsvp.guests })}</li>
+          )}
           <li>{t('rsvp.summary.no', { n: list.rsvp.no })}</li>
         </ul>
       ) : null}

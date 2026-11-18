@@ -28,39 +28,58 @@ interface SubmissionBase {
 /** One submission as the inbox shows it, by its kind. */
 export type OrderView =
   | (SubmissionBase & { readonly kind: 'order'; readonly address: string; readonly product: string; readonly quantity: number })
-  | (SubmissionBase & { readonly kind: 'rsvp'; readonly attending: 'yes' | 'no'; readonly guests: number });
+  | (SubmissionBase & {
+      readonly kind: 'rsvp';
+      readonly attending: 'yes' | 'no';
+      readonly guests: number;
+      /** The guest's family ('' not said, and on replies from before families existed). */
+      readonly side: '' | 'trai' | 'gai';
+      /** The name the personal invitation link was made for, or ''. */
+      readonly invitedAs: string;
+    });
 
 export function orderView(row: SubmissionRow): OrderView {
   const base = { id: row.id, createdAt: row.createdAt.toISOString(), handledAt: row.handledAt?.toISOString() ?? null };
   const content = submissionContent(row);
   if (content.kind === 'rsvp') {
     const d = content.data;
-    return { ...base, kind: 'rsvp', name: d.name, phone: d.phone, note: d.note, attending: d.attending, guests: d.guests };
+    return { ...base, kind: 'rsvp', name: d.name, phone: d.phone, note: d.note, attending: d.attending, guests: d.guests, side: d.side ?? '', invitedAs: d.invitedAs ?? '' };
   }
   const d = content.data;
   return { ...base, kind: 'order', name: d.name, phone: d.phone, note: d.note, address: d.address, product: d.productName, quantity: d.quantity };
 }
 
-/** Replies to a wedding invitation, counted: who is coming (and how many people with them), who is not. */
+/**
+ * Replies to an invitation, counted over all of them (the list is paged): who is coming (and how many people with
+ * them), who is not, and the people coming by the guest's family (a wedding's; `none` for replies that did not say).
+ */
 export interface RsvpSummary {
   readonly yes: number;
   readonly guests: number;
   readonly no: number;
+  readonly sides: { readonly trai: number; readonly gai: number; readonly none: number };
 }
 
 async function rsvpSummary(db: Db, siteId: string): Promise<RsvpSummary> {
+  const attending = sql<string>`${submissions.data}->>'attending'`;
+  const side = sql<string>`coalesce(${submissions.data}->>'side', '')`;
   const rows = await db
-    .select({
-      attending: sql<string>`${submissions.data}->>'attending'`,
-      n: count(),
-      guests: sql<string>`coalesce(sum((${submissions.data}->>'guests')::int), 0)`,
-    })
+    .select({ attending, side, n: count(), guests: sql<string>`coalesce(sum((${submissions.data}->>'guests')::int), 0)` })
     .from(submissions)
     .where(and(eq(submissions.siteId, siteId), eq(submissions.kind, 'rsvp')))
-    .groupBy(sql`${submissions.data}->>'attending'`);
-  const yes = rows.find((row) => row.attending === 'yes');
-  const no = rows.find((row) => row.attending === 'no');
-  return { yes: Number(yes?.n ?? 0), guests: Number(yes?.guests ?? 0), no: Number(no?.n ?? 0) };
+    .groupBy(attending, side);
+  const sum = (pick: (row: (typeof rows)[number]) => boolean, of: 'n' | 'guests'): number => rows.filter(pick).reduce((total, row) => total + Number(row[of]), 0);
+  const coming = (row: (typeof rows)[number]): boolean => row.attending === 'yes';
+  return {
+    yes: sum(coming, 'n'),
+    guests: sum(coming, 'guests'),
+    no: sum((row) => row.attending === 'no', 'n'),
+    sides: {
+      trai: sum((row) => coming(row) && row.side === 'trai', 'guests'),
+      gai: sum((row) => coming(row) && row.side === 'gai', 'guests'),
+      none: sum((row) => coming(row) && row.side !== 'trai' && row.side !== 'gai', 'guests'),
+    },
+  };
 }
 
 /** Orders not yet marked handled, per site. */

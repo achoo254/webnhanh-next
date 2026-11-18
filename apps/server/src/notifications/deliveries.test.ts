@@ -107,6 +107,23 @@ describe('order notification fan-out', () => {
     expect(JSON.parse(later.calls[0]?.[1] ?? '{}')).toMatchObject({ body: 'Hà không đến được' });
   });
 
+  it('names the guest\'s family and the name on the invitation link when it differs', async () => {
+    const now = new Date('2026-10-28T08:00:00Z');
+    const reply = { name: 'Lan Anh', phone: '', attending: 'yes' as const, guests: 2, note: '', side: 'trai' as const, invitedAs: 'Cô Lan' };
+    await recordSubmission(handle.db, { siteId, accountId, content: { kind: 'rsvp', data: reply } }, { push: true, chat: true }, now);
+    const push = recorder<[{ endpoint: string }, string]>(() => Promise.resolve('sent'));
+    const chat = recorder<[number, string, number]>(() => Promise.resolve('sent'));
+    await deliverDue(handle.db, { push: { send: push.send } as PushSender, chat: { send: chat.send } as ChatSender }, APP, now, quiet);
+    expect(JSON.parse(push.calls[0]?.[1] ?? '{}')).toMatchObject({ body: 'Khách nhà trai · Lan Anh (mời: Cô Lan) sẽ đến (2 người)' });
+    expect((chat.calls[0]?.[1] ?? '').split('\n').slice(1, 3)).toEqual(['Khách: Lan Anh (mời: Cô Lan)', 'Bên: Khách nhà trai']);
+
+    // The same name on the link and in the form is said once.
+    await recordSubmission(handle.db, { siteId, accountId, content: { kind: 'rsvp', data: { ...reply, side: 'gai', invitedAs: 'lan anh' } } }, { push: true, chat: false }, now);
+    const later = recorder<[{ endpoint: string }, string]>(() => Promise.resolve('sent'));
+    await deliverDue(handle.db, { push: { send: later.send } as PushSender, chat: null }, APP, now, quiet);
+    expect(JSON.parse(later.calls[0]?.[1] ?? '{}')).toMatchObject({ body: 'Khách nhà gái · Lan Anh sẽ đến (2 người)' });
+  });
+
   it('a chat sender that throws something unexpected does not stop the push', async () => {
     const now = new Date();
     await recordSubmission(handle.db, { siteId, accountId, content: { kind: 'order', data: ORDER } }, { push: true, chat: true }, now);

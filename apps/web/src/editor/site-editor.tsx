@@ -18,6 +18,7 @@ import { TetForm } from './forms/tet-form';
 import { WeddingForm } from './forms/wedding-form';
 import { sitePhotoStore } from './photo-store';
 import { PublishPanel } from './publish-panel';
+import { useInlinedAppFiles } from './preview-files';
 import { previewFontUrl } from './style-picker';
 import { DeleteSitePanel } from '../delete-site-panel';
 
@@ -89,34 +90,101 @@ function SaveStatus({ dirty, state }: { readonly dirty: boolean; readonly state:
 }
 
 /**
- * The page as visitors will see it: the same renderer as the published page, its form (a shop's orders, a wedding's
- * replies) and fonts included. The form's token is a stand-in; the frame cannot submit anyway.
+ * Where the preview's form posts: a reserved name that never resolves (RFC 2606), allowed by the page's CSP and by
+ * nothing else, so a guest's reply typed into the preview is never sent anywhere.
  */
-export function previewHtml(value: TemplateDraft, assets: ReadonlyMap<string, ImageAsset>, siteName: string): string {
-  const origin = window.location.origin;
-  const form = { action: `${origin}/f/${siteName}`, token: 'preview' };
-  return renderDraft(value, assets, { madeWith: { name: brand.appName, url: origin }, orderForm: form, rsvpForm: form, fontUrl: previewFontUrl }).html;
+export const PREVIEW_FORM_ORIGIN = 'https://preview.invalid';
+
+/** Which guest the preview of a "Rạp phim" invitation shows: 'none' is one who has not picked a profile yet. */
+export type PreviewSide = 'none' | 'trai' | 'gai';
+export const PREVIEW_SIDES: readonly PreviewSide[] = ['none', 'trai', 'gai'];
+
+/**
+ * The page as visitors will see it: the same renderer as the published page, its form (a shop's orders, a wedding's
+ * replies), fonts and scripts included. The form's token is a stand-in and it posts nowhere (`PREVIEW_FORM_ORIGIN`).
+ */
+export function previewHtml(value: TemplateDraft, assets: ReadonlyMap<string, ImageAsset>, siteName: string, previewSide?: PreviewSide): string {
+  const form = { action: `${PREVIEW_FORM_ORIGIN}/f/${siteName}`, token: 'preview' };
+  return renderDraft(value, assets, {
+    madeWith: { name: brand.appName, url: window.location.origin },
+    orderForm: form,
+    rsvpForm: form,
+    fontUrl: previewFontUrl,
+    previewSide,
+  }).html;
 }
 
-/** The preview frame: runs no script and sends no form. */
-export function PreviewFrame({ html }: { readonly html: string }): ReactNode {
+/** True for a wedding in the "Rạp phim" layout, whose preview can show the page as one family's guest. */
+export function hasGuestSides(value: TemplateDraft): boolean {
+  return value.template === 'wedding' && value.draft.layout === 'cinema';
+}
+
+/**
+ * The preview frame. Its page runs the template's fixed scripts (allowed by their hashes in the page's CSP), in a
+ * sandbox without `allow-same-origin`: an opaque origin that reads no cookie or storage of the app and calls none of
+ * its API; without `allow-forms`, `allow-popups` or top navigation it sends no form and opens nothing. The owner's
+ * photos and the fonts are inlined (`useInlinedAppFiles`). The editor never reaches into the frame: a profile picked
+ * in a "Rạp phim" preview comes back as a message, taken only from this frame.
+ */
+export function PreviewFrame({ html, onSide }: { readonly html: string; readonly onSide?: (side: PreviewSide) => void }): ReactNode {
   const { t } = useI18n();
+  const frame = useRef<HTMLIFrameElement>(null);
+  const page = useInlinedAppFiles(html);
+  useEffect(() => {
+    if (!onSide) return;
+    const listen = (event: MessageEvent): void => {
+      // The frame's origin is opaque ('null' for every sandboxed page): only the source tells this frame apart.
+      if (!frame.current || event.source !== frame.current.contentWindow) return;
+      const data: unknown = event.data;
+      const side = typeof data === 'object' && data !== null ? (data as { webnhanhPreviewSide?: unknown }).webnhanhPreviewSide : undefined;
+      if (side === 'trai' || side === 'gai') onSide(side);
+    };
+    window.addEventListener('message', listen);
+    return () => window.removeEventListener('message', listen);
+  }, [onSide]);
+  return <iframe ref={frame} className="preview-frame" title={t('editor.preview.title')} srcDoc={page} sandbox="allow-scripts" data-id="preview" />;
+}
+
+/** "Xem như: khách chưa chọn / nhà trai / nhà gái" above a "Rạp phim" preview. */
+export function PreviewSideBar({ value, onChange }: { readonly value: PreviewSide; readonly onChange: (side: PreviewSide) => void }): ReactNode {
+  const { t } = useI18n();
+  const labels: Readonly<Record<PreviewSide, MessageKey>> = { none: 'editor.preview.side.none', trai: 'editor.preview.side.trai', gai: 'editor.preview.side.gai' };
   return (
-    <iframe
-      className="preview-frame"
-      title={t('editor.preview.title')}
-      srcDoc={html}
-      // No allow-scripts: nothing in the page can run. allow-same-origin only lets the frame load the owner's photos
-      // from the editor's image route with the session cookie.
-      sandbox="allow-same-origin"
-      data-id="preview"
-    />
+    <fieldset className="preview-sides" data-id="preview-sides">
+      <legend className="field-label">{t('editor.preview.side')}</legend>
+      <div className="chips">
+        {PREVIEW_SIDES.map((side) => (
+          <label key={side} className="chip" data-id={`preview-side-${side}`}>
+            <input type="radio" name="preview-side" value={side} checked={value === side} onChange={() => onChange(side)} />
+            <span>{t(labels[side])}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }
 
-function Preview({ value, assets, siteName }: { readonly value: TemplateDraft; readonly assets: ReadonlyMap<string, ImageAsset>; readonly siteName: string }): ReactNode {
-  const html = useMemo(() => previewHtml(value, assets, siteName), [value, assets, siteName]);
-  return <PreviewFrame html={html} />;
+/**
+ * The owner's photos as the preview loads them: one width each (the one the page shows first), so each is fetched and
+ * inlined once.
+ */
+function previewAsset(siteId: string, image: SiteImage): ImageAsset {
+  const widths = [...image.widths].sort((a, b) => a - b);
+  const width = widths.find((w) => w >= 800) ?? widths[widths.length - 1];
+  return editorAsset(siteId, width === undefined ? image : { ...image, widths: [width] });
+}
+
+function Preview({ value, images, siteId, siteName }: { readonly value: TemplateDraft; readonly images: ReadonlyMap<string, SiteImage>; readonly siteId: string; readonly siteName: string }): ReactNode {
+  const [side, setSide] = useState<PreviewSide>('none');
+  const sides = hasGuestSides(value);
+  const assets = useMemo(() => new Map([...images].map(([id, image]) => [id, previewAsset(siteId, image)])), [images, siteId]);
+  const html = useMemo(() => previewHtml(value, assets, siteName, sides ? side : undefined), [value, assets, siteName, sides, side]);
+  return (
+    <>
+      {sides ? <PreviewSideBar value={side} onChange={setSide} /> : null}
+      <PreviewFrame html={html} onSide={setSide} />
+    </>
+  );
 }
 
 /** Issues to show beside their fields: wrong links and contacts as soon as they are typed, the rest after a publish attempt. */
@@ -229,7 +297,6 @@ export function SiteEditor({
   const { dirty, state, flush } = useAutosave(site.id, value.draft, initialValue.draft);
 
   const photos = useMemo(() => sitePhotoStore(site.id), [site.id]);
-  const assets = useMemo(() => new Map([...images].map(([id, image]) => [id, editorAsset(site.id, image)])), [images, site.id]);
   const issues = visibleIssues(value, attempted);
   const issueText = (field: string): string | null => {
     const code = issues.get(field);
@@ -274,7 +341,7 @@ export function SiteEditor({
         </div>
 
         <div className="editor-preview">
-          <Preview value={value} assets={assets} siteName={site.name} />
+          <Preview value={value} images={images} siteId={site.id} siteName={site.name} />
         </div>
       </div>
 

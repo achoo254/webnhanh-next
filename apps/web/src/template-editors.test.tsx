@@ -196,6 +196,32 @@ describe('wedding editor', () => {
     await waitFor(() => expect(lastSaved()).toMatchObject({ layout: 'standard', filmTitle: 'Hẹn Ước', groom: 'Minh Khoa' }), { timeout: 3000 });
   });
 
+  it('previews a cinema invitation as the guest picked above the frame or in it, and posts its form nowhere', async () => {
+    openEditor('wedding', { ...newWeddingDraft({ cover: PHOTO }), groom: 'Minh Khoa', bride: 'Thảo Vy', layout: 'cinema' });
+    await screen.findByLabelText('Tên chú rể');
+    const frame = document.querySelector('[data-id="preview"]') as HTMLIFrameElement;
+    expect(frame.getAttribute('sandbox')).toBe('allow-scripts');
+    expect(preview()).toContain('<main id="main" tabindex="-1" data-preview-side="none">');
+    expect(preview()).toContain('action="https://preview.invalid/f/trang-thu"');
+    fireEvent.click(document.querySelector('[data-id="preview-side-gai"] input') as HTMLInputElement);
+    expect(preview()).toContain('data-preview-side="gai"');
+    // A profile picked in the frame comes back as a message; one from anywhere else is ignored.
+    window.dispatchEvent(new MessageEvent('message', { data: { webnhanhPreviewSide: 'trai' }, source: window }));
+    expect(preview()).toContain('data-preview-side="gai"');
+    window.dispatchEvent(new MessageEvent('message', { data: { webnhanhPreviewSide: 'trai' }, source: frame.contentWindow }));
+    await waitFor(() => expect(preview()).toContain('data-preview-side="trai"'));
+    expect((document.querySelector('[data-id="preview-side-trai"] input') as HTMLInputElement).checked).toBe(true);
+    window.dispatchEvent(new MessageEvent('message', { data: { webnhanhPreviewSide: '"><x>' }, source: frame.contentWindow }));
+    expect(preview()).toContain('data-preview-side="trai"');
+  });
+
+  it('has no guest bar for the classic layouts', async () => {
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
+    await screen.findByLabelText('Tên chú rể');
+    expect(document.querySelector('[data-id="preview-sides"]')).toBeNull();
+    expect(preview()).not.toContain('data-preview-side="');
+  });
+
   it('marks a wrong map link at once', async () => {
     openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
     const addresses = (await screen.findAllByLabelText('Địa chỉ')) as HTMLInputElement[];

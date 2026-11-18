@@ -132,10 +132,17 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
           list: [
             'Tên cô dâu, chú rể và lời mời của hai bạn (tối đa 600 ký tự).',
             'Ngày cưới, kèm ngày âm lịch ghi theo cách của gia đình, ví dụ "tức ngày 23 tháng 10 năm Bính Ngọ".',
-            'Tối đa bốn lễ (lễ thành hôn, tiệc nhà trai, tiệc nhà gái…), mỗi lễ có ngày giờ, nơi tổ chức và nút Chỉ đường mở bản đồ từ địa chỉ hoặc link Google Maps bạn dán vào.',
+            'Tối đa bốn lễ (lễ thành hôn, tiệc nhà trai, tiệc nhà gái…), mỗi lễ có ngày giờ, nơi tổ chức, nút Chỉ đường mở bản đồ từ địa chỉ hoặc link Google Maps bạn dán vào, và nút Thêm vào lịch.',
             'Đếm ngược tới ngày cưới, tự cập nhật mỗi ngày.',
             'Ảnh bìa và album tối đa 12 ảnh.',
             'Form xác nhận tham dự: khách ghi tên, số điện thoại, có đến hay không, số người đi cùng và lời nhắn cho cô dâu chú rể.',
+          ],
+        },
+        {
+          heading: 'Khách nhà trai, nhà gái và link mời từng người',
+          paragraphs: [
+            'Gõ tên khách và chọn nhà trai hay nhà gái là có link mời riêng: khách mở ra thấy ô xác nhận điền sẵn, bạn thấy số người đến của từng bên.',
+            'Kiểu Rạp phim làm thiệp như một bộ phim: khách chọn hồ sơ nhà trai hoặc nhà gái, xem lịch chiếu, các tập chuyện tình rồi đặt vé.',
           ],
         },
         {
@@ -168,6 +175,10 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
           answer: 'Có. Phần xác nhận tham dự bật sẵn, bạn tắt được trong trang sửa thiệp; khi đó khách liên hệ bạn qua Zalo, điện thoại hoặc Facebook bạn điền.',
         },
         { question: 'Gửi thiệp rồi còn sửa được không?', answer: 'Được. Sửa rồi bấm Đăng lại, link cũ mở ra bản mới, không phải gửi lại.' },
+        {
+          question: 'Có biết khách nào của nhà trai, nhà gái không?',
+          answer: 'Có. Danh sách xác nhận ghi bên của từng khách và số người đến của mỗi bên.',
+        },
       ],
       cta: 'Chọn mẫu thiệp cưới',
       linkLabel: 'Thiệp cưới online miễn phí',

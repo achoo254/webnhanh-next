@@ -29,6 +29,7 @@ export const CINEMA_DEFAULT_TAGLINE = 'Phần 1: Về chung một nhà';
 /** The page's fixed dark background, also the browser's theme colour. */
 const CINEMA_BACKGROUND = '#0b0809';
 const MOMENTS_MAX = 10;
+const PREVIEW_SIDES = ['none', 'trai', 'gai'] as const;
 /** The reply form in the film's words (the mock-up's). */
 const CINEMA_FORM_WORDS = {
   name: 'Tên in trên vé',
@@ -341,6 +342,7 @@ export function renderWeddingCinema(draft: WeddingDraft, assets: ReadonlyMap<str
     links.facebook ? `<a href="${escapeHtml(links.facebook.href)}">Facebook</a>` : '',
   ].filter(Boolean);
 
+  const previewSide = PREVIEW_SIDES.find((side) => side === options.previewSide);
   const metaYear = year ? `<li>${year}</li>` : '';
   return pageDocument({
     title: [film, coupleText, dottedDay(draft.date)].filter(Boolean).join(' · '),
@@ -359,7 +361,7 @@ export function renderWeddingCinema(draft: WeddingDraft, assets: ReadonlyMap<str
       `<nav class="top-nav" aria-label="Mục chính">${present.map((section) => `<a href="#${section.id}">${section.nav}</a>`).join('')}</nav>`,
       bothNames ? '<button type="button" class="me" id="me" hidden aria-label="Đổi hồ sơ"><span class="pf-av pf-av--sm" id="meAv"><span>?</span></span></button>' : '',
       '</header>',
-      '<main id="main" tabindex="-1">',
+      `<main id="main" tabindex="-1"${previewSide ? ` data-preview-side="${previewSide}"` : ''}>`,
       '<section class="hero" id="home" aria-label="Giới thiệu">',
       slides.length > 0 ? `<div class="hero-slides" id="slides">${slides.join('')}</div>` : '',
       '<div class="hero-shade" aria-hidden="true"></div>',

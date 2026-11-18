@@ -173,8 +173,8 @@ describe('a visitor edits, signs up when publishing, and the site is made with w
     expect(signUp.searchParams.getAll('utm_source')).toEqual(['fb']);
     expect(signUp.searchParams.get('utm_medium')).toBe('cpc');
     expect(signUp.searchParams.get('utm_campaign')).toBe('thiep-cuoi');
-    // Nothing went to the server but the session check.
-    expect(calls.filter((call) => call.url !== '/api/me')).toEqual([]);
+    // Nothing went to the server but the session check, and the app's own font files the preview inlines.
+    expect(calls.filter((call) => call.url !== '/api/me' && !(call.method === 'GET' && call.url.startsWith('/assets/preview-fonts/')))).toEqual([]);
     expect(FakeXhr.sent).toHaveLength(0);
     cleanup();
 

@@ -4,7 +4,7 @@ import { Link, Navigate, useNavigate, useSearchParams } from 'react-router';
 import { useAccount } from '../account';
 import { signInUrl } from '../api';
 import { IssueSummary } from '../editor/issue-navigator';
-import { EditorTabs, PreviewFrame, TemplateForm, useEditorChecks, visibleIssues } from '../editor/site-editor';
+import { EditorTabs, hasGuestSides, PreviewFrame, PreviewSideBar, TemplateForm, useEditorChecks, visibleIssues, type PreviewSide } from '../editor/site-editor';
 import { ISSUE_MESSAGES } from '../error-messages';
 import { useI18n } from '../i18n';
 import { leaveTo } from '../leave-to';
@@ -149,7 +149,12 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
     const timer = setTimeout(() => setPreviewed(value), PREVIEW_DELAY_MS);
     return () => clearTimeout(timer);
   }, [value]);
-  const html = useMemo(() => guestPreviewHtml(previewed, images, store.urls, PREVIEW_NAME), [previewed, images, store]);
+  const [previewSide, setPreviewSide] = useState<PreviewSide>('none');
+  const sides = hasGuestSides(previewed);
+  const html = useMemo(
+    () => guestPreviewHtml(previewed, images, store.urls, PREVIEW_NAME, sides ? previewSide : undefined),
+    [previewed, images, store, sides, previewSide],
+  );
 
   const issues = visibleIssues(value, attempted);
   const issueText = (field: string): string | null => {
@@ -242,7 +247,8 @@ function GuestEditor({ initial, guest }: { readonly initial: GuestDraft; readonl
         </div>
 
         <div className="editor-preview">
-          <PreviewFrame html={html} />
+          {sides ? <PreviewSideBar value={previewSide} onChange={setPreviewSide} /> : null}
+          <PreviewFrame html={html} onSide={setPreviewSide} />
         </div>
       </div>
 

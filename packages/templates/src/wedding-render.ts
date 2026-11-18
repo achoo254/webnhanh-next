@@ -44,6 +44,11 @@ export interface WeddingRenderOptions extends PageOptions {
   readonly rsvpForm?: OrderFormOptions;
   /** "Now" for the countdown; the current time when left out. */
   readonly now?: Date;
+  /**
+   * The app's preview of a "Rạp phim" page: the guest it shows ('none' the profile screen, or a family's guest). Never
+   * given for a published page.
+   */
+  readonly previewSide?: 'none' | 'trai' | 'gai';
 }
 
 const WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'] as const;

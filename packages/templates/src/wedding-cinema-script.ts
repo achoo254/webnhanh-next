@@ -5,7 +5,9 @@
  * profile screen ("Bạn là khách của ai?"), the greeting of a personal link (`?to=Lan&side=trai`), hiding the other
  * family's events, the moving banner, the per-second countdown, the photo row's viewer, the counter buttons and the
  * ticket "printed" once a reply is sent (it watches for the thank-you `ORDER_SCRIPT` puts in place of the form). With
- * reduced motion it changes nothing over time. Any text it writes goes through `textContent` or is escaped.
+ * reduced motion it changes nothing over time. Any text it writes goes through `textContent` or is escaped. In the
+ * app's preview (`data-preview-side` on `<main>`, set by the renderer only for the preview) it shows the page as the
+ * guest the editor picked and tells the editor (`postMessage`) when a profile is picked in the frame.
  *
  * Written without template literals: the source sits in a `String.raw` template below.
  */
@@ -34,7 +36,11 @@ if(guestName){
 }
 
 var pick=$('#pick'),me=$('#me'),main=$('#main'),hello=$('#hello'),sideSet=$('#order [data-from-query="side"]');
-var side=linkSide||store.get('rp_side')||'';
+// The app's preview (never a published page) says which guest it shows: 'none' (the profile screen), 'trai' or 'gai';
+// a profile picked there is told to the editor around the frame.
+var pv=main?main.getAttribute('data-preview-side'):null;
+if(pv!=='none'&&pv!=='trai'&&pv!=='gai')pv=null;
+var side=linkSide||(pv?(pv==='none'?'':pv):store.get('rp_side'))||'';
 function applySide(s){
   side=s;
   var who=guestName||'bạn';
@@ -58,6 +64,7 @@ function openPick(){
 function choose(btn){
   var s=btn.getAttribute('data-side');
   store.set('rp_side',s);applySide(s);btn.classList.add('is-chosen');
+  if(pv&&window.parent!==window)window.parent.postMessage({webnhanhPreviewSide:s},'*');
   setTimeout(function(){pick.classList.add('is-out');document.body.classList.remove('is-picking');main.inert=false;main.focus({preventScroll:true})},RM?0:380);
   setTimeout(function(){pick.hidden=true;btn.classList.remove('is-chosen')},RM?0:950);
 }
@@ -72,7 +79,7 @@ if(pick&&main){
   });
   if(me)me.addEventListener('click',openPick);
   applySide(side);
-  if(!store.get('rp_side'))openPick();
+  if(pv?pv==='none':!store.get('rp_side'))openPick();
 }else applySide(linkSide);
 
 var top=$('#top');
@@ -182,4 +189,4 @@ if(form&&booking){
 })();`;
 
 /** `sha256-…` of CINEMA_SCRIPT for the page's script-src (the tests recompute it). */
-export const CINEMA_SCRIPT_HASH = 'sha256-SPQ1+8paCxdohen2mpuTP82ycXY96p4c9jblwyHxsjc=';
+export const CINEMA_SCRIPT_HASH = 'sha256-7z2Iou7QJZJqd7SfrbToAOLlKpAps7Ank6bLWq2Ibds=';

@@ -11,7 +11,16 @@ const base = { id: z.string(), createdAt: z.string(), handledAt: z.string().null
 /** An order of a shop page, or a reply to a wedding invitation. */
 const orderSchema = z.discriminatedUnion('kind', [
   z.object({ ...base, kind: z.literal('order'), address: z.string(), product: z.string(), quantity: z.number() }),
-  z.object({ ...base, kind: z.literal('rsvp'), attending: z.enum(['yes', 'no']), guests: z.number() }),
+  z.object({
+    ...base,
+    kind: z.literal('rsvp'),
+    attending: z.enum(['yes', 'no']),
+    guests: z.number(),
+    /** The guest's family: '' not said (and from servers before families existed). */
+    side: z.enum(['', 'trai', 'gai']).default(''),
+    /** The name the personal invitation link was made for, or ''. */
+    invitedAs: z.string().default(''),
+  }),
 ]);
 export type Order = z.infer<typeof orderSchema>;
 
@@ -20,8 +29,16 @@ const orderListSchema = z.object({
   orders: z.array(orderSchema),
   more: z.boolean(),
   open: z.number(),
-  /** A wedding's replies, counted: who is coming (with how many people), who is not. */
-  rsvp: z.object({ yes: z.number(), guests: z.number(), no: z.number() }).nullable().default(null),
+  /** A wedding's replies, counted: who is coming (with how many people), who is not, and the people coming by family. */
+  rsvp: z
+    .object({
+      yes: z.number(),
+      guests: z.number(),
+      no: z.number(),
+      sides: z.object({ trai: z.number(), gai: z.number(), none: z.number() }).default({ trai: 0, gai: 0, none: 0 }),
+    })
+    .nullable()
+    .default(null),
 });
 export type OrderList = z.infer<typeof orderListSchema>;
 

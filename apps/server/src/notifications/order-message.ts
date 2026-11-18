@@ -13,10 +13,29 @@ export function ordersPath(siteId: string): string {
   return `/sites/${siteId}/orders`;
 }
 
+type Reply = Extract<SubmissionContent, { kind: 'rsvp' }>;
+
 /** "sẽ đến (2 người)" or "không đến được". */
-function replyLine(content: Extract<SubmissionContent, { kind: 'rsvp' }>): string {
+function replyLine(content: Reply): string {
   const { attending, guests } = content.data;
   return attending === 'yes' ? `sẽ đến (${guests} người)` : 'không đến được';
+}
+
+/** "Khách nhà trai", "Khách nhà gái", or '' when the guest did not say. */
+function sideLabel(content: Reply): string {
+  return content.data.side === 'trai' ? 'Khách nhà trai' : content.data.side === 'gai' ? 'Khách nhà gái' : '';
+}
+
+/** The name the invitation link was made for, when it is not the name the guest typed ('' otherwise). */
+function invitedAs(content: Reply): string {
+  const invited = content.data.invitedAs?.trim() ?? '';
+  return invited && invited.toLocaleLowerCase('vi') !== content.data.name.trim().toLocaleLowerCase('vi') ? invited : '';
+}
+
+/** "Lan (mời: Cô Lan)": the guest, and the name on the link when different. */
+function guestName(content: Reply): string {
+  const invited = invitedAs(content);
+  return invited ? `${content.data.name} (mời: ${invited})` : content.data.name;
 }
 
 /** The push payload the service worker shows (apps/web/public/sw.js). */
@@ -24,7 +43,7 @@ export function pushPayload(notice: OrderNotice): string {
   const { content } = notice;
   const words =
     content.kind === 'rsvp'
-      ? { title: `Xác nhận tham dự · ${notice.siteName}`, body: `${content.data.name} ${replyLine(content)}` }
+      ? { title: `Xác nhận tham dự · ${notice.siteName}`, body: [sideLabel(content), `${guestName(content)} ${replyLine(content)}`].filter(Boolean).join(' · ') }
       : { title: `Đơn mới · ${notice.siteName}`, body: `${content.data.name} đặt ${content.data.productName} × ${content.data.quantity}` };
   return JSON.stringify({ ...words, url: ordersPath(notice.siteId), tag: notice.submissionId });
 }
@@ -37,7 +56,8 @@ export function chatText(notice: OrderNotice, appUrl: string): string {
     content.kind === 'rsvp'
       ? [
           `Xác nhận tham dự ở ${host}`,
-          `Khách: ${content.data.name}${content.data.phone ? ` · ${content.data.phone}` : ''}`,
+          `Khách: ${guestName(content)}${content.data.phone ? ` · ${content.data.phone}` : ''}`,
+          sideLabel(content) ? `Bên: ${sideLabel(content)}` : '',
           `Trả lời: ${replyLine(content)}`,
           content.data.note ? `Lời nhắn: ${content.data.note}` : '',
           `Xem danh sách: ${appUrl}${ordersPath(notice.siteId)}`,
