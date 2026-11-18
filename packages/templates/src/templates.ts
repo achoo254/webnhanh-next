@@ -16,6 +16,7 @@ import { newProfileDraft, profileDraftSchema, PROFILE_SAMPLES, profileImageIds, 
 import { profileShareCard, renderProfile } from './profile-render';
 import type { SamplePhoto, TemplateIssue } from './schema-parts';
 import { shopShareCard, type ShareCardContent } from './share-card';
+import { cinemaFontFiles, styleFontFiles, type FontFile } from './shop-fonts';
 import { renderShop, type RenderOptions } from './shop-render';
 import { newShopDraft, sampleShopDraft, shopDraftSchema, shopImageIds, shopPublishIssues, SHOP_SAMPLES, SHOP_TEMPLATE, type ShopDraft } from './shop-schema';
 import { renderTet, tetShareCard } from './tet-render';
@@ -208,6 +209,12 @@ export function renderDraft(value: TemplateDraft, assets: ReadonlyMap<string, Im
     case 'links':
       return renderLinks(value.draft, assets, options);
   }
+}
+
+/** The font files a published page of `value` loads (copied beside it): its look's, or its layout's. */
+export function draftFontFiles(value: TemplateDraft): FontFile[] {
+  if (value.template === 'wedding' && value.draft.layout === 'cinema') return cinemaFontFiles();
+  return styleFontFiles(value.draft.style);
 }
 
 /** What the share picture shows (`renderCard`). */

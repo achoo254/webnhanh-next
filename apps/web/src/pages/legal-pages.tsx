@@ -1,4 +1,4 @@
-import { STYLE_FONTS } from '@webnhanh/templates/shop-fonts';
+import { CINEMA_FONTS, STYLE_FONTS } from '@webnhanh/templates/shop-fonts';
 import { ABUSE_EMAIL } from '@webnhanh/db/site-name';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router';
@@ -141,10 +141,12 @@ export function TermsPage(): ReactNode {
 }
 
 /**
- * Every typeface a template page or its share picture uses: the looks' faces (from the templates' own list) and Inter,
+ * Every typeface a template page or its share picture uses: the looks' and layouts' faces (from the templates' own lists) and Inter,
  * the share picture's face (`CARD_FONTS` of the templates).
  */
-const FONT_FAMILIES = [...new Set([...Object.values(STYLE_FONTS).flatMap((fonts) => [fonts.display.family, ...fonts.body.map((face) => face.family)]), 'Inter'])];
+const FONT_FAMILIES = [
+  ...new Set([...[...Object.values(STYLE_FONTS), CINEMA_FONTS].flatMap((fonts) => [fonts.display.family, ...fonts.body.map((face) => face.family)]), 'Inter']),
+];
 
 /** Where the fonts and pictures of the templates come from, and under which terms (packages/templates/CREDITS.md). */
 export function CreditsPage(): ReactNode {

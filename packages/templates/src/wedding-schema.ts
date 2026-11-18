@@ -40,7 +40,13 @@ export const WEDDING_LIMITS = {
   story: 6,
   storyTitle: 80,
   storyText: 300,
+  filmTitle: 40,
+  tagline: 80,
 } as const;
+
+/** How the invitation is laid out: the card of the looks ('standard'), or the "Rạp phim" page ('cinema'). */
+export const WEDDING_LAYOUTS = ['standard', 'cinema'] as const;
+export type WeddingLayout = (typeof WEDDING_LAYOUTS)[number];
 
 /** The two families: the groom's ("nhà trai") and the bride's ("nhà gái"). */
 export const WEDDING_SIDES = ['trai', 'gai'] as const;
@@ -141,6 +147,13 @@ export const weddingDraftSchema = z
     hostSide: z.enum(WEDDING_HOST_SIDES).optional(),
     parents: weddingParentsSchema.optional(),
     story: z.array(weddingStorySchema).max(WEDDING_LIMITS.story).optional(),
+    /** Left out (drafts before it) is 'standard'. Switching keeps every field: each layout shows what it uses. */
+    layout: z.enum(WEDDING_LAYOUTS).optional(),
+    /** The "Rạp phim" layout's film title and tagline; empty ones show the layout's own. */
+    filmTitle: line(WEDDING_LIMITS.filmTitle).optional(),
+    tagline: line(WEDDING_LIMITS.tagline).optional(),
+    /** The couple's portraits in the "Rạp phim" cast; without one the cast shows the initial. */
+    portraits: z.object({ groom: imageRef.optional(), bride: imageRef.optional() }).strict().optional(),
   })
   .strict()
   .refine((draft) => uniqueKeys(draft.events), 'duplicate-event-key')
@@ -166,7 +179,14 @@ export function weddingPublishIssues(draft: WeddingDraft): TemplateIssue[] {
 
 /** Every photo the draft shows, cover first, each once. */
 export function weddingImageIds(draft: WeddingDraft): string[] {
-  const ids = [draft.cover, ...draft.gallery, ...(draft.story ?? []).map((moment) => moment.photo ?? null), ...(draft.ornaments ?? [])].filter((id): id is string => id !== null);
+  const ids = [
+    draft.cover,
+    ...draft.gallery,
+    ...(draft.story ?? []).map((moment) => moment.photo ?? null),
+    draft.portraits?.groom ?? null,
+    draft.portraits?.bride ?? null,
+    ...(draft.ornaments ?? []),
+  ].filter((id): id is string => id !== null);
   return [...new Set(ids)];
 }
 

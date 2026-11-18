@@ -124,7 +124,7 @@ function buildGuides(): Readonly<Record<GuideId, Guide>> {
       heading: 'Thiệp cưới online miễn phí',
       eyebrow: 'Thiệp cưới',
       lede: `Một tấm thiệp cưới có địa chỉ riêng, mở được trên mọi điện thoại: khách xem ngày giờ, bấm chỉ đường tới nơi tổ chức và báo có đến hay không ngay trên thiệp. Làm trong vài phút với ${app}, không cần biết làm web.`,
-      looksHeading: 'Bốn kiểu thiệp cưới để bắt đầu',
+      looksHeading: 'Năm kiểu thiệp cưới để bắt đầu',
       sections: [
         {
           heading: 'Một thiệp cưới online cần có gì',

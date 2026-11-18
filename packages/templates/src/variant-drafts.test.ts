@@ -16,7 +16,14 @@ function placed(value: TemplateDraft): Record<string, string | null | undefined>
     case 'tet':
       return { hero: value.draft.photo, ornament: value.draft.ornaments?.[0], 'ornament-2': value.draft.ornaments?.[1] };
     case 'wedding':
-      return { cover: value.draft.cover, ornament: value.draft.ornaments?.[0] };
+      return {
+        cover: value.draft.cover,
+        ornament: value.draft.ornaments?.[0],
+        'photo-1': value.draft.gallery[0],
+        'photo-2': value.draft.gallery[1],
+        'photo-3': value.draft.gallery[2],
+        'photo-4': value.draft.gallery[3],
+      };
     case 'cafe':
       return { cover: value.draft.cover, 'item-1': value.draft.menu[0]?.items[0]?.image, 'item-2': value.draft.menu[0]?.items[1]?.image };
     case 'profile':

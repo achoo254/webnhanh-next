@@ -19,7 +19,7 @@ describe('template variants', () => {
   it('has the planned sets', () => {
     const count = (template: string) => variants.filter((v) => v.template === template).length;
     expect(count('shop')).toBe(9);
-    expect(count('wedding')).toBe(4);
+    expect(count('wedding')).toBe(5);
     expect(count('tet')).toBe(6);
     for (const template of ['party', 'birthday', 'links']) expect(count(template), template).toBe(3);
     expect(count('cafe')).toBeGreaterThanOrEqual(2);
@@ -28,10 +28,20 @@ describe('template variants', () => {
 
   it.each(variants.map((v) => [`${v.template}/${v.id}`, v] as const))('%s: its copy, look and palette fit the template', (_name, variant) => {
     const base = templateDraft(variant.template, () => '11111111-1111-4111-8111-111111111111', true).draft as Record<string, unknown>;
-    for (const field of Object.keys(variant.copy)) expect(typeof base[field], field).toBe('string');
+    // Texts replace texts of the draft; lists and groups (a wedding's story and parents) are the schema's to check.
+    for (const [field, value] of Object.entries(variant.copy)) if (typeof value === 'string') expect(typeof base[field], field).toBe('string');
     const draft = { ...base, ...variant.copy, style: variant.style, palette: variant.palette };
     expect(DRAFT_SCHEMAS[variant.template].safeParse(draft).success).toBe(true);
     expect(artFile(variant, 'cover')).toBe(`library/${variant.template}/${variant.id}/cover.webp`);
+  });
+
+  it('takes a layout of its own only where the template has one', () => {
+    const wedding = variants.find((variant) => variant.layout === 'cinema');
+    const shop = variants.find((variant) => variant.template === 'shop');
+    if (!wedding || !shop) throw new Error('no cinema wedding or shop variant');
+    expect(variantSchema.safeParse(wedding).success).toBe(true);
+    expect(variantSchema.safeParse({ ...shop, layout: 'cinema' }).success).toBe(false);
+    expect(variantSchema.safeParse({ ...wedding, layout: 'poster' }).success).toBe(false);
   });
 
   it('refuses art that could draw words, a reference drawn later, or klein-edit without one', () => {

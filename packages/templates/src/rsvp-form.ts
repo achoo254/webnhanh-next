@@ -110,15 +110,40 @@ function field(id: string, label: string, control: string, wide = false): string
 export interface RsvpFormExtras {
   /** Ask which family's guest replies, and take the name and family of a personal invitation link (a wedding). */
   readonly guestSide?: boolean;
+  /** A layout's own words for the form ("Tên in trên vé", "Đặt vé"); the usual ones for those left out. */
+  readonly words?: Partial<RsvpWords>;
 }
 
+/** What the reply form says, besides the note's label. */
+export interface RsvpWords {
+  readonly name: string;
+  readonly side: string;
+  readonly sideTrai: string;
+  readonly sideGai: string;
+  readonly attendingYes: string;
+  readonly attendingNo: string;
+  readonly guests: string;
+  readonly submit: string;
+}
+
+const RSVP_WORDS: RsvpWords = {
+  name: RSVP_LABELS.name,
+  side: RSVP_LABELS.side,
+  sideTrai: 'Khách nhà trai',
+  sideGai: 'Khách nhà gái',
+  attendingYes: 'Mình sẽ đến',
+  attendingNo: 'Tiếc quá, mình không đến được',
+  guests: RSVP_LABELS.guests,
+  submit: 'Gửi xác nhận',
+};
+
 /** The side question: two optional choices, picked and hidden by the script when the link says the family. */
-function sideChoices(): string {
+function sideChoices(words: RsvpWords): string {
   const f = RSVP_FIELDS;
   return [
-    `<fieldset class="field wide choices" data-from-query="${INVITE_QUERY.side}"><legend>${RSVP_LABELS.side}</legend>`,
-    `<label><input type="radio" name="${f.side}" value="trai"> Khách nhà trai</label>`,
-    `<label><input type="radio" name="${f.side}" value="gai"> Khách nhà gái</label>`,
+    `<fieldset class="field wide choices" data-from-query="${INVITE_QUERY.side}"><legend>${escapeHtml(words.side)}</legend>`,
+    `<label><input type="radio" name="${f.side}" value="trai"> ${escapeHtml(words.sideTrai)}</label>`,
+    `<label><input type="radio" name="${f.side}" value="gai"> ${escapeHtml(words.sideGai)}</label>`,
     '</fieldset>',
   ].join('');
 }
@@ -131,27 +156,28 @@ export function rsvpFormHtml(options: OrderFormOptions, noteLabel: string = RSVP
   const f = RSVP_FIELDS;
   const invite = extras.guestSide === true;
   const fromName = invite ? ` data-from-query="${INVITE_QUERY.name}"` : '';
+  const words: RsvpWords = { ...RSVP_WORDS, ...extras.words };
   return [
     `<form id="order" class="order-form rsvp-form" method="post" action="${escapeHtml(options.action)}" accept-charset="utf-8">`,
     `<input type="hidden" name="${f.kind}" value="${RSVP_KIND}">`,
     `<input type="hidden" name="${f.token}" value="${escapeHtml(options.token)}"><input type="hidden" name="${f.elapsed}" value="">`,
     invite ? `<input type="hidden" name="${f.invitedAs}" value=""${fromName}>` : '',
     `<div class="hp" aria-hidden="true"><label>Website <input name="${f.honeypot}" tabindex="-1" autocomplete="off"></label></div>`,
-    field('r-name', RSVP_LABELS.name, `<input id="r-name" name="${f.name}" required maxlength="${RSVP_LIMITS.name}" autocomplete="name"${fromName}>`),
+    field('r-name', escapeHtml(words.name), `<input id="r-name" name="${f.name}" required maxlength="${RSVP_LIMITS.name}" autocomplete="name"${fromName}>`),
     field(
       'r-phone',
       RSVP_LABELS.phone,
       `<input id="r-phone" name="${f.phone}" type="tel" inputmode="tel" maxlength="${RSVP_LIMITS.phone}" pattern="${PHONE_PATTERN}" autocomplete="tel">`,
     ),
-    invite ? sideChoices() : '',
+    invite ? sideChoices(words) : '',
     `<fieldset class="field wide choices"><legend>${RSVP_LABELS.attending}</legend>`,
-    `<label><input type="radio" name="${f.attending}" value="yes" required checked> Mình sẽ đến</label>`,
-    `<label><input type="radio" name="${f.attending}" value="no"> Tiếc quá, mình không đến được</label>`,
+    `<label><input type="radio" name="${f.attending}" value="yes" required checked> ${escapeHtml(words.attendingYes)}</label>`,
+    `<label><input type="radio" name="${f.attending}" value="no"> ${escapeHtml(words.attendingNo)}</label>`,
     '</fieldset>',
-    field('r-guests', RSVP_LABELS.guests, `<input id="r-guests" name="${f.guests}" type="number" inputmode="numeric" min="1" max="${RSVP_LIMITS.guests}" value="1" required>`),
+    field('r-guests', escapeHtml(words.guests), `<input id="r-guests" name="${f.guests}" type="number" inputmode="numeric" min="1" max="${RSVP_LIMITS.guests}" value="1" required>`),
     field('r-note', escapeHtml(noteLabel), `<textarea id="r-note" name="${f.note}" maxlength="${RSVP_LIMITS.note}" rows="2"></textarea>`, true),
     '<p class="order-status" role="status" aria-live="polite"></p>',
-    '<button type="submit">Gửi xác nhận</button>',
+    `<button type="submit">${escapeHtml(words.submit)}</button>`,
     '</form>',
     `<script>${ORDER_SCRIPT}</script>`,
   ].join('');

@@ -30,6 +30,7 @@ import {
 } from '@webnhanh/db';
 import { deleteRelease, publishRelease, PublishError, removeSite } from '@webnhanh/publish';
 import {
+  draftFontFiles,
   draftShareCard,
   imageAsset,
   orderProducts,
@@ -38,7 +39,6 @@ import {
   renderCard,
   renderDraft,
   SHARE_CARD_SIZE,
-  styleFontFiles,
   takesReplies,
   templateImageIds,
   type ImageAsset,
@@ -176,9 +176,9 @@ export async function runPublish(deps: PublishDeps, job: Job): Promise<PublishOu
     const shareImage = await shareImageOf(deps, { siteId: site.id, siteName: site.name, value, images, assets, work, releaseId });
     const html = renderLivePage(deps, site, value, assets, shareImage);
     await writeFile(path.join(work, 'index.html'), html);
-    // The style's fonts ship inside the release, beside the page: the page asks no one else for them.
+    // The page's fonts (its look's, or its layout's) ship inside the release, beside it: it asks no one else for them.
     await mkdir(path.join(work, 'fonts'));
-    for (const font of styleFontFiles(value.draft.style)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
+    for (const font of draftFontFiles(value)) await copyFile(fontFilePath(font), path.join(work, pageFontUrl(font.file)));
 
     await clock.begin('images');
     for (const image of images) {

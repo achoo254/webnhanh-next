@@ -35,6 +35,8 @@ export interface ShareCardContent {
   readonly palette: PaletteId;
   /** The photo shown on the right (`site_images.id`), or null. */
   readonly photo: string | null;
+  /** 'cinema' for a wedding's "Rạp phim" layout: the page's dark background, the title as a poster's. */
+  readonly theme?: 'cinema';
 }
 
 export function shopShareCard(draft: ShopDraft): ShareCardContent {
@@ -56,13 +58,18 @@ export function renderCard(content: ShareCardContent, assets: ReadonlyMap<string
   ).join('');
   const { title, description, kicker } = content;
   const { width, height } = SHARE_CARD_SIZE;
+  const cinema = content.theme === 'cinema';
   return [
     '<!doctype html><html lang="vi"><head><meta charset="utf-8">',
     `<style>${fonts}`,
     `*{box-sizing:border-box}html,body{margin:0;width:${width}px;height:${height}px;overflow:hidden}`,
     `body{display:flex;background:${palette.accent};color:#fff;font-family:Card,sans-serif}`,
+    cinema
+      ? `body{background:linear-gradient(120deg,color-mix(in srgb,${palette.accent} 30%,#0b0809),#0b0809 60%)}h1{text-transform:uppercase;color:color-mix(in srgb,${palette.accent} 45%,#fff)}.photo{-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}`
+      : '',
     `.text{flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:64px}`,
     kicker ? `.kicker{align-self:flex-start;background:${palette.pop};color:${palette.ink};border-radius:999px;padding:6px 22px;font-size:26px;font-weight:800}` : '',
+    kicker && cinema ? `.kicker{background:${palette.accent};color:#fff;border-radius:6px;letter-spacing:.12em;text-transform:uppercase;font-size:22px}` : '',
     'h1{margin:0;font-size:76px;line-height:1.05;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
     'p{margin:0;font-size:32px;line-height:1.35;opacity:.92;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
     '.host{font-size:28px;font-weight:800;opacity:.85}',

@@ -21,7 +21,8 @@ import { newWeddingDraft } from './wedding-schema';
  *
  * - shop: `cover` the cover, `product-1`/`product-2` the first two products' photos;
  * - tet: `hero` the card's photo, `ornament`/`ornament-2` decorations;
- * - wedding: `cover` the cover, `ornament` a decoration;
+ * - wedding: `cover` the cover, `ornament` a decoration, `photo-1`…`photo-4` the gallery (and, in order, the photos of
+ *   the sample story's moments);
  * - cafe: `cover` the cover, `item-1`/`item-2` the first two dishes' photos;
  * - profile: `avatar` the avatar;
  * - party: `cover` the cover, `ornament`/`ornament-2` decorations;
@@ -31,13 +32,20 @@ import { newWeddingDraft } from './wedding-schema';
 export const VARIANT_SLOTS = {
   shop: ['cover', 'product-1', 'product-2'],
   tet: ['hero', 'ornament', 'ornament-2'],
-  wedding: ['cover', 'ornament'],
+  wedding: ['cover', 'ornament', 'photo-1', 'photo-2', 'photo-3', 'photo-4'],
   cafe: ['cover', 'item-1', 'item-2'],
   profile: ['avatar'],
   party: ['cover', 'ornament', 'ornament-2'],
   birthday: ['hero', 'ornament', 'ornament-2'],
   links: ['avatar', 'cover'],
 } as const satisfies Readonly<Record<TemplateId, readonly [string, ...string[]]>>;
+
+/** The wedding's photo slots beyond the cover: its gallery, in order. */
+const WEDDING_PHOTO_SLOTS = ['photo-1', 'photo-2', 'photo-3', 'photo-4'] as const;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 /** Slots that are decoration (transparent ornaments), not photos for the owner to replace. */
 export const DECORATION_SLOTS = ['ornament', 'ornament-2'] as const;
@@ -99,9 +107,18 @@ export function variantDraft(variant: TemplateVariant, photoId: (slot: string) =
     case 'tet':
       base = { ...newTetDraft({ photo: photo('hero') }), ...decorated };
       break;
-    case 'wedding':
-      base = { ...newWeddingDraft({ cover: photo('cover') }), ...decorated };
+    case 'wedding': {
+      const gallery = WEDDING_PHOTO_SLOTS.map(photo).filter((id): id is string => id !== null);
+      const story = Array.isArray(variant.copy.story) ? variant.copy.story : [];
+      base = {
+        ...newWeddingDraft({ cover: photo('cover') }),
+        ...decorated,
+        ...(gallery.length > 0 ? { gallery } : {}),
+        ...(variant.layout ? { layout: variant.layout } : {}),
+        ...(story.length > 0 ? { story: story.map((moment: unknown, index) => (isRecord(moment) ? { ...moment, photo: gallery[index] ?? null } : moment)) } : {}),
+      };
       break;
+    }
     case 'cafe': {
       const draft = newCafeDraft({ cover: photo('cover') });
       const items = [photo('item-1'), photo('item-2')];
@@ -124,7 +141,9 @@ export function variantDraft(variant: TemplateVariant, photoId: (slot: string) =
       base = newLinksDraft({ avatar: photo('avatar'), cover: photo('cover') });
       break;
   }
-  const parsed = parseDraft(variant.template, { ...base, ...variant.copy, style: variant.style, palette: variant.palette });
+  // The copy's story gets the drawn photos above, so it goes in before the copy's other fields only.
+  const { story: _story, ...copy } = variant.copy;
+  const parsed = parseDraft(variant.template, { ...base, ...copy, style: variant.style, palette: variant.palette });
   if (!parsed) throw new Error(`variants/${variant.template}/${variant.id}.json does not make a valid ${variant.template} draft`);
   return parsed;
 }

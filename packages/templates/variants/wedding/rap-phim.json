@@ -1,0 +1,67 @@
+{
+  "template": "wedding",
+  "id": "rap-phim",
+  "label": "Rạp phim",
+  "kind": "style",
+  "style": "tinh-te",
+  "palette": "rose",
+  "layout": "cinema",
+  "copy": {
+    "groom": "Minh Khoa",
+    "bride": "Thảo Vy",
+    "intro": "Sau tám năm, hai nhân vật chính quyết định bước sang phần tiếp theo. Mời bạn đến xem trực tiếp, ngồi hàng ghế đầu.",
+    "rsvpNote": "Mong bạn xác nhận sớm để rạp chuẩn bị đủ ghế.",
+    "parents": {
+      "groom": ["Ông Nguyễn Văn Hải", "Bà Lê Thị Hoa"],
+      "bride": ["Ông Trần Quốc Bảo", "Bà Phạm Thị Lan"]
+    },
+    "story": [
+      { "key": "s1", "when": "2018-09", "title": "Ghế bên cạnh", "text": "Chung một lớp tiếng Anh buổi tối. Khoa tới muộn, chỗ trống duy nhất là cạnh Vy." },
+      { "key": "s2", "when": "2019-02", "title": "Buổi hẹn đầu", "text": "Một ly chè, hai tiếng nói chuyện, và chiếc xe máy hết xăng giữa đường về." },
+      { "key": "s3", "when": "2019-08", "title": "Chính thức", "text": "Lời tỏ tình dài đúng ba chữ. Vy bắt viết lại cho dài hơn." },
+      { "key": "s4", "when": "2023-06", "title": "Chuyến đi xa", "text": "Đà Lạt mưa cả tuần. Hai đứa ngồi trong quán cà phê, kể chuyện tương lai." },
+      { "key": "s5", "when": "2026-10", "title": "Câu trả lời", "text": "Chiếc nhẫn giấu trong hộp bánh. Vy ăn tới miếng cuối mới thấy." }
+    ]
+  },
+  "art": [
+    {
+      "slot": "cover",
+      "model": "qwen",
+      "size": "1104x1472",
+      "prompt": "cinematic wedding film still of one young Vietnamese couple, bride in a simple white gown and groom in a dark suit, standing close under warm evening light in a quiet city street, shallow depth of field, moody film grain, dark background, lots of dark space at the bottom, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "photo-1",
+      "model": "klein-edit",
+      "ref": "cover",
+      "size": "1104x1472",
+      "prompt": "the same couple sitting side by side in a small evening classroom, laughing, warm cinematic light, film still, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "photo-2",
+      "model": "klein-edit",
+      "ref": "cover",
+      "size": "1104x1472",
+      "prompt": "the same couple sharing a dessert at a street food stall at night, string lights, cinematic film still, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "photo-3",
+      "model": "klein-edit",
+      "ref": "cover",
+      "size": "1104x1472",
+      "prompt": "the same couple under one umbrella in the rain among pine trees in Da Lat, cinematic film still, soft mist, no text, no letters, no logos, no watermark",
+      "seed": null
+    },
+    {
+      "slot": "photo-4",
+      "model": "klein-edit",
+      "ref": "cover",
+      "size": "1104x1472",
+      "prompt": "the same couple in traditional Vietnamese ao dai at an engagement ceremony at home, warm golden light, cinematic film still, no text, no letters, no logos, no watermark",
+      "seed": null
+    }
+  ]
+}

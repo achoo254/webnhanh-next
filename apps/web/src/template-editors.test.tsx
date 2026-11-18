@@ -181,6 +181,21 @@ describe('wedding editor', () => {
     expect(calls.some((c) => c.url.includes('to=') || c.method === 'POST')).toBe(false);
   });
 
+  it('switches to the cinema layout and back without losing anything, with the film\'s own fields only there', async () => {
+    openEditor('wedding', { ...newWeddingDraft({ cover: PHOTO }), groom: 'Minh Khoa', bride: 'Thảo Vy' });
+    await screen.findByLabelText('Tên chú rể');
+    expect(document.querySelector('[data-id="style-picker"]')).not.toBeNull();
+    expect(screen.queryByLabelText('Tên phim')).toBeNull();
+    fireEvent.click(document.querySelector('[data-id="wedding-layout-cinema"] input') as HTMLInputElement);
+    expect(preview()).toContain('<body class="cinema">');
+    expect(document.querySelector('[data-id="style-picker"]')).toBeNull();
+    fireEvent.change(screen.getByLabelText('Tên phim'), { target: { value: 'Hẹn Ước' } });
+    expect(preview()).toContain('<h1 class="title">Hẹn Ước</h1>');
+    fireEvent.click(document.querySelector('[data-id="wedding-layout-standard"] input') as HTMLInputElement);
+    expect(preview()).toContain('<span class="name">Minh Khoa</span>');
+    await waitFor(() => expect(lastSaved()).toMatchObject({ layout: 'standard', filmTitle: 'Hẹn Ước', groom: 'Minh Khoa' }), { timeout: 3000 });
+  });
+
   it('marks a wrong map link at once', async () => {
     openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
     const addresses = (await screen.findAllByLabelText('Địa chỉ')) as HTMLInputElement[];

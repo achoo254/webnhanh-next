@@ -59,9 +59,24 @@ export function styleFontFiles(style: StyleId): FontFile[] {
   return [fonts.display, ...fonts.body].flatMap(filesOf);
 }
 
-/** Every font file of every style, each once: what the editor's preview must be able to serve. */
+/**
+ * The faces of the wedding's "Rạp phim" layout, whatever the look: a poster face (Anton) for titles and Be Vietnam Pro,
+ * up to its extra-bold weight, for the rest.
+ */
+export const CINEMA_FONTS: StyleFonts = {
+  display: { family: 'Anton', source: 'anton', weight: 400 },
+  body: [400, 600, 800].map((weight) => ({ family: 'Be Vietnam Pro', source: 'be-vietnam-pro', weight })),
+};
+
+/** The font files of a "Rạp phim" page, poster face first (its Latin file is the one preloaded). */
+export function cinemaFontFiles(): FontFile[] {
+  return [CINEMA_FONTS.display, ...CINEMA_FONTS.body].flatMap(filesOf);
+}
+
+/** Every font file of every style and layout, each once: what the editor's preview must be able to serve. */
 export function allFontFiles(): FontFile[] {
   const byFile = new Map<string, FontFile>();
   for (const style of Object.keys(STYLE_FONTS) as StyleId[]) for (const font of styleFontFiles(style)) byFile.set(font.file, font);
+  for (const font of cinemaFontFiles()) byFile.set(font.file, font);
   return [...byFile.values()];
 }

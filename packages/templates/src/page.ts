@@ -104,13 +104,15 @@ export function webUrlOrigin(value: string): string {
 }
 
 /**
- * The page's Content-Security-Policy: its own photos and fonts, its inline style, the form script by its fixed hash,
- * and sending only to the form's origin. Never anything else, whatever the owner typed.
+ * The page's Content-Security-Policy: its own photos and fonts, its inline style, the form script and the layout's
+ * script by their fixed hashes, and sending only to the form's origin. Never anything else, whatever the owner typed.
  */
-function contentSecurityPolicy(formOrigin: string | null, fonts: boolean): string {
+function contentSecurityPolicy(formOrigin: string | null, fonts: boolean, layoutScript: PageScript | undefined): string {
   const parts = ["default-src 'none'", "img-src 'self'", "style-src 'unsafe-inline'", "base-uri 'none'"];
   if (fonts) parts.push("font-src 'self'");
-  if (formOrigin) parts.push(`script-src '${ORDER_SCRIPT_HASH}'`, `connect-src ${formOrigin}`, `form-action ${formOrigin}`);
+  const hashes = [layoutScript?.hash, formOrigin ? ORDER_SCRIPT_HASH : undefined].filter((hash): hash is string => hash !== undefined);
+  if (hashes.length > 0) parts.push(`script-src ${hashes.map((hash) => `'${hash}'`).join(' ')}`);
+  if (formOrigin) parts.push(`connect-src ${formOrigin}`, `form-action ${formOrigin}`);
   else parts.push("form-action 'none'");
   return parts.join('; ');
 }
@@ -208,6 +210,13 @@ export function contactSection(items: readonly string[], parts: ContactSectionPa
   return `<section class="contact"${id} aria-labelledby="${parts.headingId}"><h2 id="${parts.headingId}">${parts.heading}</h2>${parts.intro ?? ''}<ul>${items.join('')}</ul></section>`;
 }
 
+/** A fixed script of a layout, run at the end of the body and allowed by its hash (never built from the draft). */
+export interface PageScript {
+  readonly source: string;
+  /** `sha256-…` of `source`. */
+  readonly hash: string;
+}
+
 /** Everything `pageDocument` needs. Texts are raw (escaped there); `body` and `dock` are HTML built by the template. */
 export interface PageParts {
   readonly title: string;
@@ -221,13 +230,24 @@ export interface PageParts {
   /** The origin a form on the page posts to, which then also carries the form script; null for none. */
   readonly formOrigin: string | null;
   readonly options: PageOptions;
+  /**
+   * A layout of its own (the wedding's "Rạp phim"): its stylesheet replaces the look's base one, the body gets its
+   * class instead of the look's, the page loads its fonts and runs its script.
+   */
+  readonly layout?: {
+    readonly bodyClass: string;
+    readonly themeColor: string;
+    readonly fonts: readonly FontFile[];
+    readonly script: PageScript;
+  };
 }
 
 /** The whole HTML file: head (CSP, share tags, fonts, styles), then the body, the "made with" line and the bar. */
 export function pageDocument(parts: PageParts): RenderedPage {
   const { options } = parts;
   const fontUrl = options.fontUrl;
-  const fontFiles = fontUrl ? styleFontFiles(parts.style) : [];
+  const layout = parts.layout;
+  const fontFiles = fontUrl ? (layout?.fonts ?? styleFontFiles(parts.style)) : [];
   const fontCss = fontUrl ? fontFaceCss(fontFiles, fontUrl) : '';
   const preload = fontUrl && fontFiles[0] ? `<link rel="preload" href="${escapeHtml(assertAssetUrl(fontUrl(fontFiles[0].file)))}" as="font" type="font/woff2" crossorigin>` : '';
   const title = escapeHtml(parts.title);
@@ -239,26 +259,28 @@ export function pageDocument(parts: PageParts): RenderedPage {
   ].filter(Boolean);
   const madeWith = footerLinks.length > 0 ? `<footer class="made">${footerLinks.join(' · ')}</footer>` : '';
   const dock = parts.dock ?? '';
-  const stylesheet = [fontCss, baseCss(parts.style, parts.palette), ...parts.css].filter(Boolean).join('\n');
+  const stylesheet = [fontCss, layout ? '' : baseCss(parts.style, parts.palette), ...parts.css].filter(Boolean).join('\n');
+  const bodyClass = layout ? layout.bodyClass : `s-${parts.style}${dock ? ' has-dock' : ''}`;
 
   const html = [
     '<!doctype html>',
     '<html lang="vi">',
     '<head>',
     '<meta charset="utf-8">',
-    `<meta http-equiv="Content-Security-Policy" content="${escapeHtml(contentSecurityPolicy(parts.formOrigin, fontFiles.length > 0))}">`,
+    `<meta http-equiv="Content-Security-Policy" content="${escapeHtml(contentSecurityPolicy(parts.formOrigin, fontFiles.length > 0, layout?.script))}">`,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<title>${title}</title>`,
     meta,
     shareTags(title, description, options.page),
-    `<meta name="theme-color" content="${parts.palette.accent}">`,
+    `<meta name="theme-color" content="${layout?.themeColor ?? parts.palette.accent}">`,
     preload,
     `<style>${stylesheet}</style>`,
     '</head>',
-    `<body class="s-${parts.style}${dock ? ' has-dock' : ''}">`,
+    `<body class="${bodyClass}">`,
     ...parts.body,
     madeWith,
     dock,
+    layout ? `<script>${layout.script.source}</script>` : '',
     '</body>',
     '</html>',
     '',

@@ -1,14 +1,18 @@
 import {
   ALL_PALETTE_IDS,
+  CINEMA_DEFAULT_TAGLINE,
+  CINEMA_DEFAULT_TITLE,
   INVITE_QUERY,
   isIsoMonth,
   RSVP_LIMITS,
   WEDDING_HOST_SIDES,
+  WEDDING_LAYOUTS,
   WEDDING_LIMITS,
   WEDDING_SIDES,
   type WeddingDraft,
   type WeddingEvent,
   type WeddingHostSide,
+  type WeddingLayout,
   type WeddingParents,
   type WeddingSide,
   type WeddingStory,
@@ -27,6 +31,7 @@ import { ToggleField } from '../toggle-field';
 import type { FormProps } from './form-props';
 
 const SIDE_LABELS: Readonly<Record<WeddingSide, MessageKey>> = { trai: 'editor.wedding.side.trai', gai: 'editor.wedding.side.gai' };
+const LAYOUT_LABELS: Readonly<Record<WeddingLayout, MessageKey>> = { standard: 'editor.wedding.layout.standard', cinema: 'editor.wedding.layout.cinema' };
 const HOST_LABELS: Readonly<Record<WeddingHostSide, MessageKey>> = { ...SIDE_LABELS, chung: 'editor.wedding.host.chung' };
 /** The parents' lines of each family in the draft, and the editor's name for the family. */
 const PARENT_FAMILIES = [
@@ -227,9 +232,26 @@ export function WeddingForm({ photos, draft, update: save, images, onImage, issu
   const story = draft.story ?? [];
   const editStory = (change: (list: readonly WeddingStory[]) => WeddingStory[]): void => update((current) => ({ ...current, story: change(current.story ?? []) }));
   const editMoment = (key: string, patch: Partial<WeddingStory>): void => editStory((list) => list.map((moment) => (moment.key === key ? { ...moment, ...patch } : moment)));
+  const cinema = draft.layout === 'cinema';
+  const editPortrait = (side: 'groom' | 'bride', id: string | null): void => update((current) => ({ ...current, portraits: { ...current.portraits, [side]: id } }));
   const sideOptions = [{ value: '' as const, label: t('editor.wedding.event.side.all') }, ...WEDDING_SIDES.map((value) => ({ value, label: t(SIDE_LABELS[value]) }))];
   return (
     <>
+      <section className="panel" aria-labelledby="layout-heading" data-id="wedding-layout">
+        <h2 id="layout-heading" className="panel-title">
+          {t('editor.wedding.layout')}
+        </h2>
+        <ChoiceChips
+          legend={t('editor.wedding.layout.legend')}
+          name="wedding-layout"
+          value={draft.layout ?? 'standard'}
+          options={WEDDING_LAYOUTS.map((value) => ({ value, label: t(LAYOUT_LABELS[value]) }))}
+          onChange={(layout) => edit({ layout })}
+          dataId="wedding-layout"
+        />
+        <p className="hint">{t(cinema ? 'editor.wedding.layout.cinema.hint' : 'editor.wedding.layout.standard.hint')}</p>
+      </section>
+
       <section className="panel" aria-labelledby="couple-heading">
         <h2 id="couple-heading" className="panel-title">
           {t('editor.wedding')}
@@ -278,6 +300,49 @@ export function WeddingForm({ photos, draft, update: save, images, onImage, issu
           dataId="wedding-intro"
         />
       </section>
+
+      {cinema ? (
+        <section className="panel" aria-labelledby="film-heading" data-id="wedding-film">
+          <h2 id="film-heading" className="panel-title">
+            {t('editor.wedding.film')}
+          </h2>
+          <TextField
+            label={t('editor.wedding.film.title')}
+            value={draft.filmTitle ?? ''}
+            onChange={(filmTitle) => edit({ filmTitle })}
+            maxLength={WEDDING_LIMITS.filmTitle}
+            placeholder={CINEMA_DEFAULT_TITLE}
+            hint={t('editor.wedding.film.empty')}
+            dataId="wedding-film-title"
+          />
+          <TextField
+            label={t('editor.wedding.film.tagline')}
+            value={draft.tagline ?? ''}
+            onChange={(tagline) => edit({ tagline })}
+            maxLength={WEDDING_LIMITS.tagline}
+            placeholder={CINEMA_DEFAULT_TAGLINE}
+            dataId="wedding-film-tagline"
+          />
+          {(['groom', 'bride'] as const).map((side) => {
+            const id = draft.portraits?.[side] ?? null;
+            return (
+              <ImageField
+                key={side}
+                photos={photos}
+                label={t(side === 'groom' ? 'editor.wedding.portrait.groom' : 'editor.wedding.portrait.bride')}
+                image={id ? (images.get(id) ?? null) : null}
+                onUploaded={(image) => {
+                  onImage(image);
+                  editPortrait(side, image.id);
+                }}
+                onRemove={() => editPortrait(side, null)}
+                dataId={`portrait-${side}`}
+              />
+            );
+          })}
+          <p className="hint">{t('editor.wedding.portrait.hint')}</p>
+        </section>
+      ) : null}
 
       <section className="panel" aria-labelledby="families-heading" data-id="wedding-families">
         <h2 id="families-heading" className="panel-title">
@@ -489,7 +554,7 @@ export function WeddingForm({ photos, draft, update: save, images, onImage, issu
       <InvitePanel site={site} />
 
       <ContactsPanel contacts={draft.contacts} onChange={(contacts) => edit({ contacts })} issueText={issueText} />
-      <StylePicker value={draft.style} palette={draft.palette} onChange={(style) => edit({ style })} />
+      {cinema ? null : <StylePicker value={draft.style} palette={draft.palette} onChange={(style) => edit({ style })} />}
       <PalettePicker ids={ALL_PALETTE_IDS} value={draft.palette} onChange={(palette) => edit({ palette })} />
     </>
   );

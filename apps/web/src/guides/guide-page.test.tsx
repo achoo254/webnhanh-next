@@ -44,8 +44,8 @@ describe('guide pages in the app', () => {
     expect(document.title).toMatch(/^Thiệp cưới online miễn phí/);
     const ctas = screen.getAllByRole('link', { name: 'Chọn mẫu thiệp cưới' });
     expect(ctas.map((link) => link.getAttribute('href'))).toEqual(['/new?template=wedding', '/new?template=wedding']);
-    const looks = within(screen.getByRole('region', { name: 'Bốn kiểu thiệp cưới để bắt đầu' })).getAllByRole('link');
-    expect(looks).toHaveLength(4);
+    const looks = within(screen.getByRole('region', { name: 'Năm kiểu thiệp cưới để bắt đầu' })).getAllByRole('link');
+    expect(looks).toHaveLength(5);
     expect(looks.map((link) => link.getAttribute('href'))).toContain('/new?template=wedding&variant=truyen-thong');
     const related = within(screen.getByRole('navigation', { name: 'Gợi ý khác' }));
     expect(related.getByRole('link', { name: 'Làm website bán hàng miễn phí' }).getAttribute('href')).toBe(GUIDE_PATHS.shop);

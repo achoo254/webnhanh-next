@@ -44,6 +44,7 @@ import tetMaiVangSumVay from '../variants/tet/mai-vang-sum-vay.json';
 import tetPhaoHoaGiaoThua from '../variants/tet/phao-hoa-giao-thua.json';
 import tetVanPhongDeThuong from '../variants/tet/van-phong-de-thuong.json';
 import weddingHoaPastel from '../variants/wedding/hoa-pastel.json';
+import weddingRapPhim from '../variants/wedding/rap-phim.json';
 import weddingToiGian from '../variants/wedding/toi-gian.json';
 import weddingTruyenThong from '../variants/wedding/truyen-thong.json';
 import weddingVintage from '../variants/wedding/vintage.json';
@@ -83,12 +84,18 @@ export const variantSchema = z
     kind: z.enum(['industry', 'style']),
     style: z.enum(STYLE_IDS),
     palette: z.enum(ALL_PALETTE_IDS),
-    /** Sample texts: top-level text fields of the template's draft, by name. */
-    copy: z.record(z.string().regex(/^[a-z][A-Za-z]*$/), z.string().max(600)),
+    /**
+     * Sample copy: top-level fields of the template's draft, by name: texts, or lists and groups of texts (a wedding's
+     * story and parents). The draft schema checks them when the variant becomes a draft (`variantDraft`, and the tests).
+     */
+    copy: z.record(z.string().regex(/^[a-z][A-Za-z]*$/), z.union([z.string().max(600), z.array(z.unknown()).max(12), z.record(z.string(), z.unknown())])),
+    /** A layout of its own instead of the look's card: only the wedding has one ("Rạp phim"). */
+    layout: z.enum(['cinema']).optional(),
     art: z.array(artSchema).min(1).max(8),
   })
   .strict()
   .superRefine((variant, ctx) => {
+    if (variant.layout !== undefined && variant.template !== 'wedding') ctx.addIssue({ code: 'custom', message: `no-such-layout: ${variant.template} ${variant.layout}`, path: ['layout'] });
     const slots = variant.art.map((art) => art.slot);
     if (new Set(slots).size !== slots.length) ctx.addIssue({ code: 'custom', message: 'duplicate-slot' });
     // Every picture drawn has its place in the draft (`variantDraft`), and the one standing for the variant is drawn.
@@ -136,6 +143,7 @@ export const VARIANT_FILES: Readonly<Record<string, unknown>> = {
   'tet/phao-hoa-giao-thua.json': tetPhaoHoaGiaoThua,
   'tet/van-phong-de-thuong.json': tetVanPhongDeThuong,
   'wedding/hoa-pastel.json': weddingHoaPastel,
+  'wedding/rap-phim.json': weddingRapPhim,
   'wedding/toi-gian.json': weddingToiGian,
   'wedding/truyen-thong.json': weddingTruyenThong,
   'wedding/vintage.json': weddingVintage,

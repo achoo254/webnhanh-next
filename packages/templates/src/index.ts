@@ -25,5 +25,7 @@ export * from './rsvp-form';
 export * from './templates';
 export * from './tet-render';
 export * from './tet-schema';
+export * from './wedding-cinema-render';
+export * from './wedding-cinema-script';
 export * from './wedding-render';
 export * from './wedding-schema';

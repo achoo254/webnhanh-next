@@ -10,8 +10,9 @@ Self-hosted in every published page (`src/shop-fonts.ts`) and on the share pictu
 | Bricolage Grotesque | Display face of "Rực rỡ" | SIL Open Font License 1.1 |
 | Newsreader | Display face of "Tinh tế" | SIL Open Font License 1.1 |
 | Baloo 2 | Display face of "Ấm cúng" | SIL Open Font License 1.1 |
-| Be Vietnam Pro | Body text of "Rực rỡ" and "Tinh tế" | SIL Open Font License 1.1 |
+| Be Vietnam Pro | Body text of "Rực rỡ", "Tinh tế" and "Rạp phim" | SIL Open Font License 1.1 |
 | Nunito | Body text of "Ấm cúng" | SIL Open Font License 1.1 |
+| Anton | Titles of the wedding's "Rạp phim" layout | SIL Open Font License 1.1 |
 | Inter | Share picture | SIL Open Font License 1.1 |
 
 ## Pictures
@@ -30,6 +31,12 @@ the models Qwen-Image-2512, Z-Image-Turbo and FLUX.2 klein 4B (all Apache-2.0) a
 removal. They are owned by hoandat, all rights reserved (not CC0). None of them contain text (the ornament of the
 traditional wedding look shows the double-happiness sign 囍 as a motif): every word on a page is HTML that the owner can
 change.
+
+- **Pending:** the wedding variant "Rạp phim" (`variants/wedding/rap-phim.json`) has no pictures of its own yet (the PC
+  that draws them was off). Its `library/wedding/rap-phim/*.webp` and `thumbs/wedding/rap-phim.webp` are copies of
+  other wedding pictures of this library (the covers of hoa-pastel, toi-gian, vintage, truyen-thong and
+  `samples/wedding-cover.webp`); their prompts are in the file with `seed: null`. Draw them again with the PC on:
+  `pnpm exec tsx scripts/gen-template-art.ts --type wedding --variant rap-phim --force`.
 
 ## Decorations
 

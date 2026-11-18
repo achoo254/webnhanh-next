@@ -34,6 +34,7 @@ import {
 import { PALETTES } from './palettes';
 import { RSVP_CSS, RSVP_SECTION_ID, rsvpFormHtml } from './rsvp-form';
 import type { ShareCardContent } from './share-card';
+import { cinemaTitle, renderWeddingCinema } from './wedding-cinema-render';
 import { WEDDING_CSS, WEDDING_FAMILIES_CSS, WEDDING_LOOK_CSS } from './wedding-styles';
 import { isIsoDate, isIsoMonth, type WeddingDraft, type WeddingEvent, type WeddingSide, type WeddingStory } from './wedding-schema';
 import { calendarLink, looksLikeUrl, mapLink } from './web-links';
@@ -88,12 +89,12 @@ export function weddingHasFamilies(draft: WeddingDraft): boolean {
 }
 
 /** The families in the order the card names them: the bride's first when her family sends it. */
-function familyOrder(draft: WeddingDraft): readonly WeddingSide[] {
+export function familyOrder(draft: WeddingDraft): readonly WeddingSide[] {
   return draft.hostSide === 'gai' ? ['gai', 'trai'] : ['trai', 'gai'];
 }
 
 /** The couple's names in the card's order (typed ones only). */
-function coupleNames(draft: WeddingDraft): string[] {
+export function coupleNames(draft: WeddingDraft): string[] {
   const names: Readonly<Record<WeddingSide, string>> = { trai: draft.groom.trim(), gai: draft.bride.trim() };
   return familyOrder(draft)
     .map((side) => names[side])
@@ -186,6 +187,7 @@ function eventItem(event: WeddingEvent, weddingDate: string, calendarExtras: Cal
 }
 
 export function renderWedding(draft: WeddingDraft, assets: ReadonlyMap<string, ImageAsset>, options: WeddingRenderOptions = {}): RenderedPage {
+  if (draft.layout === 'cinema') return renderWeddingCinema(draft, assets, options);
   const intro = draft.intro.trim();
   const lunar = draft.lunarDate.trim();
   const cover = draft.cover ? assets.get(draft.cover) : undefined;
@@ -272,6 +274,16 @@ export function renderWedding(draft: WeddingDraft, assets: ReadonlyMap<string, I
 
 export function weddingShareCard(draft: WeddingDraft): ShareCardContent {
   const couple = coupleNames(draft);
+  if (draft.layout === 'cinema') {
+    return {
+      kicker: 'Suất chiếu đặc biệt',
+      title: cinemaTitle(draft),
+      description: [couple.join(' & '), weddingDateLabel(draft.date)].filter(Boolean).join(' · '),
+      palette: draft.palette,
+      photo: draft.cover,
+      theme: 'cinema',
+    };
+  }
   return {
     kicker: 'Thiệp cưới',
     title: couple.length > 0 ? couple.join(' & ') : 'Thiệp cưới',
