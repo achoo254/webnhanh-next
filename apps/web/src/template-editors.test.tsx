@@ -22,8 +22,8 @@ function json(status: number, body: unknown): Response {
 }
 
 /** The editor of a site of `template` with `draft`, saves recorded in `saved`. */
-function openEditor(template: TemplateId, draft: unknown): void {
-  const site = { id: SITE_ID, name: 'trang-thu', kind: 'template', template, status: 'draft', published: false, createdAt: NOW, updatedAt: NOW, cover: null, job: null, newOrders: 0 };
+function openEditor(template: TemplateId, draft: unknown, published = false): void {
+  const site = { id: SITE_ID, name: 'trang-thu', kind: 'template', template, status: published ? 'published' : 'draft', published, createdAt: NOW, updatedAt: NOW, cover: null, job: null, newOrders: 0 };
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -121,6 +121,64 @@ describe('wedding editor', () => {
     expect(preview()).not.toContain('name="kind"');
     await waitFor(() => expect(lastSaved()).toMatchObject({ groom: 'Minh', date: '2026-12-12', rsvp: false }), { timeout: 3000 });
     expect((lastSaved().events as { label: string }[]).map((event) => event.label)).toEqual(['Lễ thành hôn', 'Lễ vu quy', 'Tiệc cưới']);
+  });
+
+  it('names the two families: an older draft gets its inviting family on the first change, parents and each event\'s family reach the card', async () => {
+    const { hostSide: _dropped, ...legacy } = newWeddingDraft({ cover: PHOTO });
+    openEditor('wedding', { ...legacy, groom: 'Minh', bride: 'Thảo' });
+    const groomParent = (await screen.findAllByLabelText('Dòng 1'))[0] as HTMLInputElement;
+    fireEvent.change(groomParent, { target: { value: 'Ông Trần Văn An' } });
+    fireEvent.change(screen.getAllByLabelText('Dòng 1')[1] as HTMLInputElement, { target: { value: 'Bà Lê Thị Bình' } });
+    fireEvent.click(document.querySelector('[data-id="wedding-host-gai"] input') as HTMLInputElement);
+    fireEvent.click(document.querySelector('[data-id="event-0-side-trai"] input') as HTMLInputElement);
+    const html = preview();
+    expect(html.indexOf('<p class="w-family-name">Nhà gái</p>')).toBeLessThan(html.indexOf('<p class="w-family-name">Nhà trai</p>'));
+    expect(html).toContain('<p class="e-side">Nhà trai</p>');
+    expect(html).toContain('name="side" value="trai"');
+    await waitFor(
+      () =>
+        expect(lastSaved()).toMatchObject({ hostSide: 'gai', parents: { groom: ['Ông Trần Văn An'], bride: ['Bà Lê Thị Bình'] }, events: [{ key: 'e1', side: 'trai' }, { key: 'e2' }] }),
+      { timeout: 3000 },
+    );
+  });
+
+  it('tells the story in milestones with a month picker, and keeps half-typed months out of the draft', async () => {
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Thêm mốc' }));
+    fireEvent.change(screen.getByLabelText('Tiêu đề'), { target: { value: 'Lần đầu gặp nhau' } });
+    const month = screen.getByLabelText('Tháng, năm (không bắt buộc)') as HTMLInputElement;
+    expect(month.type).toBe('month');
+    // A browser without a month picker shows a text box.
+    month.type = 'text';
+    fireEvent.change(month, { target: { value: '2019-1' } });
+    expect(screen.getByText('Chọn tháng, hoặc gõ dạng 2019-05.')).toBeTruthy();
+    expect(preview()).not.toContain('class="m-when"');
+    fireEvent.change(month, { target: { value: '2019-05' } });
+    expect(preview()).toContain('<time datetime="2019-05">Tháng 5/2019</time></p><h3>Lần đầu gặp nhau</h3>');
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm mốc' }));
+    fireEvent.click(document.querySelector('[data-id="moment-1-up"]') as HTMLButtonElement);
+    await waitFor(() => expect((lastSaved().story as { key: string; when: string }[]).map((m) => [m.key, m.when])).toEqual([['s2', ''], ['s1', '2019-05']]), { timeout: 3000 });
+  });
+
+  it('makes a personal invitation link in the browser once the card is published', async () => {
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }));
+    expect((await screen.findByText('Đăng thiệp trước để có địa chỉ gửi cho khách.')).getAttribute('data-id')).toBe('invite-unpublished');
+    cleanup();
+
+    const writeText = vi.fn(async () => undefined);
+    vi.stubGlobal('navigator', Object.assign(Object.create(navigator) as Navigator, { clipboard: { writeText }, share: undefined }));
+    openEditor('wedding', newWeddingDraft({ cover: PHOTO }), true);
+    fireEvent.change(await screen.findByLabelText('Tên khách'), { target: { value: ' Cô Lan ' } });
+    fireEvent.click(document.querySelector('[data-id="invite-side-trai"] input') as HTMLInputElement);
+    const url = 'https://trang-thu.hoandat.io.vn/?to=C%C3%B4+Lan&side=trai';
+    expect(document.querySelector('[data-id="invite-url"]')?.textContent).toBe(url);
+    expect(new URL(url).searchParams.get('to')).toBe('Cô Lan');
+    fireEvent.click(screen.getByRole('button', { name: 'Chép' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(url));
+    expect(await screen.findByRole('button', { name: 'Đã chép' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Gửi qua Zalo' }).getAttribute('href')).toBe('https://chat.zalo.me/');
+    // Nothing about the guest goes to the app.
+    expect(calls.some((c) => c.url.includes('to=') || c.method === 'POST')).toBe(false);
   });
 
   it('marks a wrong map link at once', async () => {

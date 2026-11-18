@@ -23,8 +23,8 @@ export function TextField({
   readonly error?: string | null;
   readonly multiline?: boolean;
   readonly inputMode?: 'text' | 'tel' | 'url' | 'email';
-  /** `date` and `time` give the phone's own pickers (`YYYY-MM-DD`, `HH:MM`). */
-  readonly type?: 'text' | 'date' | 'time';
+  /** `date`, `time` and `month` give the phone's own pickers (`YYYY-MM-DD`, `HH:MM`, `YYYY-MM`). */
+  readonly type?: 'text' | 'date' | 'time' | 'month';
   readonly dataId: string;
 }): ReactNode {
   const id = useId();

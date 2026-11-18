@@ -114,3 +114,48 @@ export function youtubeLink(input: string): ContactLink | null {
   }
   return null;
 }
+
+/** What an "Add to calendar" link describes. Texts are the owner's, as typed; the times are Vietnam's (UTC+7). */
+export interface CalendarEvent {
+  readonly title: string;
+  /** `YYYY-MM-DD`. */
+  readonly date: string;
+  /** `HH:MM` the event starts, or '' for an all-day event. */
+  readonly time: string;
+  readonly location: string;
+  readonly details?: string;
+}
+
+/** How long a timed event lasts on the calendar: a wedding ceremony or party takes about this. */
+const CALENDAR_EVENT_HOURS = 2;
+const CALENDAR_TEXT_MAX = 300;
+
+const compactDate = (date: Date): string => date.toISOString().slice(0, 10).replaceAll('-', '');
+const compactTime = (date: Date): string => `${date.toISOString().slice(0, 19).replaceAll('-', '').replaceAll(':', '')}Z`;
+
+/**
+ * A Google Calendar "add event" link (`calendar.google.com/calendar/render?action=TEMPLATE…`) for `event`, or null when
+ * its day or time is not a real one. A timed event runs `CALENDAR_EVENT_HOURS` from its start, written in UTC; an
+ * event without a time takes the whole day.
+ */
+export function calendarLink(event: CalendarEvent): string | null {
+  const day = /^(\d{4})-(\d{2})-(\d{2})$/.exec(event.date);
+  const time = event.time === '' ? null : /^([01]\d|2[0-3]):([0-5]\d)$/.exec(event.time);
+  if (!day || (event.time !== '' && !time)) return null;
+  const [year, month, date] = [Number(day[1]), Number(day[2]), Number(day[3])];
+  const midnight = new Date(Date.UTC(year, month - 1, date));
+  if (midnight.getUTCFullYear() !== year || midnight.getUTCMonth() !== month - 1 || midnight.getUTCDate() !== date) return null;
+  let dates: string;
+  if (time) {
+    // Vietnam is UTC+7 all year.
+    const start = new Date(Date.UTC(year, month - 1, date, Number(time[1]) - 7, Number(time[2])));
+    const end = new Date(start.getTime() + CALENDAR_EVENT_HOURS * 60 * 60 * 1000);
+    dates = `${compactTime(start)}/${compactTime(end)}`;
+  } else {
+    dates = `${compactDate(midnight)}/${compactDate(new Date(midnight.getTime() + 24 * 60 * 60 * 1000))}`;
+  }
+  const query = new URLSearchParams({ action: 'TEMPLATE', text: event.title.slice(0, CALENDAR_TEXT_MAX), dates, ctz: 'Asia/Ho_Chi_Minh' });
+  if (event.location) query.set('location', event.location.slice(0, CALENDAR_TEXT_MAX));
+  if (event.details) query.set('details', event.details.slice(0, CALENDAR_TEXT_MAX));
+  return `https://calendar.google.com/calendar/render?${query.toString()}`;
+}

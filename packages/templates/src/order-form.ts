@@ -87,7 +87,9 @@ export function orderIssueFields(error: z.ZodError): OrderField[] {
 
 /**
  * The page's script: a product's "Chọn mua" link (`data-p`, the product key) picks it in the form on its way there;
- * the form is sent with fetch (a simple CORS request: form-encoded body, only an Accept header),
+ * a control of the form with `data-from-query="<param>"` takes that parameter of the page's address (one line, at most
+ * 80 characters): an empty input gets it as its value, a fieldset of radios picks the radio of that value and hides
+ * (a wedding's personal invitation link, `?to=Lan&side=trai`); the form is sent with fetch (a simple CORS request: form-encoded body, only an Accept header),
  * shows the server's answer in the status line, and replaces the form with the thank-you on success. Old browsers
  * without fetch post the form as plain HTML. Keep it short: it is part of every shop page.
  */
@@ -96,6 +98,9 @@ export const ORDER_SCRIPT =
   'var s=f.querySelector(".order-status"),b=f.querySelector("button"),t=0;' +
   'function m(){t=t||Date.now()}f.addEventListener("focusin",m);f.addEventListener("input",m);' +
   'document.querySelectorAll("a[data-p]").forEach(function(a){a.addEventListener("click",function(){f.elements.product.value=a.getAttribute("data-p")})});' +
+  'var q=new URLSearchParams(location.search);f.querySelectorAll("[data-from-query]").forEach(function(x){' +
+  'var v=(q.get(x.getAttribute("data-from-query"))||"").replace(/[\\s\\x00-\\x1f\\x7f-\\x9f]+/g," ").trim().slice(0,80);' +
+  'if(v)x.tagName=="FIELDSET"?x.querySelectorAll("input").forEach(function(r){if(r.value==v){r.checked=true;x.style.display="none"}}):x.value=x.value||v});' +
   'f.addEventListener("submit",function(e){e.preventDefault();f.elements._e.value=t?Date.now()-t:0;b.disabled=true;' +
   's.textContent="\\u0110ang g\\u1eedi\\u2026";' +
   'fetch(f.action,{method:"POST",body:new URLSearchParams(new FormData(f)),headers:{Accept:"application/json"}})' +
@@ -104,7 +109,7 @@ export const ORDER_SCRIPT =
   '.catch(function(){s.textContent="Ch\\u01b0a g\\u1eedi \\u0111\\u01b0\\u1ee3c. Ki\\u1ec3m tra m\\u1ea1ng r\\u1ed3i th\\u1eed l\\u1ea1i.";b.disabled=false})})})();';
 
 /** `sha256-…` of ORDER_SCRIPT for the page's script-src (the tests recompute it). */
-export const ORDER_SCRIPT_HASH = 'sha256-izwNm52R1UwzNuGDOqxoB3oxxRy4BGj+Mg2DGJ/IVNA=';
+export const ORDER_SCRIPT_HASH = 'sha256-e3Rwpd3CEQ0gFmdLL6MKhht5dIBLVWTeUuTPdYHbd8k=';
 
 export interface OrderFormOptions {
   /** Where the form posts: `<app>/f/<site name>`. */

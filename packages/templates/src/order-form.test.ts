@@ -35,7 +35,7 @@ describe('order form', () => {
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(ORDER_SCRIPT)));
     expect(`sha256-${btoa(String.fromCharCode(...digest))}`).toBe(ORDER_SCRIPT_HASH);
     // Small on purpose: it ships with every shop page.
-    expect(ORDER_SCRIPT.length).toBeLessThan(1200);
+    expect(ORDER_SCRIPT.length).toBeLessThan(1500);
   });
 
   it('escapes product names, prices and the action', () => {

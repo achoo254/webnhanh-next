@@ -270,7 +270,7 @@ export function SiteEditor({
 
           {usesSamples ? <p className="notice notice-info">{t('editor.samples')}</p> : null}
 
-          <TemplateForm value={value} setValue={setValue} common={{ photos, images, onImage: addImage, issueText }} />
+          <TemplateForm value={value} setValue={setValue} common={{ photos, images, onImage: addImage, issueText, site: { name: site.name, published: site.published } }} />
         </div>
 
         <div className="editor-preview">

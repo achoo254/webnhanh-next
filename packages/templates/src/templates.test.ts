@@ -103,7 +103,7 @@ function withValue(draft: unknown, path: string, text: string): unknown {
 }
 
 /** Fields that are not free text: ids, keys, choices, dates and times (checked by the schema, never shown raw). */
-const NOT_TEXT = /(^|\.)(key|palette|style|cover|photo|avatar|image|date|time)$|^gallery\./;
+const NOT_TEXT = /(^|\.)(key|palette|style|cover|photo|avatar|image|date|time|hostSide|side)$|^gallery\./;
 
 describe('escaping', () => {
   it.each(TEMPLATE_IDS)('%s: every text the owner types reaches the page escaped, or not at all', (template) => {

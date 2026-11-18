@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emailLink, instagramLink, looksLikeUrl, mapLink, tiktokLink, webLink, youtubeLink } from './web-links';
+import { calendarLink, emailLink, instagramLink, looksLikeUrl, mapLink, tiktokLink, webLink, youtubeLink } from './web-links';
 
 describe('mapLink', () => {
   it('turns an address into a Google Maps search, encoded', () => {
@@ -82,5 +82,27 @@ describe('social links', () => {
     expect(youtubeLink('https://www.youtube.com/channel/UC123abc')?.href).toBe('https://www.youtube.com/channel/UC123abc');
     expect(youtubeLink('https://www.youtube.com/watch?v=x')).toBeNull();
     expect(youtubeLink('javascript:alert(1)')).toBeNull();
+  });
+});
+
+describe('calendarLink', () => {
+  const event = { title: 'Tiệc cưới · Minh & Thảo', date: '2026-12-12', time: '18:00', location: 'Nhà hàng Hoa Sen' };
+  const params = (href: string | null): URLSearchParams => new URL(href ?? 'https://x.invalid/').searchParams;
+
+  it('adds a two-hour event in Vietnam time, or a whole day without a time', () => {
+    const href = calendarLink(event);
+    expect(href?.startsWith('https://calendar.google.com/calendar/render?')).toBe(true);
+    expect(params(href).get('dates')).toBe('20261212T110000Z/20261212T130000Z');
+    expect(params(href).get('text')).toBe('Tiệc cưới · Minh & Thảo');
+    expect(params(href).get('location')).toBe('Nhà hàng Hoa Sen');
+    expect(params(href).get('ctz')).toBe('Asia/Ho_Chi_Minh');
+    // 06:30 in Vietnam is still the day before in UTC.
+    expect(params(calendarLink({ ...event, time: '06:30' })).get('dates')).toBe('20261211T233000Z/20261212T013000Z');
+    expect(params(calendarLink({ ...event, date: '2026-12-31', time: '' })).get('dates')).toBe('20261231/20270101');
+    expect(params(calendarLink({ ...event, location: '' })).has('location')).toBe(false);
+  });
+
+  it.each([{ date: '' }, { date: '2026-02-30' }, { date: '12/12/2026' }, { time: '24:00' }, { time: '9:00' }])('refuses %j', (patch) => {
+    expect(calendarLink({ ...event, ...patch })).toBeNull();
   });
 });

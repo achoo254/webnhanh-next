@@ -48,7 +48,7 @@ describe('wedding replies through POST /f/:site', () => {
     expect(res.headers['access-control-allow-origin']).toBe(SITE_ORIGIN);
     const [row] = await stored();
     expect(row?.kind).toBe('rsvp');
-    expect(row?.data).toEqual({ name: 'Hà', phone: '0912345678', attending: 'yes', guests: 2, note: 'Chúc mừng!' });
+    expect(row?.data).toEqual({ name: 'Hà', phone: '0912345678', attending: 'yes', guests: 2, note: 'Chúc mừng!', side: '', invitedAs: '' });
     expect(received).toBe(1);
   });
 
@@ -72,6 +72,27 @@ describe('wedding replies through POST /f/:site', () => {
     expect((await post(reply(), { origin: 'https://khac.hoandat.io.vn' })).status).toBe(403);
     expect(await stored()).toHaveLength(0);
     expect(received).toBe(0);
+  });
+
+  it('stores the guest family and the name of the personal invitation link', async () => {
+    expect((await post(reply({ side: 'trai', invitedAs: ' Cô Lan ' }))).status).toBe(201);
+    expect((await post(reply({ side: 'gai', invitedAs: '' }), { json: false }).set('X-Forwarded-For', '203.0.113.7')).status).toBe(201);
+    const rows = await stored();
+    expect(rows.map((row) => row.data)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ side: 'trai', invitedAs: 'Cô Lan' }), expect.objectContaining({ side: 'gai', invitedAs: '' })]),
+    );
+  });
+
+  it.each([
+    ['side', 'chung'],
+    ['side', 'nha-trai'],
+    ['invitedAs', 'x'.repeat(81)],
+    ['invitedAs', 'Lan\nAnh'],
+  ])('refuses %s = %j and names the field', async (name, value) => {
+    const res = await post(reply({ [name]: value }));
+    expect(res.status).toBe(422);
+    expect(res.body.fields).toEqual([name]);
+    expect(await stored()).toHaveLength(0);
   });
 
   it('names the reply fields to fix', async () => {

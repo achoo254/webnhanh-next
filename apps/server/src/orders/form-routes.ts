@@ -45,11 +45,13 @@ function readSubmission(kind: FormKind, body: unknown, site: Site): { ok: true; 
       attending: field(body, RSVP_FIELDS.attending) ?? '',
       guests: field(body, RSVP_FIELDS.guests) || undefined,
       note: field(body, RSVP_FIELDS.note),
+      side: field(body, RSVP_FIELDS.side),
+      invitedAs: field(body, RSVP_FIELDS.invitedAs),
     });
     if (!parsed.success) return { ok: false, fields: rsvpIssueFields(parsed.error) };
-    const { name, phone, attending, guests, note } = parsed.data;
+    const { name, phone, attending, guests, note, side, invitedAs } = parsed.data;
     // Someone who is not coming brings nobody.
-    return { ok: true, content: { kind: 'rsvp', data: { name, phone, attending, guests: attending === 'yes' ? guests : 0, note } } };
+    return { ok: true, content: { kind: 'rsvp', data: { name, phone, attending, guests: attending === 'yes' ? guests : 0, note, side, invitedAs } } };
   }
   const parsed = orderInputSchema.safeParse({
     name: field(body, ORDER_FIELDS.name) ?? '',

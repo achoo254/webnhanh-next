@@ -431,6 +431,13 @@ export interface RsvpData {
   /** People coming, the guest included. */
   guests: number;
   note: string;
+  /**
+   * The guest's family as the wedding's form or personal link says: `trai` the groom's, `gai` the bride's, '' not said.
+   * Replies stored before families existed (and party replies) have none.
+   */
+  side?: '' | 'trai' | 'gai';
+  /** The name the personal invitation link was made for (`?to=`), '' without one; absent on older replies. */
+  invitedAs?: string;
 }
 
 /** A submission's data read by its kind. */

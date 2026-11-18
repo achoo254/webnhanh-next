@@ -13,4 +13,6 @@ export interface FormProps<D> {
   readonly onImage: (image: SiteImage) => void;
   /** The message of the publish issue of `field` (a dotted path) when it is shown, else null. */
   readonly issueText: (field: string) => string | null;
+  /** The site being edited: its name (its address) and whether it is live yet, for links to send (a wedding's invitations). */
+  readonly site?: { readonly name: string; readonly published: boolean };
 }

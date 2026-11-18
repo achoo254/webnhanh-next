@@ -47,6 +47,27 @@ export const WEDDING_CSS = `.w-hero{display:grid}
 .rsvp .order-form{max-width:720px;margin:0 auto}
 }`;
 
+/**
+ * The parents at the head of the card, each event's family, its "Thêm vào lịch" link and the couple's story (a
+ * timeline). Only pages that have them carry it (see `wedding-render.ts`).
+ */
+export const WEDDING_FAMILIES_CSS = `.w-parents{display:flex;flex-wrap:wrap;justify-content:center;gap:12px 32px;margin-bottom:8px;font-size:15px;line-height:1.5}
+.w-family{display:grid;justify-items:center;gap:2px;min-width:0;overflow-wrap:anywhere}
+.w-family-name{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.e-side{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.event .cal{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;color:inherit;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.event .cal svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.story{list-style:none;margin:0;padding:0 0 0 22px;display:grid;gap:22px;border-left:2px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.moment{position:relative;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.moment::before{content:"";position:absolute;left:-29px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.moment:has(.m-photo){grid-template-columns:minmax(0,96px) minmax(0,1fr);align-items:start}
+.m-photo img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}
+.m-body{display:grid;gap:4px;min-width:0}
+.m-when{font-weight:700;color:var(--accent);font-size:14px;font-variant-numeric:tabular-nums}
+.moment h3{font-size:21px;line-height:1.2;overflow-wrap:anywhere}
+.m-text{white-space:pre-line;overflow-wrap:anywhere;color:var(--muted)}
+@media (min-width:720px){.story{max-width:640px;margin:0 auto}.moment:has(.m-photo){grid-template-columns:160px minmax(0,1fr)}}`;
+
 export const WEDDING_LOOK_CSS = {
   'ruc-ro': `.s-ruc-ro .w-hero{padding:12px 12px 0;gap:14px}
 .s-ruc-ro .w-cover img{aspect-ratio:4/5}
