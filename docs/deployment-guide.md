@@ -119,15 +119,15 @@ thiếu `index.html`.
 8. **DNS:** `webnhanh.hoandat.com` trỏ `<SERVER_65_IP>`, proxied (zone `hoandat.com`, SSL "full").
 9. **Phát site:** `bash infra/deploy.sh hosting`.
 10. **App:** `bash infra/deploy.sh release`.
-11. **CI deploy:** tạo user `webnhanh-deploy` và bốn secret `DEPLOY_*` (mục "Phát hành app"); từ đó mỗi push lên `main`
-    tự deploy.
+11. **CI deploy:** tạo user `webnhanh-deploy` và bốn secret `DEPLOY_*` (mục "Phát hành app"); từ đó deploy bằng workflow `deploy`
+    (khi gọi và mỗi tối 22:55).
 
 ## Phát hành app
 
 Có hai đường, dùng **chung một bước đóng gói** (`infra/pack-release.sh`) và **chung một bước đổi bản**
 (`/usr/local/sbin/webnhanh-activate-incoming`, cài từ `infra/activate-incoming.sh`):
 
-- **CI (mặc định):** mỗi push lên `main` mà workflow `CI` xanh thì `.github/workflows/deploy.yml` tự deploy. Job
+- **CI (mặc định):** **Deploy khi gọi (từ 25/11/2026):** push lên `main` chỉ chạy `CI`. Xong một việc thì chạy `tools/deploy-prod.sh` của workspace `hoandat-app` (hoặc `gh workflow run deploy.yml`); mỗi tối 22:55 workflow tự chạy nếu `main` đi trước lần deploy thành công gần nhất. Workflow lấy đầu `main`, chờ `CI` của commit đó xanh rồi `.github/workflows/deploy.yml` deploy. Job
   `build` (không có secret) cài, `pnpm build`, đóng gói rồi tải artifact lên. Job `deploy` (environment `production`)
   chỉ tải artifact về, `rsync` lên `/var/www/webnhanh-deploy/incoming/<id>` bằng user hạn chế `webnhanh-deploy`, chạy
   `sudo -n /usr/local/sbin/webnhanh-activate-incoming <id>` (id dạng `YYYYMMDD-HHMMSS-<sha12>`), rồi kiểm từ ngoài:
