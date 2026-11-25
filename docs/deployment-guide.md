@@ -127,7 +127,7 @@ thiếu `index.html`.
 Có hai đường, dùng **chung một bước đóng gói** (`infra/pack-release.sh`) và **chung một bước đổi bản**
 (`/usr/local/sbin/webnhanh-activate-incoming`, cài từ `infra/activate-incoming.sh`):
 
-- **CI (mặc định):** **Deploy khi gọi (từ 25/11/2026):** push lên `main` chỉ chạy `CI`. Xong một việc thì chạy `tools/deploy-prod.sh` của workspace `hoandat-app` (hoặc `gh workflow run deploy.yml`); mỗi tối 22:55 workflow tự chạy nếu `main` đi trước lần deploy thành công gần nhất. Workflow lấy đầu `main`, chờ `CI` của commit đó xanh rồi `.github/workflows/deploy.yml` deploy. Job
+- **CI (mặc định):** **Deploy khi gọi (từ 25/11/2026):** push lên `main` chỉ chạy `CI`. Xong một việc thì chạy `tools/deploy-prod.sh` của workspace `hoandat-app` (hoặc `gh workflow run deploy.yml`); mỗi tối 22:55 workflow tự chạy nếu `main` đi trước lần deploy thành công gần nhất. Workflow lấy đầu `main` (không chờ `CI`) rồi `.github/workflows/deploy.yml` deploy. Job
   `build` (không có secret) cài, `pnpm build`, đóng gói rồi tải artifact lên. Job `deploy` (environment `production`)
   chỉ tải artifact về, `rsync` lên `/var/www/webnhanh-deploy/incoming/<id>` bằng user hạn chế `webnhanh-deploy`, chạy
   `sudo -n /usr/local/sbin/webnhanh-activate-incoming <id>` (id dạng `YYYYMMDD-HHMMSS-<sha12>`), rồi kiểm từ ngoài:
