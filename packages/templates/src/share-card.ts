@@ -10,6 +10,9 @@ import { PALETTES, type PaletteId } from './palettes';
 import type { ShopDraft } from './shop-schema';
 
 export const SHARE_CARD_SIZE = { width: 1200, height: 630 } as const;
+/** Where the middle square of the card starts: the text begins here and the photo takes the right PHOTO_WIDTH px. */
+const SQUARE_LEFT = 300;
+const PHOTO_WIDTH = 360;
 
 /** Font files of `@fontsource/inter` (its `files/` directory) the card uses, with the characters each covers. */
 export const CARD_FONTS = [
@@ -67,14 +70,18 @@ export function renderCard(content: ShareCardContent, assets: ReadonlyMap<string
     cinema
       ? `body{background:linear-gradient(120deg,color-mix(in srgb,${palette.accent} 30%,#0b0809),#0b0809 60%)}h1{text-transform:uppercase;color:color-mix(in srgb,${palette.accent} 45%,#fff)}.photo{-webkit-mask-image:linear-gradient(90deg,transparent,#000 30%);mask-image:linear-gradient(90deg,transparent,#000 30%)}`
       : '',
-    `.text{flex:1;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:64px}`,
+    // Zalo shows only the middle square (x 285 to 915) of the picture as the link's thumbnail, so the text sits inside it.
+    `.text{position:relative;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:24px;padding:64px ${photo ? 36 : SQUARE_LEFT}px 64px ${SQUARE_LEFT}px}`,
+    // The left side outside that square shows a blurred wash of the photo under the page colour, not an empty block.
+    photo && !cinema ? `.wash{position:absolute;inset:-40px;width:${width + 80}px;height:${height + 80}px;object-fit:cover;filter:blur(28px)}.shade{position:absolute;inset:0;background:${palette.accent};opacity:.84}` : '',
     kicker ? `.kicker{align-self:flex-start;background:${palette.pop};color:${palette.ink};border-radius:999px;padding:6px 22px;font-size:26px;font-weight:800}` : '',
     kicker && cinema ? `.kicker{background:${palette.accent};color:#fff;border-radius:6px;letter-spacing:.12em;text-transform:uppercase;font-size:22px}` : '',
-    'h1{margin:0;font-size:76px;line-height:1.05;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
-    'p{margin:0;font-size:32px;line-height:1.35;opacity:.92;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+    'h1{margin:0;font-size:68px;line-height:1.05;font-weight:800;letter-spacing:-.02em;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
+    'p{margin:0;font-size:30px;line-height:1.35;opacity:.92;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}',
     '.host{font-size:28px;font-weight:800;opacity:.85}',
-    `.photo{width:${photo ? 520 : 0}px;height:${height}px;object-fit:cover;flex:none}`,
+    `.photo{position:relative;width:${photo ? PHOTO_WIDTH : 0}px;height:${height}px;object-fit:cover;flex:none}`,
     '</style></head><body>',
+    photo && !cinema ? `<img class="wash" src="${escapeHtml(assertAssetUrl(photo.url))}" alt=""><div class="shade"></div>` : '',
     '<div class="text">',
     kicker ? `<div class="kicker">${escapeHtml(kicker)}</div>` : '',
     `<h1>${escapeHtml(title)}</h1>`,
