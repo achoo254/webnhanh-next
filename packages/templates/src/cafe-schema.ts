@@ -115,7 +115,7 @@ export function cafeImageIds(draft: CafeDraft): string[] {
 }
 
 export const CAFE_SAMPLES = {
-  cover: { file: 'cafe-cover.webp', width: 675, height: 900 },
+  cover: { file: 'cafe-cover.webp', width: 1104, height: 1472 },
 } as const satisfies Record<string, SamplePhoto>;
 
 const emptyItem = (key: string) => ({ key, name: '', description: '', price: '', image: null });

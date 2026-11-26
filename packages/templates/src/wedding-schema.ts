@@ -191,7 +191,7 @@ export function weddingImageIds(draft: WeddingDraft): string[] {
 }
 
 export const WEDDING_SAMPLES = {
-  cover: { file: 'wedding-cover.webp', width: 675, height: 900 },
+  cover: { file: 'wedding-cover.webp', width: 1104, height: 1472 },
 } as const satisfies Record<string, SamplePhoto>;
 
 /** A new invitation: the sample cover, the two usual events, every text empty for the couple to write. */

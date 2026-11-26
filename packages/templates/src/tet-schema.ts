@@ -98,7 +98,7 @@ export const TET_GREETINGS = [
 export const TET_DEFAULT_TITLE = 'Chúc Mừng Năm Mới';
 
 export const TET_SAMPLES = {
-  photo: { file: 'tet-photo.webp', width: 675, height: 900 },
+  photo: { file: 'tet-photo.webp', width: 1104, height: 1472 },
 } as const satisfies Record<string, SamplePhoto>;
 
 /** A new card: the sample photo, the default title and first greeting, the sender left for the owner to write. */

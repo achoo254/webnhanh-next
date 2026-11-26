@@ -74,10 +74,10 @@ export function shopImageIds(draft: ShopDraft): string[] {
 
 /** The template's own sample photos (in `samples/`, shipped with the package), copied into every new site. */
 export const SHOP_SAMPLES = {
-  cover: { file: 'shop-cover.webp', width: 675, height: 900 },
+  cover: { file: 'shop-cover.webp', width: 1104, height: 1472 },
   products: [
-    { file: 'shop-p1.webp', width: 900, height: 900 },
-    { file: 'shop-p2.webp', width: 900, height: 900 },
+    { file: 'shop-p1.webp', width: 1328, height: 1328 },
+    { file: 'shop-p2.webp', width: 1328, height: 1328 },
   ],
 } as const;
 

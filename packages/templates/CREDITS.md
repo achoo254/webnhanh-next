@@ -17,13 +17,14 @@ Self-hosted in every published page (`src/shop-fonts.ts`) and on the share pictu
 
 ## Pictures
 
-- `samples/*.webp` are the sample photos a new site starts with. The shop samples, `tet-photo.webp`,
-  `wedding-cover.webp` and `cafe-cover.webp` are placeholders from the mock-up and stay until the variant library
-  replaces them.
+- `samples/*.webp` are the sample photos a new site starts with and the pictures on the template cards. They were
+  drawn again on 26/11/2026 at the size the model draws them (Qwen-Image, covers 1104x1472 and shop products
+  1328x1328, seeds 4101 to 4106 in the order cafe-cover, shop-cover, shop-p1, shop-p2, tet-photo, wedding-cover; the
+  prompts are in the commit that added them).
 - `library/<template>/<variant>/*.webp` holds the variant pictures drawn by `scripts/gen-template-art.ts` from the
-  prompts in `variants/`, kept at the size a page shows them (photos 900 px on the long side, ornaments 512 px). A site
-  made from a variant gets copies of them (`variantDraft`), ornaments included.
-- `thumbs/<template>/<variant>.webp` are 240 px thumbnails of each variant's first picture, for the app's template
+  prompts in `variants/`, kept at the size the model draws them (photos 1472 px on the long side, ornaments 1024 px). A
+  site made from a variant gets copies of them (`variantDraft`), ornaments included.
+- `thumbs/<template>/<variant>.webp` are 480 px thumbnails of each variant's first picture, for the app's template
   picker.
 
 All of these pictures are AI-generated for the hoandat ecosystem on its own machine with the `inet-artgen` skill, using
