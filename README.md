@@ -36,7 +36,7 @@ trong một thao tác (trang "Website này đã bị gỡ", giữ bản cũ 30 n
 build), xử lý hoặc bỏ qua báo cáo, xem nhật ký thao tác; trang có ô mật khẩu, hoặc mang tên ngân hàng, ví điện tử, cơ
 quan nhà nước (tiêu đề, hay kèm lời hỏi đăng nhập, mã OTP) **chờ admin duyệt** trước khi lên mạng, chủ trang thấy
 "Đang chờ duyệt". Tạo website mẫu thì chọn thêm một **kiểu** của mẫu (34 kiểu trong `packages/templates/variants/`, thẻ
-có ảnh thu nhỏ 240 px tải lười): site mới bắt đầu từ kiểu trang, bảng màu, chữ mẫu và ảnh AI của kiểu đó, chép từ
+có ảnh thu nhỏ 480 px tải lười): site mới bắt đầu từ kiểu trang, bảng màu, chữ mẫu và ảnh AI của kiểu đó, chép từ
 `packages/templates/library/` thành ảnh của site (`POST /api/sites` nhận `variant`, không có thì như cũ; bảng ghép slot
 với trường nháp là `variantDraft` trong `variant-drafts.ts`). Hoạ tiết vẽ của kiểu Tết, thiệp cưới, thiệp mời tiệc và thiệp sinh nhật nằm ở trường
 `ornaments` của nháp (ảnh trang trí `alt=""`, `aria-hidden`); nháp không có trường này vẫn vẽ hoạ tiết SVG như cũ.
@@ -119,8 +119,8 @@ sinh thái; thuộc về hoandat, giữ mọi quyền, không phải CC0). `pnpm
 vào `brand/icon.svg` và `brand/icon-maskable.svg`; favicon, manifest và dấu app trên header đều đọc `brand/icon.svg`.
 
 Ảnh mẫu của các biến thể (`packages/templates/library/`) vẽ bằng `pnpm exec tsx scripts/gen-template-art.ts` (xem đầu
-file); mỗi ảnh ghi seed vào file biến thể: ảnh không có `ref` vẽ lại được y như cũ, ảnh vẽ theo `ref` chỉ gần giống (ảnh tham chiếu giờ là bản đã thu nhỏ). Ảnh lưu đúng cỡ trang hiển thị (`librarySize`: ảnh 900 px
-cạnh dài như `samples/`, hoạ tiết 512 px) kèm ảnh thu nhỏ cho trang chọn mẫu (`packages/templates/thumbs/`); `--refit`
+file); mỗi ảnh ghi seed vào file biến thể: ảnh không có `ref` vẽ lại được y như cũ, ảnh vẽ theo `ref` chỉ gần giống (ảnh tham chiếu giờ là bản đã thu nhỏ). Ảnh lưu đúng cỡ trang hiển thị (`librarySize`: ảnh 1472 px
+cạnh dài, đúng cỡ model vẽ, hoạ tiết 1024 px) kèm ảnh thu nhỏ cho trang chọn mẫu (`packages/templates/thumbs/`); `--refit`
 thu nhỏ lại ảnh có sẵn và viết ảnh thu nhỏ còn thiếu mà không cần PC.
 
 ## Giấy phép

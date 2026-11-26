@@ -196,7 +196,7 @@ function VariantPicker({ template, value, onChange }: { readonly template: Templ
         {choices.map((choice) => (
           <label key={choice.id} className="style-option variant-option" data-id={`variant-${choice.id}`}>
             <input type="radio" name="variant" value={choice.id} checked={value === choice.id} onChange={() => onChange(choice.id)} />
-            <img src={choice.thumb} alt="" width={240} height={320} loading="lazy" decoding="async" />
+            <img src={choice.thumb} alt="" width={480} height={640} loading="lazy" decoding="async" />
             <span className="style-name">{t(choice.label)}</span>
           </label>
         ))}

@@ -2,8 +2,8 @@
  * Draws the pictures of the template variants (`packages/templates/variants/<template>/<variant>.json`) on the home PC
  * with the `inet-artgen` skill, one at a time, and keeps them as WebP in `packages/templates/library/<template>/<variant>/`.
  * The seed of every picture drawn is written back into its variant file, so a picture without `ref` can be drawn again exactly (one drawn after a `ref` only closely: the reference is now the resized file).
- * A picture is kept at the size a page shows it (`librarySize`: photos 900 px on the long side like `samples/`,
- * ornaments 512 px), and the variant's first slot also gives its 240 px thumbnail for the app's template picker
+ * A picture is kept at the size a page shows it (`librarySize`: photos 1472 px on the long side (as drawn),
+ * ornaments 1024 px), and the variant's first slot also gives its 480 px thumbnail for the app's template picker
  * (`thumbs/<template>/<variant>.webp`).
  *
  *   pnpm exec tsx scripts/gen-template-art.ts --type tet --dry-run   # what would be drawn, nothing is called
@@ -166,7 +166,7 @@ function writeThumb(variant: TemplateVariant): void {
   if (!first) throw new Error(`${variant.template}/${variant.id}: no art`);
   const output = join(PACKAGE, thumbFile(variant));
   mkdirSync(dirname(output), { recursive: true });
-  run('cwebp', ['-quiet', '-q', '75', '-resize', String(THUMB_WIDTH), '0', join(PACKAGE, artFile(variant, first.slot)), '-o', output], 60_000);
+  run('cwebp', ['-quiet', '-q', '82', '-resize', String(THUMB_WIDTH), '0', join(PACKAGE, artFile(variant, first.slot)), '-o', output], 60_000);
 }
 
 function sizeOf(file: string): { width: number; height: number } | null {

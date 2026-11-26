@@ -49,16 +49,17 @@ describe('variant drafts', () => {
   });
 
   it('keeps library pictures at the size a page shows them, ornaments smaller and not samples', () => {
-    expect(librarySize({ slot: 'cover', size: '1104x1472' })).toEqual({ width: 675, height: 900 });
-    expect(librarySize({ slot: 'product-1', size: '1328x1328' })).toEqual({ width: 900, height: 900 });
-    expect(librarySize({ slot: 'ornament', size: '1024x1024' })).toEqual({ width: 512, height: 512 });
+    expect(librarySize({ slot: 'cover', size: '1104x1472' })).toEqual({ width: 1104, height: 1472 });
+    expect(librarySize({ slot: 'product-1', size: '1328x1328' })).toEqual({ width: 1328, height: 1328 });
+    expect(librarySize({ slot: 'ornament', size: '1024x1024' })).toEqual({ width: 1024, height: 1024 });
+    expect(librarySize({ slot: 'cover', size: '2000x1500' })).toEqual({ width: 1472, height: 1104 });
     expect(librarySize({ slot: 'cover', size: '600x800' })).toEqual({ width: 600, height: 800 });
     const tet = findVariant('tet', 'clay-do-vang');
     if (!tet) throw new Error('no tet/clay-do-vang');
     expect(variantPhotos(tet)).toEqual([
-      { slot: 'hero', file: 'library/tet/clay-do-vang/hero.webp', width: 675, height: 900, decoration: false },
-      { slot: 'ornament', file: 'library/tet/clay-do-vang/ornament.webp', width: 512, height: 512, decoration: true },
-      { slot: 'ornament-2', file: 'library/tet/clay-do-vang/ornament-2.webp', width: 512, height: 512, decoration: true },
+      { slot: 'hero', file: 'library/tet/clay-do-vang/hero.webp', width: 1104, height: 1472, decoration: false },
+      { slot: 'ornament', file: 'library/tet/clay-do-vang/ornament.webp', width: 1024, height: 1024, decoration: true },
+      { slot: 'ornament-2', file: 'library/tet/clay-do-vang/ornament-2.webp', width: 1024, height: 1024, decoration: true },
     ]);
     expect(thumbFile(tet)).toBe('thumbs/tet/clay-do-vang.webp');
   });

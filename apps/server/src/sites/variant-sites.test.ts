@@ -58,7 +58,7 @@ describe('sites made from a variant', () => {
         expect(image.widths).toEqual([image.width]);
         const bytes = await readFile(siteImageFile(app.config.uploadsDir, siteId, image.id, image.width));
         expect(webpSize(bytes), `${variant.id} ${image.width}x${image.height}`).toEqual({ width: image.width, height: image.height });
-        expect(Math.max(image.width, image.height)).toBeLessThanOrEqual(900);
+        expect(Math.max(image.width, image.height)).toBeLessThanOrEqual(1472);
       }
     }
   });

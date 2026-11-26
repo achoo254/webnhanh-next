@@ -54,11 +54,11 @@ export function isDecorationSlot(slot: string): boolean {
   return (DECORATION_SLOTS as readonly string[]).includes(slot);
 }
 
-/** Longest side of a library picture: photos as large as the samples (675x900, 900x900), ornaments smaller. */
-const PHOTO_SIDE = 900;
-const DECORATION_SIDE = 512;
-/** Width of a variant's thumbnail in the template picker. */
-export const THUMB_WIDTH = 240;
+/** Longest side of a library picture: photos at the size the model draws them (1472), sharp on a wide or retina screen; ornaments 1024. */
+const PHOTO_SIDE = 1472;
+const DECORATION_SIDE = 1024;
+/** Width of a variant's thumbnail in the template picker (shown about 260 px wide, so twice that for retina). */
+export const THUMB_WIDTH = 480;
 
 /** The size a picture is kept at in `library/`: its drawn size (`art.size`) scaled down to the side above. */
 export function librarySize(art: Pick<VariantArt, 'slot' | 'size'>): { width: number; height: number } {
