@@ -502,6 +502,16 @@ button.bento-card:focus-visible {
   height: 100%;
   object-fit: cover;
 }
+/* The cards show a wide strip of a tall photo: keep the part that carries the picture (faces, the goat, the drinks). */
+[data-id="template-wedding"] img {
+  object-position: 50% 17%;
+}
+[data-id="template-tet"] img {
+  object-position: 50% 30%;
+}
+[data-id="template-cafe"] img {
+  object-position: 50% 80%;
+}
 .bento-tall button.bento-card {
   min-height: 300px;
 }
