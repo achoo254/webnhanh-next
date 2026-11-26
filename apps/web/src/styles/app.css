@@ -504,7 +504,7 @@ button.bento-card:focus-visible {
 }
 /* The cards show a wide strip of a tall photo: keep the part that carries the picture (faces, the goat, the drinks). */
 [data-id="template-wedding"] img {
-  object-position: 50% 17%;
+  object-position: 50% 28%;
 }
 [data-id="template-tet"] img {
   object-position: 50% 30%;
