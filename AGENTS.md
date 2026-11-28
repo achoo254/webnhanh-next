@@ -43,7 +43,7 @@ Web Nhanh, repo `webnhanh-next`. Đọc `README.md`, `docs/deployment-guide.md` 
   (worker chỉ nói chuyện loopback). Endpoint push chỉ nhận host dịch vụ push của trình duyệt (`isPushEndpoint`).
 - Migration là SQL sinh bằng `pnpm --filter @webnhanh/db db:generate`, commit và review như code; không `drizzle-kit push`.
 - Không viết cứng tên sản phẩm: đọc từ `apps/web/src/brand.ts` (chữ giao diện dùng `{app}` trong `messages.ts`).
-- Web Nhanh có giao diện riêng (nhóm ngoại lệ cá nhân hoá như hoandat.com, Miu World, Tiểu Đệ): header, footer, thẻ
+- Web Nhanh có giao diện riêng (nhóm ngoại lệ cá nhân hoá như hoandat.com, Tiểu Đệ): header, footer, thẻ
   đăng nhập, landing tự viết (`apps/web/src/public-page.tsx`, `src/frame/`, `src/sign-in.tsx`), token màu và phông ở
   `src/styles/tokens.css`; một giao diện sáng duy nhất, không đổi sáng/tối, không script inline (CSP không cho,
   `src/index-html.test.ts` giữ). Từ `@achoo254/app-shell` chỉ dùng `/preferences` cho ngôn ngữ (cookie `hd_lang` chung
