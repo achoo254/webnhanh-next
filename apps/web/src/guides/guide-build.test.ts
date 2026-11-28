@@ -56,7 +56,10 @@ describe('prerendered guide pages', () => {
     expect(root).toContain(`href="${cta}"`);
     expect(root).toContain(`href="${look}"`);
     expect(root).toContain('Câu hỏi thường gặp');
-    const words = root.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
+    // The guide's own words, not the app's header and footer around it (those grow with every language of the switch).
+    const article = tag(root, /(<article[\s\S]*<\/article>)/);
+    expect(article).toContain(`>${h1}</h1>`);
+    const words = article.replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length;
     expect(words).toBeGreaterThanOrEqual(300);
     expect(words).toBeLessThanOrEqual(750);
     // Links to the two other guides.
