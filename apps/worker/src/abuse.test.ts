@@ -226,6 +226,7 @@ describe('takedown and restore', () => {
     expect(await currentRelease(deps.sitesDir, 'lua-dao')).toBe(removed?.takedownReleaseId);
     const page = await live('lua-dao');
     expect(page).toContain('Website này đã bị gỡ');
+    expect(page).toContain('<p lang="zh-CN">此网站因违反');
     expect(page).toContain('noreply@hoandat.io.vn');
     expect(page).not.toContain('<script');
     // Every other path shows it too, and the real release stays for review.

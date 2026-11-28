@@ -7,13 +7,20 @@
  */
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
+/** The languages of the shared shell; passed to the IdP as `ui_locales`. */
+export const LOGIN_LANGS = ['vi', 'en', 'zh-CN'] as const;
+export type LoginLang = (typeof LOGIN_LANGS)[number];
+export function isLoginLang(value: unknown): value is LoginLang {
+  return LOGIN_LANGS.some((lang) => lang === value);
+}
+
 export interface LoginState {
   readonly state: string;
   readonly nonce: string;
   readonly verifier: string;
   /** Path of the app to come back to after sign-in (always a local path). */
   readonly returnTo: string;
-  readonly lang: 'vi' | 'en';
+  readonly lang: LoginLang;
   /** Unix seconds after which the attempt is void. */
   readonly exp: number;
 }
@@ -55,7 +62,7 @@ export function withLoginResult(path: string, result: string): string {
   return isLocalPath(out) ? out : `/?login=${encodeURIComponent(result)}`;
 }
 
-export function newLoginState(returnTo: string, lang: 'vi' | 'en', now = Date.now()): LoginState {
+export function newLoginState(returnTo: string, lang: LoginLang, now = Date.now()): LoginState {
   return {
     state: b64url(randomBytes(16)),
     nonce: b64url(randomBytes(16)),
@@ -86,7 +93,7 @@ function isLoginState(value: unknown): value is LoginState {
     typeof v.nonce === 'string' &&
     typeof v.verifier === 'string' &&
     typeof v.returnTo === 'string' &&
-    (v.lang === 'vi' || v.lang === 'en') &&
+    isLoginLang(v.lang) &&
     typeof v.exp === 'number'
   );
 }

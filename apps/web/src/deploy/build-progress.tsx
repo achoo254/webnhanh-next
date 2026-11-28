@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { siteHost } from '../brand';
 import { notifyWhenDone, type Build, type BuildDetail, type BuildProgress as Progress, type BuildStepView } from '../builds-api';
 import { buildFailureMessage, warningMessage } from '../error-messages';
-import { useI18n, type MessageKey, type Translate } from '../i18n';
+import { INTL_LOCALES, useI18n, type MessageKey, type Translate } from '../i18n';
 import { getNotificationSettings } from '../orders-api';
 import { enablePush, pushState } from '../push';
 import { HELD_FOR_REVIEW } from '../sites-api';
@@ -92,7 +92,7 @@ function Steps({ build, now }: { readonly build: Build; readonly now: number }):
 function Expectation({ detail, now }: { readonly detail: BuildDetail; readonly now: number }): ReactNode {
   const { t, locale } = useI18n();
   const { build, estimate, queue } = detail;
-  const clock = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+  const clock = new Intl.DateTimeFormat(INTL_LOCALES[locale], { hour: '2-digit', minute: '2-digit' });
   const basis =
     estimate.basis === 'site' ? t('eta.basis.site') : t(estimate.basis === 'framework' ? 'eta.basis.framework' : 'eta.basis.default', { framework: frameworkName(t, build.framework) });
   const late = build.startedAt !== null && elapsed(build.startedAt, now) > estimate.ms * 1.25 + 10_000;

@@ -1,7 +1,10 @@
 /**
- * Every UI string of the app, Vietnamese first (the default), English second. `{name}` placeholders are filled by `t`;
+ * Every UI string of the app, Vietnamese first (the default), English second, Simplified Chinese in `messages-zh-cn.ts`.
+ * `{name}` placeholders are filled by `t`;
  * `{app}` is the product name and `{domain}` the ecosystem's domain, both from brand.config.json.
  */
+import { zhCN } from './messages-zh-cn';
+
 const vi = {
   'nav.features': 'Làm được gì',
   'nav.how': 'Cách dùng',
@@ -836,7 +839,7 @@ const vi = {
 } as const;
 
 export type MessageKey = keyof typeof vi;
-export type Locale = 'vi' | 'en';
+export type Locale = 'vi' | 'en' | 'zh-CN';
 
 const en: Readonly<Record<MessageKey, string>> = {
   'nav.features': 'What it does',
@@ -1671,4 +1674,4 @@ const en: Readonly<Record<MessageKey, string>> = {
   'admin.actionStatus.failed': 'failed',
 };
 
-export const DICTIONARIES: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = { vi, en };
+export const DICTIONARIES: Readonly<Record<Locale, Readonly<Record<MessageKey, string>>>> = { vi, en, 'zh-CN': zhCN };

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { siteHost } from '../brand';
 import { errorMessage } from '../error-messages';
-import { useI18n, type MessageKey } from '../i18n';
+import { INTL_LOCALES, useI18n, type MessageKey } from '../i18n';
 import { NotificationSettingsPanel } from '../orders/notification-settings';
 import { listOrders, markOrder, type Order, type OrderList, type OrderView } from '../orders-api';
 import { SignedInPage } from '../signed-in-page';
@@ -34,7 +34,7 @@ const RSVP_WORDS: InboxWords = { title: 'rsvp.title', emptyOpen: 'rsvp.empty.ope
 function OrderCard({ order, onMark }: { readonly order: Order; readonly onMark: (handled: boolean) => Promise<void> }): ReactNode {
   const { t, locale } = useI18n();
   const [busy, setBusy] = useState(false);
-  const when = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.createdAt));
+  const when = new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'short', timeStyle: 'short' }).format(new Date(order.createdAt));
   const handled = order.handledAt !== null;
   return (
     <li className={`order-card${handled ? ' order-card-done' : ''}`} data-id={`order-${order.id}`}>

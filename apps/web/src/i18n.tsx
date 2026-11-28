@@ -1,3 +1,4 @@
+import { matchShellLocale } from '@achoo254/app-shell';
 import { readPreferences, subscribePreferences, writePreference } from '@achoo254/app-shell/preferences';
 import { createContext, useContext, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { BUILD_MINUTES_PER_DAY } from '@webnhanh/db/build-limits';
@@ -6,14 +7,18 @@ import { brand, SITES_DOMAIN } from './brand';
 import { DICTIONARIES, type Locale, type MessageKey } from './messages';
 
 export type { Locale, MessageKey };
-export const LOCALES: readonly Locale[] = ['vi', 'en'];
+export const LOCALES: readonly Locale[] = ['vi', 'en', 'zh-CN'];
 const DEFAULT_LOCALE: Locale = 'vi';
 
 /** Each language in its own words (the switch never translates them), and its short code for narrow screens. */
 export const LOCALE_NAMES: Readonly<Record<Locale, { readonly name: string; readonly code: string }>> = {
   vi: { name: 'Tiếng Việt', code: 'VI' },
   en: { name: 'English', code: 'EN' },
+  'zh-CN': { name: '中文', code: '中文' },
 };
+
+/** The `Intl` locale that writes dates and numbers the way each language's readers expect. */
+export const INTL_LOCALES: Readonly<Record<Locale, string>> = { vi: 'vi-VN', en: 'en-GB', 'zh-CN': 'zh-CN' };
 
 export type Translate = (key: MessageKey, params?: Readonly<Record<string, string | number>>) => string;
 
@@ -35,11 +40,9 @@ export function translator(locale: Locale): Translate {
   return (key, params) => format(DICTIONARIES[locale][key], params);
 }
 
-/** One of the app's languages by the primary subtag of a BCP 47 tag ("vi-VN" is vi, "en-GB" is en). */
+/** One of the app's languages by the primary subtag of a BCP 47 tag ("vi-VN" is vi, "en-GB" is en, any Chinese tag is zh-CN). */
 export function matchLocale(tag: unknown): Locale | undefined {
-  if (typeof tag !== 'string') return undefined;
-  const primary = tag.trim().toLowerCase().split(/[-_]/)[0];
-  return LOCALES.find((locale) => locale === primary);
+  return matchShellLocale(tag, LOCALES);
 }
 
 /** The shared choice of every hoandat.com app (`hd_lang`), else the device's language when the app speaks it, else Vietnamese. */

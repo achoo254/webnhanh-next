@@ -59,6 +59,29 @@ export function PrivacyPage(): ReactNode {
           <h2>Không có</h2>
           <p>Không quảng cáo, không bán hay chia sẻ dữ liệu cho bên thứ ba. Lượt xem được đếm ẩn danh bằng Cloudflare Web Analytics, không dùng cookie.</p>
         </>
+      ) : locale === 'zh-CN' ? (
+        <>
+          <p>本页说明 {name} 保存了你的哪些信息、为什么保存，以及保存多久。</p>
+          <h2>账号</h2>
+          <p>
+            你使用 {domain} 账号登录。每次登录时，{name} 从 {domain} 获得你的账号标识、显示名称、电子邮箱和头像地址，并与你的账号一起保存（下次登录时更新为最新信息）。
+            名称、邮箱和头像只显示在你自己在 {name} 中的账号菜单里：不会出现在你发布的网站上，也不会发送给任何人。头像由你的浏览器直接从 Google 或 GitHub（你登录所用账号的头像存放处）加载，
+            不附带你正在浏览的页面地址。使用 Apple 登录则没有头像，因为 Apple 不共享头像。
+          </p>
+          <p>{name} 只设置一个登录会话 Cookie，仅用于保持你的登录状态；它在 30 天后（或 7 天未使用后）失效，失效的会话会从服务器上删除。</p>
+          <h2>界面偏好</h2>
+          <p>你选择的语言保存在 <code>hd_lang</code> Cookie 中，由 {domain} 的各个应用共用。</p>
+          <h2>你发布的网站</h2>
+          <p>你发布在 your-name.{SITES_DOMAIN} 这类地址上的网站是公开的：任何拿到链接的人都能查看。{name} 不会在这些网站上设置任何 Cookie。</p>
+          <h2>删除账号</h2>
+          <p>
+            账号只能在 <a href={ACCOUNT_DELETE_URL}>{domain} 账号页面</a>删除；{name} 本身没有删除功能。你在那里删除后，{name} 会立即删除该账号的所有数据：名称、邮箱、头像、
+            你的所有网站（从 .{SITES_DOMAIN} 地址下线，连同照片、订单、出席回复和构建记录）、通知设备、Chat 关联以及所有登录会话。网站名称会立即释放。他人对你的网站提交的违规举报会为管理员保留，
+            但不再与账号关联。
+          </p>
+          <h2>我们不做的事</h2>
+          <p>没有广告，不出售也不向第三方分享数据。访问量由 Cloudflare Web Analytics 匿名统计，不使用 Cookie。</p>
+        </>
       ) : (
         <>
           <p>This page says what {name} keeps about you, why, and for how long.</p>
@@ -117,6 +140,21 @@ export function TermsPage(): ReactNode {
           </p>
           <h2>Dịch vụ</h2>
           <p>{name} đang được làm và có thể thay đổi; dịch vụ được cung cấp như hiện có, không cam kết luôn hoạt động.</p>
+        </>
+      ) : locale === 'zh-CN' ? (
+        <>
+          <p>使用 {name} 即表示你同意以下条款。</p>
+          <h2>你的内容</h2>
+          <p>
+            你对上传的文字、照片和源代码负责，并且必须有权使用它们。不得发布违法、诈骗、冒充银行、政府机构或其他品牌、冒犯他人或侵犯他人权利的内容。
+          </p>
+          <h2>移除网站</h2>
+          <p>违反上述条款的网站可能会被立即移除，不另行通知。</p>
+          <p>
+            发现违规网站？<Link to="/report">举报违规</Link>或发邮件至 {ABUSE_EMAIL}。
+          </p>
+          <h2>服务</h2>
+          <p>{name} 仍在开发中，可能会有变化；服务按现状提供，不保证始终可用。</p>
         </>
       ) : (
         <>
@@ -185,6 +223,26 @@ export function CreditsPage(): ReactNode {
           <p>
             Đèn lồng, hoa mai, cành lá và các hoạ tiết khác không thuộc kiểu mẫu nào được vẽ riêng cho {name} bằng SVG và CSS. Lời chúc Tết và chữ mẫu được viết riêng
             cho {name}, không chép từ thơ, bài hát hay văn bản đã xuất bản nào.
+          </p>
+        </>
+      ) : locale === 'zh-CN' ? (
+        <>
+          <p>{name} 网站模板中的字体、图片和装饰来自哪里。</p>
+          <h2>字体</h2>
+          <p>
+            以下字体来自 Google Fonts，由 Fontsource 打包，按 SIL Open Font License 1.1 许可使用。每个网站自带字体文件（仅拉丁字母和越南语字符），不从其他服务器加载字体。
+          </p>
+          {fonts}
+          <h2>图片</h2>
+          <p>
+            示例图片、模板选择页的图片，以及每种模板风格的图片和装饰，均由 AI 为 {domain} 的应用绘制，在 {domain} 自己的机器上使用开源模型完成（Qwen-Image、Z-Image、FLUX.2
+            klein，Apache-2.0 许可；BiRefNet，MIT 许可，用于去除背景）。图片归 {domain} 所有，保留所有权利（不是 CC0）。图片中都没有文字（只有传统婚礼装饰带有双喜字样）：
+            网站上的每个字都是你可以修改的。
+          </p>
+          <p>你上传的照片仍归你所有。</p>
+          <h2>装饰和示例文字</h2>
+          <p>
+            不属于任何模板风格的灯笼、梅花、枝叶等装饰，是用 SVG 和 CSS 专为 {name} 绘制的。春节祝福语和示例文字专为 {name} 撰写，没有抄自任何诗歌、歌曲或已出版的文字。
           </p>
         </>
       ) : (

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../api';
 import { siteHost } from '../brand';
 import { errorMessage, jobFailureMessage } from '../error-messages';
-import { useI18n, type MessageKey } from '../i18n';
+import { INTL_LOCALES, useI18n, type MessageKey } from '../i18n';
 import { getJob, HELD_FOR_REVIEW, publishSite, type Job } from '../sites-api';
 
 /** The worker's steps (apps/worker/src/publish-job.ts), in order, with their labels. */
@@ -54,7 +54,7 @@ function useJob(initial: Job | null): [Job | null, (job: Job) => void, number] {
 
 function Steps({ job, now }: { readonly job: Job; readonly now: number }): ReactNode {
   const { t, locale } = useI18n();
-  const number = new Intl.NumberFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  const number = new Intl.NumberFormat(INTL_LOCALES[locale], { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   // A step of a few milliseconds reads "< 0.1 s", not "0.0 s".
   const time = (value: number): string => (value < 0.1 ? t('seconds.under', { n: number.format(0.1) }) : t('seconds', { n: number.format(value) }));
   if (job.status === 'queued') {

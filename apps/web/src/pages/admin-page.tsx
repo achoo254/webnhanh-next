@@ -14,7 +14,7 @@ import {
 import { siteHost } from '../brand';
 import { errorMessage } from '../error-messages';
 import { NotificationSettingsPanel } from '../orders/notification-settings';
-import { isMessageKey, useI18n, type MessageKey } from '../i18n';
+import { INTL_LOCALES, isMessageKey, useI18n, type MessageKey } from '../i18n';
 import { SignedInPage } from '../signed-in-page';
 import { NotFoundContent } from './not-found';
 import { Loader } from '../loading';
@@ -123,7 +123,7 @@ async function fetchLists(which: 'open' | 'all'): Promise<AdminLists> {
 
 function Admin({ account }: { readonly account: Account }): ReactNode {
   const { t, locale } = useI18n();
-  const when = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'short', timeStyle: 'short' });
   const [which, setWhich] = useState<'open' | 'all'>('open');
   const [reports, setReports] = useState<Report[] | null>(null);
   const [reviews, setReviews] = useState<AdminSite[] | null>(null);

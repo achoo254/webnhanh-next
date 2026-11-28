@@ -10,6 +10,7 @@ import { HttpError } from '../http-error';
 import type { Discovery, IdpMetadata } from './idp-metadata';
 import {
   codeChallenge,
+  isLoginLang,
   newLoginState,
   openState,
   profileFromUserinfo,
@@ -129,7 +130,7 @@ export function authRoutes(config: ServerConfig, db: Db, idp: IdpMetadata | null
 
   router.get('/auth/login', async (req, res) => {
     const returnTo = safeReturnPath(req.query.return);
-    const lang = req.query.lang === 'en' ? 'en' : 'vi';
+    const lang = isLoginLang(req.query.lang) ? req.query.lang : 'vi';
     // `signup=1`: the person pressed a sign-up button, so the IdP opens on making an account.
     const signUp = req.query.signup === '1';
     if (!auth || !discover) {

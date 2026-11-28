@@ -4,7 +4,7 @@
  */
 import type { ReactNode } from 'react';
 import type { Build } from '../builds-api';
-import { useI18n, type MessageKey } from '../i18n';
+import { INTL_LOCALES, useI18n, type MessageKey } from '../i18n';
 import { duration } from './use-build';
 
 export type BuildTone = 'live' | 'draft' | 'busy' | 'error';
@@ -31,7 +31,7 @@ export function StatusBadge({ status }: { readonly status: Build['status'] }): R
 /** When, what started it, the short commit and how long it took. */
 function BuildMeta({ build }: { readonly build: Build }): ReactNode {
   const { t, locale } = useI18n();
-  const when = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' });
+  const when = new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'short', timeStyle: 'short' });
   const took = build.startedAt && build.finishedAt ? Date.parse(build.finishedAt) - Date.parse(build.startedAt) : null;
   return (
     <span className="build-history-meta">

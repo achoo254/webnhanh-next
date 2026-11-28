@@ -5,7 +5,7 @@ import { DICTIONARIES } from '../messages';
 import { interleavedVariantChoices, variantChoices } from './template-variant-choices';
 
 describe('template variant choices', () => {
-  it.each(TEMPLATE_IDS)('offers every look of %s, in file order, each with a thumbnail and a name in both languages', (template) => {
+  it.each(TEMPLATE_IDS)('offers every look of %s, in file order, each with a thumbnail and a name in every language', (template) => {
     const choices = variantChoices(template);
     expect(choices.map((choice) => choice.id)).toEqual(variantsOf(template).map((variant) => variant.id));
     for (const [index, variant] of variantsOf(template).entries()) {
@@ -16,6 +16,7 @@ describe('template variant choices', () => {
       // The Vietnamese name is the one the variant file gives.
       expect(DICTIONARIES.vi[choice.label]).toBe(variant.label);
       expect(DICTIONARIES.en[choice.label].length).toBeGreaterThan(0);
+      expect(DICTIONARIES['zh-CN'][choice.label].length).toBeGreaterThan(0);
     }
   });
 

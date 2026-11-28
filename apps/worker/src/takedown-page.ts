@@ -32,6 +32,7 @@ export function takedownPageHtml(app: { readonly name: string; readonly url: str
   <h1>Website này đã bị gỡ</h1>
   <p>Website này vi phạm <a href="${terms}">điều khoản sử dụng</a> của ${name} nên đã bị gỡ.</p>
   <p lang="en">This website was removed for breaking the terms of use of ${name}.</p>
+  <p lang="zh-CN">此网站因违反 ${name} 的使用条款已被移除。</p>
   <p>Liên hệ: ${escapeHtml(ABUSE_EMAIL)}</p>
 </main>
 </body>

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import type { Account } from '../api';
 import { siteHost } from '../brand';
-import { useI18n, type MessageKey } from '../i18n';
+import { INTL_LOCALES, useI18n, type MessageKey } from '../i18n';
 import { isDeletedSiteState } from '../delete-site-panel';
 import { SignedInPage } from '../signed-in-page';
 import { listSites, thumbUrl, type Site, type SiteList } from '../sites-api';
@@ -96,7 +96,7 @@ function Home({ account }: { readonly account: Account }): ReactNode {
       live = false;
     };
   }, []);
-  const since = new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-GB', { dateStyle: 'long' }).format(new Date(account.createdAt));
+  const since = new Intl.DateTimeFormat(INTL_LOCALES[locale], { dateStyle: 'long' }).format(new Date(account.createdAt));
   // The limit of template sites; developer sites have their own (shown on /new/developer).
   const atLimit = list !== null && list.sites.filter((site) => site.kind !== 'developer').length >= list.limits.sites;
 

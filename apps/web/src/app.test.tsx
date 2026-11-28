@@ -72,6 +72,8 @@ describe('web app', () => {
     expect(within(header).getByRole('link', { name: 'Web Nhanh' }).getAttribute('href')).toBe('/');
     expect(within(header).getByRole('button', { name: 'Tiếng Việt' }).getAttribute('aria-pressed')).toBe('true');
     expect(within(header).getByRole('button', { name: 'English' }).getAttribute('aria-pressed')).toBe('false');
+    expect(within(header).getByRole('button', { name: '中文' }).getAttribute('aria-pressed')).toBe('false');
+    expect([...header.querySelectorAll('[data-id^="lang-"][lang]')].map((button) => button.getAttribute('lang'))).toEqual(['vi', 'en', 'zh-CN']);
     const footer = within(screen.getByRole('contentinfo'));
     expect(footer.getByRole('link', { name: 'Một app của hoandat.com' }).getAttribute('href')).toBe('https://hoandat.com');
     expect(footer.getByRole('link', { name: 'Quyền riêng tư' }).getAttribute('aria-current')).toBe('page');
@@ -89,6 +91,21 @@ describe('web app', () => {
     expect(screen.getByRole('link', { name: 'An app from hoandat.com' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Pick a free template' }).getAttribute('href')).toBe('/new');
     expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('speaks Simplified Chinese, the third shell language, and signs in with it', async () => {
+    stubMe(401, { error: 'sign-in-required' });
+    renderAt('/');
+    await screen.findByRole('link', { name: 'Chọn mẫu miễn phí' });
+    fireEvent.click(screen.getByRole('button', { name: '中文' }));
+    expect(await screen.findByText('无需建站技能，拥有自己的网站')).toBeTruthy();
+    expect(document.cookie).toContain('hd_lang=zh-CN');
+    expect(document.documentElement.lang).toBe('zh-CN');
+    expect(screen.getByRole('link', { name: 'hoandat.com 旗下应用' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: '选一个免费模板' }).getAttribute('href')).toBe('/new');
+    renderAt('/login');
+    const signIn = await screen.findByRole('link', { name: '用 hoandat.com 登录' });
+    expect(new URL(signIn.getAttribute('href') ?? '', 'http://localhost').searchParams.get('lang')).toBe('zh-CN');
   });
 
   it('tells why the last sign-in came back', async () => {
